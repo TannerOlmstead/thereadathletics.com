@@ -561,6 +561,9 @@
     const pid = t.getAttribute('data-pid'), a = t.getAttribute('data-act');
     Act.log(pid, a); refreshAct(pid); toast(esc(ACT[a][0]) + ' logged for ' + esc(byId[pid].name) + '. Stage: ' + esc(Act.stage(pid)) + '.');
   });
+  // Athletic Department context: ?dsport=<sport id> scopes every coach page to one sport (read-only list filter, nothing is deleted).
+  const DEPT_SPORT = (() => { try { const k = new URLSearchParams(location.search).get('dsport'); const x = window.TheReadSports && window.TheReadSports.get(k); return x ? x.name : ''; } catch (e) { return ''; } })();
+  if (DEPT_SPORT) { for (let i = players.length - 1; i >= 0; i--) { if (players[i].sport !== DEPT_SPORT) players.splice(i, 1); } }
   const db = {
     total: players.length,
     avgRS: avg(players.map((p) => p.rs)),
@@ -1812,7 +1815,7 @@
   pages.calendar = (root) => calendarPage(root, 'coach');
   pages.deptcal = (root) => calendarPage(root, 'dept');
   pages.athcal = (root) => calendarPage(root, 'athlete');
-  window.TheReadCoach = { Interest: Interest, players: players, rankingRowHtml: rankingRowHtml, priTierFrom: priTierFrom, stageFromEntries: stageFromEntries, buildIcs: buildIcs, Board: Board, Act: Act, Cal: Cal, lvlCode: lvlCode, eligTxt: eligTxt, prefTxt: prefTxt, prefCat: prefCat };
+  window.TheReadCoach = { allPlayersFor: (n) => Object.keys(byId).map((k) => byId[k]).filter((p) => !n || p.sport === n), ours: OUR, Interest: Interest, players: players, rankingRowHtml: rankingRowHtml, priTierFrom: priTierFrom, stageFromEntries: stageFromEntries, buildIcs: buildIcs, Board: Board, Act: Act, Cal: Cal, lvlCode: lvlCode, eligTxt: eligTxt, prefTxt: prefTxt, prefCat: prefCat };
   const refreshBell = () => {
     const b = document.getElementById('notif-bell'); if (!b) return;
     const n = Interest.unseen();

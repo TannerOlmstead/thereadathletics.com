@@ -194,6 +194,7 @@ test('Per-metric verification and interests API', function () {
   A.removeInterest(a.id); eq(A.interests().length, 0, 'removed');
   if (saved == null) localStorage.removeItem('theReadDemoInterests'); else localStorage.setItem('theReadDemoInterests', saved);
 });
+test('Department scope API: allPlayersFor filters by config sport', function () { var C = window.TheReadCoach, n = TheReadSports.list[0].name; yes(typeof C.allPlayersFor === 'function' && !!C.ours, 'API exposed'); var all = C.allPlayersFor(), b = C.allPlayersFor(n); yes(b.length > 0 && b.length <= all.length && b.every(function (p) { return p.sport === n; }), 'only ' + n); yes(all.every(function (p) { return TheReadSports.names.indexOf(p.sport) >= 0; }), 'every player sport is a launch sport'); });
 test('Rankings row: Grad Class is the 4th column after Player Name', function () {
       var t = document.createElement('table'); t.innerHTML = '<tbody>' + D.rankingRowHtml(D.players[0]) + '</tbody>';
       var cells = t.querySelectorAll('tr > *');

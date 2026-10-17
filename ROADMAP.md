@@ -121,6 +121,9 @@ This site is plain HTML/CSS/JS with no build step. There is **no backend**: form
 - [ ] Owner to confirm: metric-to-0-100 scoring method (currently percentile vs Master Database), expected-metric list for Confidence, self-reported credit of 0.5, pop time / two-way handling
 - [x] Max FBV grade table (owner-supplied) added to the shared scoring module with band-edge tests
 - [x] Per-metric verification (verifier page), weighted Confidence, athlete Interest tab, program Notifications bell, Interested Athletes list/dashboard card/department rollup
+- [x] Athletic Department restructure: All Sports tabs plus Sports > sport picker with breadcrumb, switcher, department row + coach row scoped to the sport; Roster & Scholarships, Title IX snapshot, Compliance (reminders, own dates, messaging oversight), Staff & Permissions (seats vs 6 per sport), Reports & Data (CSV, board import, transfer/JUCO watch), Billing, Settings
+- [ ] Department features needing a backend: enforced roles and edit rights, real staff invites, real audit log, payments, official NCAA calendar feed (reviewed by compliance)
+- [ ] Ideas awaiting owner approval: conference-level benchmarking, recruiting budget approvals workflow, department-wide scoped Dashboard KPIs, signed consent/audit exports
 - [ ] Real notification delivery (email/push), verifier identity checks, and program-side Interested filters need a backend
 - [ ] Athletic Department workspace gaps (owner to prioritize): staff/roles/permissions, compliance and NCAA reminders, roster and scholarship equivalency detail, reports/exports
 - [x] Avg FBV grade table (owner-supplied) added; Pitching Potential Grade now uses both velocity tables

@@ -162,7 +162,7 @@
   const GRADE_STORE = loadGrades();
   const GROUPS = [['P', 'Pitchers', ['P']], ['C', 'Catchers', ['C']], ['IF', 'Infielders', ['1B', '2B', '3B', 'SS']], ['OF', 'Outfielders', ['OF']]];
   const groupOf = (pos) => { const g = GROUPS.filter((x) => x[2].indexOf(pos) >= 0)[0]; return g ? g[0] : null; };
-  const WT_KEY = 'theReadDemoGradeWeights';
+  const WT_KEY = 'theReadDemoGradeWeights', SCALE_KEY = 'theReadDemoGradeScale';
   const DEFAULT_WEIGHTS = { all: { A: 30, B: 25, C: 25, D: 20 }, groups: { P: { A: 25, B: 15, C: 45, D: 15 } } };
   const cloneW = (w) => JSON.parse(JSON.stringify(w));
   const validW = (w) => w && typeof w === 'object' && w.all && Object.keys(DEFAULT_WEIGHTS.all).every((k) => isFinite(Number(w.all[k])) && Number(w.all[k]) >= 0);
@@ -901,6 +901,9 @@
     const today = new Date().toISOString().slice(0, 10);
     const msg = sessionStorage.getItem('theReadGrMsg') || ''; sessionStorage.removeItem('theReadGrMsg');
     const role = sessionStorage.getItem('theReadGrRole') === 'staff' ? 'staff' : 'hc';
+    const scale = localStorage.getItem(SCALE_KEY) === 'numeric' ? 'numeric' : 'letter';
+    const gShow = (s) => (scale === 'numeric' ? String(Math.round(s * 10) / 10) : letter(s));
+    const gAvg = (s) => (scale === 'numeric' ? s.toFixed(1) : s.toFixed(1) + ' (' + letter(s) + ')');
     const opts = (arr) => arr.map((x) => '<option value="' + esc(x[0]) + '">' + esc(x[1]) + '</option>').join('');
     const gradeOpts = '<option value="">Select grade</option>' + GRADES.slice().reverse().map((g) => '<option value="' + g + '">' + g + '</option>').join('');
     const cols = [['all', 'All Positions (Default)']].concat(GROUPS.map((g) => [g[0], g[1]]));
@@ -910,23 +913,23 @@
     };
     const convRows = GRADES.slice().reverse().map((g) => '<tr><th scope="row">' + g + '</th><td>' + GRADE_TABLE[g] + '</td></tr>').join('');
     root.innerHTML =
-      '<p class="coach-note md-note"><strong>Coach Grading:</strong> each staff member picks a simple letter grade (A+ to F) for a player. The Head Coach decides how much each coach\u2019s grade counts, and can set different weights for different position groups. Staff Score is the weighted average of the grades entered so far and stays blank until at least one grade exists (never 0). Grades and weights are coach-entered opinions saved only in this browser as a demo. Staff names are sample (fictional). Grades never change a player\u2019s Tier or Confidence.</p>' +
+      '<p class="coach-note md-note"><strong>Coach Grading:</strong> each staff member enters a grade for a player, on the scale the Head Coach chooses (letters A+ to F, or numbers 0 to 100). The Head Coach decides how much each coach\u2019s grade counts, and can set different weights for different position groups. Staff Score is the weighted average of the grades entered so far and stays blank until at least one grade exists (never 0). Grades and weights are coach-entered opinions saved only in this browser as a demo. Staff names are sample (fictional). Grades never change a player\u2019s Tier or Confidence.</p>' +
       (msg ? '<p class="coach-note md-msg" role="status">' + esc(msg) + '</p>' : '') +
       '<section class="card"><h2>Enter A Grade</h2><form id="gr-form" novalidate><div class="md-grid">' +
       '<label>Player *<select name="player">' + opts(players.map((p) => [p.id, p.name + ' \u2014 ' + p.pos + ', ' + p.grad])) + '</select></label>' +
       '<label>Staff Member *<select name="staff">' + opts(COACHES.map((c) => [c.id, c.name + ' (' + c.role + ')'])) + '</select></label>' +
-      '<label>Grade *<select name="grade">' + gradeOpts + '</select></label>' +
+      (scale === 'numeric' ? '<label>Grade (0&ndash;100) *<input name="grade" type="text" inputmode="decimal" /></label>' : '<label>Grade (A+ to F) *<select name="grade">' + gradeOpts + '</select></label>') +
       '<label>Date<input name="date" type="date" value="' + today + '" max="' + today + '" /></label>' +
       '<label class="md-wide">Evaluator Notes<textarea name="note" rows="2" maxlength="300"></textarea></label></div>' +
       '<ul class="md-errors" id="gr-errors" role="alert"></ul><div class="md-actions"><button type="submit" class="button button-primary">Save Grade</button></div></form></section>' +
       '<section class="card" id="gw-card"><h2>Grade Weights (Head Coach)</h2>' +
-      '<form class="controls" onsubmit="return false"><label>Viewing As (Demo Role)<select id="gw-role"><option value="hc"' + (role === 'hc' ? ' selected' : '') + '>Head Coach (can edit weights)</option><option value="staff"' + (role === 'staff' ? ' selected' : '') + '>Other Staff (view only)</option></select></label></form>' +
+      '<form class="controls" onsubmit="return false"><label>Grading Scale (Head Coach)<select id="gw-scale"' + (role === 'hc' ? '' : ' disabled') + '><option value="letter"' + (scale === 'letter' ? ' selected' : '') + '>Letter (A+ to F)</option><option value="numeric"' + (scale === 'numeric' ? ' selected' : '') + '>Numeric (0-100)</option></select></label><label>Viewing As (Demo Role)<select id="gw-role"><option value="hc"' + (role === 'hc' ? ' selected' : '') + '>Head Coach (can edit weights)</option><option value="staff"' + (role === 'staff' ? ' selected' : '') + '>Other Staff (view only)</option></select></label></form>' +
       '<p class="coach-note">Only the Head Coach can change weights. This role switch is a demo; real permissions need a backend. Weights are relative numbers, not required to add to 100: for each player, only the coaches who HAVE graded are counted, and their weights are re-scaled to total 100%. A coach who has not graded is left out, never counted as an F. Leave a position-group box blank to use the Default column.</p>' +
       '<div class="table-wrap"><table class="rd-table" id="gw-table"><caption class="visually-hidden">Grade weights by staff member and position group (sample, fictional)</caption><thead><tr><th scope="col">Staff Member</th>' + cols.map((c) => '<th scope="col">' + esc(c[1]) + '</th>').join('') + '</tr></thead><tbody>' +
       COACHES.map((c) => '<tr><th scope="row">' + esc(c.name) + '<small class="rd-mobile-meta">' + esc(c.role) + '</small></th>' + cols.map((k) => wCell(c, k[0])).join('') + '</tr>').join('') + '</tbody></table></div>' +
       '<ul class="md-errors" id="gw-errors" role="alert"></ul><div class="md-actions"><button type="button" class="button button-primary" id="gw-save"' + (role === 'hc' ? '' : ' disabled') + '>Save Weights</button> <button type="button" class="button button-secondary" id="gw-reset"' + (role === 'hc' ? '' : ' disabled') + '>Reset To Defaults</button></div>' +
       '<p class="coach-note">Default sample weights: Head Coach 30, Associate Head Coach 25, Pitching Coach 25, Recruiting Coordinator 20; Pitchers override: Pitching Coach 45, Head Coach 25, Associate 15, Coordinator 15. These are sample starting points only.</p></section>' +
-      '<section class="card"><h2>How Grades Convert</h2><div class="table-wrap"><table class="rd-table"><caption class="visually-hidden">Letter grade to number conversion</caption><thead><tr><th scope="col">Letter Grade</th><th scope="col">Counts As (0&ndash;100)</th></tr></thead><tbody>' + convRows + '</tbody></table></div>' +
+      '<section class="card"><h2>How Grades Convert</h2><p class="coach-note">Every grade is stored as a number from 0 to 100, whichever scale is on. Letters count as the number below. If the Head Coach switches scales, existing grades are kept: on the letter scale a number shows as its nearest letter, and on the numeric scale a letter shows as its number. Staff Score and Adjusted Recruit Score use the numbers either way.</p><div class="table-wrap"><table class="rd-table"><caption class="visually-hidden">Letter grade to number conversion</caption><thead><tr><th scope="col">Letter Grade</th><th scope="col">Counts As (0&ndash;100)</th></tr></thead><tbody>' + convRows + '</tbody></table></div>' +
       '<p class="coach-note">Staff Score is shown with the nearest letter grade. A blank grade is not saved.</p></section>' +
       '<section class="card coach-card wide how-calc"><h2>How This Is Calculated</h2><ul>' +
       '<li><strong>Staff Score</strong> = &Sigma;(grade number &times; weight) &divide; &Sigma;(weight), over only the coaches who graded that player. The weights used depend on the player\u2019s position group (Pitchers, Catchers, Infielders, Outfielders), falling back to the Default column. If every graded coach has weight 0, they count equally. Blank when nobody has graded.</li>' +
@@ -948,14 +951,15 @@
           const adj = live.rs == null ? null : Math.round(Math.max(0, Math.min(100, live.rs + Math.max(-2.5, Math.min(2.5, ((live.fit + live.need) / 2 - 50) / 20)) + sd)) * 10) / 10;
           return '<tr><th scope="row">' + cardLink(p) + '<small class="rd-mobile-meta">' + p.pos + '</small></th>' + COACHES.map((c) => {
             const e = g[c.id];
-            return '<td data-label="' + esc(c.name) + '">' + (e ? '<strong>' + esc(e.grade || letter(Number(e.score))) + '</strong><small class="rd-mobile-meta">Counts ' + Math.round((shareOf[c.id] || 0) * 100) + '%</small>' + (e.date ? '<small class="rd-mobile-meta">' + esc(e.date) + '</small>' : '') + (e.note ? '<small class="rd-mobile-meta">' + esc(e.note) + '</small>' : '') + ' <button type="button" class="md-del" data-pl="' + esc(p.id) + '" data-co="' + c.id + '" aria-label="Remove grade by ' + esc(c.name) + ' for ' + esc(p.name) + '">Remove</button>' : '&mdash;') + '</td>';
-          }).join('') + '<td data-label="Staff Score">' + (calc.score == null ? 'No staff grades yet' : '<strong>' + calc.score.toFixed(1) + '</strong> (' + letter(calc.score) + ')') + '</td><td data-label="Recruit Score">' + (live.rs == null ? 'Not Rated' : live.rs.toFixed(1)) + '</td><td data-label="Adjusted Recruit Score">' + (adj == null ? '&mdash;' : '<strong>' + adj.toFixed(1) + '</strong>') + '</td></tr>';
+            return '<td data-label="' + esc(c.name) + '">' + (e ? '<strong>' + esc(gShow(Number(e.score))) + '</strong><small class="rd-mobile-meta">Counts ' + Math.round((shareOf[c.id] || 0) * 100) + '%</small>' + (e.date ? '<small class="rd-mobile-meta">' + esc(e.date) + '</small>' : '') + (e.note ? '<small class="rd-mobile-meta">' + esc(e.note) + '</small>' : '') + ' <button type="button" class="md-del" data-pl="' + esc(p.id) + '" data-co="' + c.id + '" aria-label="Remove grade by ' + esc(c.name) + ' for ' + esc(p.name) + '">Remove</button>' : '&mdash;') + '</td>';
+          }).join('') + '<td data-label="Staff Score">' + (calc.score == null ? 'No staff grades yet' : '<strong>' + gAvg(calc.score) + '</strong>') + '</td><td data-label="Recruit Score">' + (live.rs == null ? 'Not Rated' : live.rs.toFixed(1)) + '</td><td data-label="Adjusted Recruit Score">' + (adj == null ? '&mdash;' : '<strong>' + adj.toFixed(1) + '</strong>') + '</td></tr>';
         }).join('') : '<tr class="rd-empty"><td colspan="' + (COACHES.length + 4) + '">No players match.</td></tr>') + '</tbody>';
     }
     draw();
     root.addEventListener('input', (e) => { if (e.target.closest('#gr-filters')) draw(); });
     root.addEventListener('change', (e) => {
       if (e.target.closest('#gr-filters')) draw();
+      if (e.target.id === 'gw-scale' && role === 'hc') { try { localStorage.setItem(SCALE_KEY, e.target.value); } catch (x) { /* ignore */ } sessionStorage.setItem('theReadGrMsg', 'Grading scale changed. Existing grades were kept and are shown on the new scale.'); location.reload(); return; }
       if (e.target.id === 'gw-role') { sessionStorage.setItem('theReadGrRole', e.target.value); location.reload(); }
     });
     root.addEventListener('click', (e) => {
@@ -992,15 +996,17 @@
     });
     $('#gr-form', root).addEventListener('submit', (e) => {
       e.preventDefault();
-      const f = e.target, errs = [], grade = f.elements.grade.value;
-      if (!GRADE_TABLE[grade]) errs.push('Choose a grade from A+ to F. A blank grade is not saved.');
+      const f = e.target, errs = [], raw = f.elements.grade.value.trim();
+      let score = null;
+      if (scale === 'numeric') { const n = Number(raw); if (raw === '' || !isFinite(n)) errs.push('Grade must be a number from 0 to 100. A blank grade is not saved as 0.'); else if (n < 0 || n > 100) errs.push('Grade must be between 0 and 100.'); else score = Math.round(n * 10) / 10; }
+      else if (!GRADE_TABLE[raw]) errs.push('Choose a grade from A+ to F. A blank grade is not saved.'); else score = GRADE_TABLE[raw];
       const date = f.elements.date.value;
       if (date && date > today) errs.push('Date cannot be in the future.');
       $('#gr-errors', root).innerHTML = errs.map((m) => '<li>' + esc(m) + '</li>').join('');
       if (errs.length) return;
       const pid = f.elements.player.value, cid = f.elements.staff.value;
       store[pid] = store[pid] || {};
-      store[pid][cid] = { grade: grade, score: GRADE_TABLE[grade], note: f.elements.note.value.trim().slice(0, 300), date: date };
+      store[pid][cid] = { score: score, note: f.elements.note.value.trim().slice(0, 300), date: date };
       if (!saveGrades(store)) { $('#gr-errors', root).innerHTML = '<li>This browser blocked saving. The grade was not saved.</li>'; return; }
       sessionStorage.setItem('theReadGrMsg', 'Grade saved for ' + byId[pid].name + ' (demo, this browser only). Staff Score and Adjusted Recruit Score were recalculated.');
       location.reload();

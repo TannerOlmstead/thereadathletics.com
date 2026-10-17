@@ -58,18 +58,22 @@
       '<ul class="check-list">' + c.items.map(function (i) { return '<li class="' + (i[1] ? 'done' : 'todo') + '">' + (i[1] ? '&#10003; ' : '&#9675; ') + esc(i[0]) + ' ' + tag(i[2]) + '</li>'; }).join('') + '</ul>');
   };
 
+  var scoreFor = function () {
+    var T = window.TheReadCoach, bench = T ? T.players.filter(function (q) { return !q.entered && (q.sport || 'Baseball') === 'Baseball'; }) : [];
+    var sp = sports[cur] || sports[0];
+    return window.TheReadScore.compute({ pos: sp.pos, metrics: rec.metrics || {}, verified: rec.verified || {} }, bench);
+  };
   var scores = function () {
     var sp = sports[cur] || sports[0], cfg = SP && SP.byName ? SP.byName[sp.name] : null, scored = !cfg || cfg.scoring !== false;
-    var miss = [];
-    A.METRICS.forEach(function (m) { var v = (rec.verified || {})[m[0]]; if (rec.metrics[m[0]] == null) miss.push(m[1] + ': not entered'); else if (!v) miss.push(m[1] + ': self-reported, unverified'); });
-    return sec('Recruit Score, Player Tier &amp; Confidence', 1, 'Shown per sport. A missing score is Not Rated and unknown confidence is Unknown, never zero.',
-      '<div class="sport-switch" role="group" aria-label="Sport">' + sports.map(function (s, i) { return '<button type="button" class="chip' + (i === cur ? ' on' : '') + '" data-sport="' + i + '" aria-pressed="' + (i === cur) + '">' + esc(s.name) + '</button>'; }).join('') + '</div>' +
-      (scored ? '<dl class="review-list"><dt>Recruit Score</dt><dd>' + CL.formatRecruitScore(null) + '</dd><dt>Player Tier</dt><dd>' + CL.renderTierBadge(null) + '</dd><dt>Confidence</dt><dd>' + CL.renderConfidenceBadge(null) + '</dd></dl>' +
-        '<p>Confidence reflects how much verified data supports the score. Self-reported metrics lower Confidence but never change the Recruit Score.</p><h3>What Would Raise Confidence</h3>' +
-        (miss.length ? '<ul>' + miss.map(function (m) { return '<li>' + esc(m) + '</li>'; }).join('') + '<li>Have a High School Coach, Private Instructor or Verified Data Provider confirm your numbers</li></ul>' : '<p>All entered metrics are verified.</p>') :
-        '<p class="notice navy" role="status"><strong>Scoring Not Yet Available</strong> for ' + esc(sp.name) + '. Recruit Score shows Not Rated and Confidence shows Unknown. Coming Soon.</p>'));
+    var sw = '<div class="sport-switch" role="group" aria-label="Sport">' + sports.map(function (s, i) { return '<button type="button" class="chip' + (i === cur ? ' on' : '') + '" data-sport="' + i + '" aria-pressed="' + (i === cur) + '">' + esc(s.name) + '</button>'; }).join('') + '</div>';
+    if (!scored) return sec('Recruit Score, Player Tier &amp; Confidence', 1, 'Shown per sport. A missing score is Not Rated and unknown confidence is Unknown, never zero.', sw +
+      '<p class="notice navy" role="status"><strong>Scoring Not Yet Available</strong> for ' + esc(sp.name) + '. Recruit Score shows Not Rated and Confidence shows Unknown. Coming Soon.</p>');
+    var r = scoreFor();
+    return sec('Recruit Score, Player Tier &amp; Confidence', 1, 'Calculated automatically from your metrics each time this page opens. Not Rated or Unknown is never zero.', sw +
+      '<dl class="review-list"><dt>Recruit Score</dt><dd>' + CL.formatRecruitScore(r.rs == null ? null : r.rsShown) + '</dd><dt>Player Tier</dt><dd>' + CL.renderTierBadge(r.rs) + '</dd><dt>Confidence</dt><dd>' + CL.renderConfidenceBadge(r.conf) + '</dd></dl>' +
+      '<p>Self-reported metrics lower Confidence but never change the Recruit Score. Add or edit metrics under Metrics and this updates.</p>' +
+      '<section aria-labelledby="calc-h" class="calc-panel"><h3 id="calc-h">How Your Recruit Score Was Calculated</h3>' + window.TheReadScore.panel(r, CL) + '</section>');
   };
-
   var metrics = function () {
     var rows = A.METRICS.filter(function (m) { return rec.metrics[m[0]] != null; }).map(function (m) {
       var v = (rec.verified || {})[m[0]], pend = (rec.verifiers || []).length > 0;
@@ -78,6 +82,7 @@
     var reqs = (rec.verifiers || []).map(function (v) { return '<li>' + esc(v.type) + (v.name ? ' &ndash; ' + esc(v.name) : '') + ' (' + esc(v.email) + ') &middot; ' + esc(v.status) + ' &middot; ' + esc(v.date) + '</li>'; }).join('');
     return sec('Metrics &amp; Verification', 1, 'Your measurables and who has confirmed them. Metrics stay Unverified until a verifier confirms. No email is sent from this site.',
       (rows ? '<div class="table-wrap"><table><thead><tr><th scope="col">Metric</th><th scope="col">Value</th><th scope="col">Status</th><th scope="col">Verifier</th></tr></thead><tbody>' + rows + '</tbody></table></div>' : '<p>No metrics entered yet.</p>') +
+      '<h3>Edit Metrics (Self-Reported)</h3><form id="mf" class="form-grid">' + A.METRICS.map(function (m) { return '<label>' + esc(m[1]) + '<input name="' + m[0] + '" type="number" step="any" min="' + m[2] + '" max="' + m[3] + '" value="' + esc(rec.metrics[m[0]] == null ? '' : rec.metrics[m[0]]) + '" /></label>'; }).join('') + '<div><button class="button button-primary" type="submit">Save Metrics</button> <span id="mf-ok" role="status"></span></div></form><p class="muted">Changing a verified number removes its verification. Your Recruit Score, Tier and Confidence recalculate automatically (see Scores).</p>' +
       '<h3>Verification Requests</h3>' + (reqs ? '<ul>' + reqs + '</ul>' : '<p>None yet.</p>') +
       '<form id="vf" class="form-grid"><label>Verifier Type<select name="t"><option>High School Coach</option><option>Private Instructor</option><option>Verified Data Provider</option></select></label><label>Name / Organization<input name="n" /></label><label>Verifier Email<input name="e" type="email" required /></label><div><button class="button button-primary" type="submit">Request Verification</button></div></form><p class="muted">This records your request in this browser only. Nothing is emailed.</p>');
   };
@@ -159,6 +164,7 @@
     if ((f = $('#g-resend'))) f.addEventListener('click', function () { rec.guardian.status = 'Pending'; rec.guardian.sent = Date.now(); rec.guardian.log = rec.guardian.log || []; rec.guardian.log.push({ t: new Date().toISOString(), a: 'Verification code re-issued (simulated, nothing sent)' }); upd(); render(); });
     Array.prototype.forEach.call(root.querySelectorAll('[data-pv]'), function (c) { c.addEventListener('change', function () { rec.privacy[c.dataset.pv] = c.checked; upd(); $('#pv-ok').textContent = 'Saved.'; }); });
     if ((f = $('#msgwho'))) f.addEventListener('change', function () { setX({ msgWho: root.querySelector('#msgwho').value }); $('#pv-ok').textContent = 'Saved.'; });
+    if ((f = $('#mf'))) f.addEventListener('submit', function (e) { e.preventDefault(); var d = new FormData(e.target); A.METRICS.forEach(function (m) { var raw = String(d.get(m[0])).trim(), v = raw === '' ? null : Number(raw); if (v != null && (isNaN(v) || v < m[2] || v > m[3])) return; if (v == null) { delete rec.metrics[m[0]]; } else { if (rec.metrics[m[0]] !== v && rec.verified && rec.verified[m[0]]) delete rec.verified[m[0]]; rec.metrics[m[0]] = v; } }); upd(); render(); $('#mf-ok').textContent = 'Saved. Scores recalculated.'; });
     if ((f = $('#acf'))) f.addEventListener('submit', function (e) { e.preventDefault(); var d = new FormData(e.target); setX({ gpa: String(d.get('gpa')).trim(), sat: String(d.get('sat')).trim(), act: String(d.get('act')).trim(), major: String(d.get('major')).trim() }); $('#ac-ok').textContent = 'Saved.'; });
     if ((f = $('#vidf'))) f.addEventListener('submit', function (e) { e.preventDefault(); var d = new FormData(e.target), u = String(d.get('u')).trim(); if (!/^https:\/\//i.test(u)) { alert('Links must start with https://'); return; } var v = (X().videos || []).concat([{ label: String(d.get('l')).trim(), url: u }]); setX({ videos: v }); render(); });
     if ((f = $('#awf'))) f.addEventListener('submit', function (e) { e.preventDefault(); var d = new FormData(e.target); setX({ awards: (X().awards || []).concat([String(d.get('a')).trim()]) }); render(); });

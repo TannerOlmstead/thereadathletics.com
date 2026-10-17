@@ -184,11 +184,15 @@
       ['opg', 'sopg', 'dpg', 'sdpg', 'ppg', 'ath', 'rs', 'conf', 'pop', 'avgEV', 'maxEV', 'avgFBV', 'maxFBV', 'tv', 't60'].forEach((k) => { p[k] = share('metrics') && m[k] != null ? m[k] : null; });
       if (share('metrics')) { p.ht = m.ht == null ? null : m.ht; p.wt = m.wt == null ? null : m.wt; }
       ['rs', 'conf', 'ath'].forEach((k) => { p[k] = null; });
+      if (r.sport === 'Baseball' && window.TheReadScore) {
+        const sr = window.TheReadScore.compute({ pos: p.pos, metrics: { ht: p.ht, wt: p.wt, t60: p.t60, tv: p.tv, avgEV: p.avgEV, maxEV: p.maxEV, avgFBV: p.avgFBV, maxFBV: p.maxFBV }, verified: r.verified }, players.filter((q) => !q.entered && (q.sport || 'Baseball') === 'Baseball'));
+        p.rs = sr.rs == null ? null : sr.rsShown; p.rsRaw = sr.rs; p.conf = sr.conf;
+      }
       players.push(p);
     });
   })();
   players.forEach((p) => { if (!p.sport) p.sport = 'Baseball'; if (!p.athKey && p.athleteCreated) p.athKey = p.id; if (p.pref === undefined) p.pref = null; if (p.projRole === undefined) p.projRole = ''; });
-  players.forEach((p) => { p.tier = TRC.getPlayerTier(p.rs); p.confLevel = TRC.getConfidenceLevel(p.conf); p.recruitScore = p.rs; p.confidencePercentage = p.conf; });
+  players.forEach((p) => { p.tier = TRC.getPlayerTier(p.rsRaw != null ? p.rsRaw : p.rs); p.confLevel = TRC.getConfidenceLevel(p.conf); p.recruitScore = p.rs; p.confidencePercentage = p.conf; });
   // ---------- Program scores: documented formulas, no random numbers ----------
   const PHIL_OPTS = ['Prefer Pitching', 'Prefer Position Players', 'Balanced Approach', 'Best Player Available', 'Need-Based Recruiting'];
   const PHIL_KEY = 'theReadDemoPhilosophy';

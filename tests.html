@@ -25,6 +25,7 @@ ul { list-style: none; padding: 0; }
 <script src="classification.js"></script>
 <script src="classification.tests.js"></script>
 <script src="athlete-signup.js"></script>
+<script src="recruit-score.js"></script>
 <script src="coach.js"></script>
 <script>
 (function () {
@@ -132,6 +133,18 @@ ul { list-style: none; padding: 0; }
 test('Athlete profile page exists and is wired', function () {
   var r = new XMLHttpRequest(); r.open('GET','athlete-profile.html',false); try{r.send();}catch(e){}
   if (r.responseText) eq(/data-coach-page="athprofile"/.test(r.responseText) && /athlete-profile\.js/.test(r.responseText), true, 'page loads script');
+});
+test('Recruit Score calculator: frame grade, reweighting, Not Rated, confidence', function () {
+  var S = window.TheReadScore; var bench = []; for (var i = 0; i < 6; i++) bench.push({ pos: 'SS', avgEV: 80 + i, maxEV: 90 + i, t60: 7 + i / 10 });
+  eq(S.frame('SS', 72, 185).grade, 'B-', 'SS 72in 185lb = B-');
+  eq(S.frame('SS', 72, null).grade, undefined, 'missing weight gives no grade');
+  var r = S.compute({ pos: 'SS', metrics: { avgEV: 85, maxEV: 95, t60: 6.9, ht: 72, wt: 185 }, verified: {} }, bench);
+  eq(r.comps.filter(function (c) { return c.used; }).length, 4, 'all components used');
+  eq(Math.round(r.comps.reduce(function (a, c) { return a + (c.scaled || 0); }, 0)), 100, 'weights rescale to 100');
+  eq(r.conf, 50, 'five self-reported metrics = 50% confidence');
+  var n = S.compute({ pos: 'SS', metrics: { ht: 72, wt: 185 }, verified: {} }, bench);
+  eq(n.rs, null, 'no velocity = Not Rated, not zero');
+  var p = S.compute({ pos: 'P', metrics: {}, verified: {} }, bench); eq(p.rs, null, 'empty pitcher Not Rated'); eq(p.conf, null, 'no metrics = Unknown confidence');
 });
 test('Rankings row: Grad Class is the 4th column after Player Name', function () {
       var t = document.createElement('table'); t.innerHTML = '<tbody>' + D.rankingRowHtml(D.players[0]) + '</tbody>';

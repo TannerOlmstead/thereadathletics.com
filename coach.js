@@ -107,8 +107,7 @@
     if (!a || !a.id || !a.name || POS.indexOf(a.pos) < 0) return;
     const p = Object.assign({ sec: '', twoWay: false, state: '', method: 'Coach Entry', notes: '', eval: '', links: {}, ht: null, wt: null, gpa: null,
       staff: null, fit: null, need: null, adj: null, pri: null, hc: null, pc: null, ac: null, committed: '', coach: '', action: '' }, a, { entered: true });
-    try { if (p.rs != null) TRC.validateRecruitScore(p.rs); } catch (e) { p.rs = null; }
-    try { if (p.conf != null) TRC.validateConfidencePercentage(p.conf); } catch (e) { p.conf = null; }
+    ['opg', 'sopg', 'dpg', 'sdpg', 'ppg', 'ath', 'rs', 'conf'].forEach((k) => { p[k] = null; });
     players.push(p);
   });
   players.forEach((p) => { p.tier = TRC.getPlayerTier(p.rs); p.confLevel = TRC.getConfidenceLevel(p.conf); p.recruitScore = p.rs; p.confidencePercentage = p.conf; });
@@ -613,9 +612,7 @@
     const NUMS = [
       ['gpa', 'GPA', 0, 5, 0.01], ['ht', 'Height (inches)', 48, 90, 1], ['wt', 'Weight (lbs)', 80, 350, 1],
       ['avgEV', 'Avg EV', 40, 130, 0.1], ['maxEV', 'Max EV', 40, 130, 0.1], ['avgFBV', 'Avg FBV', 40, 110, 0.1], ['maxFBV', 'Max FBV', 40, 110, 0.1],
-      ['tv', 'Throwing Velo', 40, 110, 0.1], ['t60', '60 Time (sec)', 5, 12, 0.01], ['pop', 'Pop Time (sec)', 1.5, 4, 0.01],
-      ['opg', 'OPG', 0, 100, 0.1], ['sopg', 'SOPG', 0, 100, 0.1], ['dpg', 'DPG', 0, 100, 0.1], ['sdpg', 'SDPG', 0, 100, 0.1], ['ppg', 'PPG', 0, 100, 0.1],
-      ['ath', 'Athletic Score', 0, 100, 0.1], ['rs', 'Recruit Score (0-100)', 0, 100, 0.01], ['conf', 'Confidence % (0-100)', 0, 100, 0.01]
+      ['tv', 'Throwing Velo', 40, 110, 0.1], ['t60', '60 Time (sec)', 5, 12, 0.01], ['pop', 'Pop Time (sec)', 1.5, 4, 0.01]
     ];
     const LINKS = [['pbr', 'PBR Link'], ['pg', 'PG Link'], ['ncsa', 'NCSA Link'], ['video', 'Video Link'], ['twitter', 'Twitter/X']];
     const dupKey = (p) => String(p.name).trim().toLowerCase() + '|' + p.grad;
@@ -678,7 +675,7 @@
       '<label>Evaluation Method<select name="method">' + opt(METHODS.concat(['Coach Entry']), 'Not Set') + '</select></label>' +
       LINKS.map((l) => '<label>' + l[1] + '<input name="' + l[0] + '" type="url" placeholder="https://" /></label>').join('') +
       '<label class="md-wide">Player Notes<textarea name="notes" rows="2" maxlength="300"></textarea></label></div>' +
-      '<p class="coach-note">Recruit Score, Confidence %, and the grades are normally calculated by THE READ; leave them blank if not calculated (the player will show Not Rated / Unknown). Out-of-range values are rejected, never changed.</p>' +
+      '<p class="coach-note"><strong>Calculated by THE READ (not entered by coaches):</strong> Frame Score and projection grades, OPG/SOPG/DPG/SDPG/PPG, Athletic Score, Recruit Score, Tier, Confidence, and ranks. Coaches enter only raw, verifiable data. Until the calculation service exists, these show as blank / Not Rated / Unknown for added players (never 0). The owner-defined grade tables and formulas are not published in this public demo.</p>' +
       '<ul class="md-errors" id="md-errors" role="alert"></ul>' +
       '<div class="md-actions"><button type="submit" class="button button-primary">Add Player</button> <button type="button" class="button button-secondary" id="md-clear">Remove All Added Players</button></div></form></details>' +
       '<form class="controls" id="md-filters" aria-label="Filter master database" onsubmit="return false">' +

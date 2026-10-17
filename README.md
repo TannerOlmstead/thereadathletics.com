@@ -58,7 +58,7 @@ All logic lives in one shared module, `classification.js` (`window.TheReadClassi
 
 ## Master Database
 
-`coach-master-database.html` is the first tab of the coach workspace and the single player data source: Rankings, Player Card, H2H, Dashboard and the other coach pages all read from it (via `coach.js`). It lists every sample player with the input columns from the owner workbook and has search, filters, sorting and an Add Player form. Added players are saved in this browser's localStorage only (a labeled demo); blank values stay blank, never 0, and Recruit Score/Confidence use the spec validation. Real shared storage needs a backend (see ROADMAP.md).
+`coach-master-database.html` is the first tab of the coach workspace and the single player data source: Rankings, Player Card, H2H, Dashboard and the other coach pages all read from it (via `coach.js`). It lists every sample player with the input columns from the owner workbook and has search, filters, sorting and an Add Player form. Added players are saved in this browser's localStorage only (a labeled demo); blank values stay blank, never 0. Coaches enter only raw data; Frame Score, projection grades, OPG/SOPG/DPG/SDPG/PPG, Athletic Score, Recruit Score, Tier, Confidence and ranks are calculated fields (not editable) and show Not Rated / Unknown until the calculation service exists. Real shared storage needs a backend (see ROADMAP.md).
 
 ## Files
 

@@ -64,6 +64,23 @@
     };
     var chk = function (id, html, req) { return '<div class="field full"><label class="check"><input type="checkbox" id="f-' + id + '" data-k="' + id + '"' + (getPath(d, id) ? ' checked' : '') + (req ? ' required' : '') + ' /> ' + html + (req ? ' <span class="req" aria-hidden="true">*</span>' : '') + '</label></div>'; };
     var gradYears = []; for (var y = new Date().getFullYear() - 1; y <= new Date().getFullYear() + 9; y++) gradYears.push(y);
+    var SP = window.TheReadSports;
+    var sel = function (id) { return !!(d.sp && d.sp[id] && d.sp[id].on); };
+    var selected = function () { return SP.list.filter(function (x) { return sel(x.id); }); };
+    var sportsBlock = function () {
+      var h = '<fieldset class="full sports-pick"><legend>Sports You Play <span class="req" aria-hidden="true">*</span></legend><p class="hint">Pick every sport you play. Then choose positions for each one.</p><div class="check-grid">' +
+        SP.list.map(function (x) { return '<label class="check"><input type="checkbox" id="f-sp.' + x.id + '.on" data-k="sp.' + x.id + '.on"' + (sel(x.id) ? ' checked' : '') + ' /> ' + esc(x.name) + '</label>'; }).join('') + '</div></fieldset>';
+      var cur = selected();
+      if (cur.length > 1) h += '<div class="form-grid">' + fld('primary', 'Primary Sport', { req: 1, type: 'select', opts: cur.map(function (x) { return x.name; }) }) + '</div>';
+      cur.forEach(function (x) {
+        h += '<fieldset class="full"><legend>' + esc(x.name) + ' Positions</legend><div class="form-grid">' +
+          fld('sp.' + x.id + '.pos', 'Primary Position', { req: 1, type: 'select', opts: x.positions }) +
+          fld('sp.' + x.id + '.sec', 'Secondary Position', { type: 'select', opts: x.positions, blank: 'None' }) + '</div>' +
+          (x.scoring ? '' : '<p class="hint">Scoring Not Yet Available for ' + esc(x.name) + '. Recruit Score shows Not Rated and Confidence Unknown until its tables exist (Coming Soon).</p>') + '</fieldset>';
+      });
+      return h;
+    };
+    var prim = function () { var c = selected(); return c.filter(function (x) { return x.name === d.primary; })[0] || c[0]; };
     var views = {
       account: function () {
         return '<h2>Account Basics</h2><div class="form-grid">' + fld('name', 'Athlete Full Name', { req: 1, ac: 'name' }) + fld('email', 'Email', { req: 1, type: 'email', ac: 'email' }) +
@@ -82,21 +99,20 @@
       profile: function () {
         var lvl = d.level && d.level !== 'High School', rp = d.rp || {};
         var roleBlock = '';
-        if (d.sport === 'Baseball') {
+        if (sel('baseball')) {
           roleBlock = '<fieldset class="full"><legend>College Role Preference <span class="pill gray">Athlete Preference, Not A Rating</span></legend><p class="hint">Tells coaches what you want. It never changes your Recruit Score, Tier or Confidence.</p><div class="form-grid">' +
             fld('rp.twoWay', 'Do you want to be a two-way player in college?', { req: 1, type: 'select', opts: ['Yes', 'No', 'Open To Either', 'Not Sure'] }) +
             (rp.twoWay === 'Yes' ? fld('rp.emphasis', 'Role Emphasis (Optional)', { type: 'select', opts: ['Pitcher + Position Player, equal', 'Pitcher first', 'Position Player first'], blank: 'Not Provided' }) + fld('rp.pos', 'Position-Player Position (Optional)', { type: 'select', opts: PREF_POS, blank: 'Not Provided' }) : '') +
             (rp.twoWay === 'No' ? fld('rp.role', 'Preferred College Role', { req: 1, type: 'select', opts: ['Pitcher', 'Position Player', 'Open To Either'] }) + (rp.role === 'Position Player' ? fld('rp.pos', 'Preferred Position', { req: 1, type: 'select', opts: PREF_POS }) : '') : '') + '</div></fieldset>';
         }
-        return '<h2>Athlete Profile</h2><div class="form-grid">' + fld('sport', 'Sport', { req: 1, type: 'select', opts: ['Baseball', 'Softball'], hint: 'Only Baseball and Softball are in this demo. The college role question is baseball only.' }) +
-          fld('pos', 'Primary Position', { req: 1, type: 'select', opts: POS }) + fld('sec', 'Secondary Position', { type: 'select', opts: POS, blank: 'None' }) +
+        return '<h2>Athlete Profile</h2>' + sportsBlock() + '<div class="form-grid">' +
           fld('grad', 'Graduation Year', { req: 1, type: 'select', opts: gradYears }) + fld('level', 'Current Playing Level', { req: 1, type: 'select', opts: LEVELS }) +
           fld('school', 'School / Club', { req: 1 }) + fld('state', 'State', { req: 1, ac: 'address-level1' }) +
           (lvl ? fld('elig', 'Years Of Eligibility Left', { type: 'select', opts: [1, 2, 3, 4, 5], blank: 'Not Provided', hint: 'Enter only what you know. It is never guessed.' }) : '<div class="field"><p class="hint">Years of eligibility applies to JUCO and college players. High school players show N/A.</p></div>') + '</div>' +
           roleBlock + '<fieldset class="full"><legend>Profile Photo (Optional)</legend><p class="hint">Upload your own photo only. It is shrunk and kept in this browser (demo).</p><input type="file" id="f-photo" accept="image/*" aria-label="Profile photo" />' +
           '<div id="photo-prev">' + (d.photo ? '<img alt="Your profile photo preview" src="' + esc(d.photo) + '" class="photo-prev" />' : '') + '</div></fieldset>' +
-          '<fieldset class="full"><legend>Measurables <span class="pill">Self-Reported / Unverified Until Verified</span></legend><p class="hint">Optional. Leave blank if unknown. Blank is never treated as 0.</p><div class="form-grid">' +
-          METRICS.map(function (m) { return fld('m.' + m[0], m[1], { type: 'number', attrs: ' step="any" min="' + m[2] + '" max="' + m[3] + '"' }); }).join('') + '</div></fieldset>';
+          (!sel('baseball') ? '<p class="hint">Scoring Not Yet Available for your selected sport(s). Measurables and verification are collected for Baseball first; your profile will show Not Rated and Confidence Unknown, never 0.</p>' : '<fieldset class="full"><legend>Measurables <span class="pill">Self-Reported / Unverified Until Verified</span></legend><p class="hint">Optional. Leave blank if unknown. Blank is never treated as 0.</p><div class="form-grid">' +
+          METRICS.map(function (m) { return fld('m.' + m[0], m[1], { type: 'number', attrs: ' step="any" min="' + m[2] + '" max="' + m[3] + '"' }); }).join('') + '</div></fieldset>');
       },
       guardian: function () {
         return '<h2>Parent / Guardian Verification</h2><div class="notice navy" role="note"><strong>Demo &ndash; no email is sent.</strong> After you submit, your guardian would get a link and code. In this demo, open the guardian page and use code <strong>' + DEMO_CODE + '</strong>.</div><div class="form-grid">' +
@@ -116,8 +132,8 @@
           chk('terms', 'I accept the <a href="terms.html">Terms</a> and <a href="privacy.html">Privacy Policy</a>.', 1);
       },
       review: function () {
-        var rows = [['Name', d.name], ['Email', d.email], ['Age Path', d.path === 'adult' ? 'Adult (18+)' : d.path === 'minor' ? 'Minor (13-17), guardian required' : 'Under 13, guardian-created'], ['Sport / Position', d.sport + ' / ' + d.pos + (d.sec ? ' / ' + d.sec : '')],
-          ['College Role Preference', d.sport !== 'Baseball' ? 'Not applicable' : rolePrefTxt(d.rp)],
+        var rows = [['Name', d.name], ['Email', d.email], ['Age Path', d.path === 'adult' ? 'Adult (18+)' : d.path === 'minor' ? 'Minor (13-17), guardian required' : 'Under 13, guardian-created'], ['Sports / Positions', selected().map(function (x) { return x.name + ' / ' + d.sp[x.id].pos + (d.sp[x.id].sec ? ' / ' + d.sp[x.id].sec : '') + (x.id === prim().id && selected().length > 1 ? ' (Primary)' : ''); }).join('; ')],
+          ['College Role Preference', !sel('baseball') ? 'Not applicable' : rolePrefTxt(d.rp)],
           ['Level / Class', d.level + ' ' + d.grad], ['School / State', d.school + ', ' + d.state], ['Eligibility Left', d.level === 'High School' ? 'N/A' : d.elig || 'Not Provided'],
           ['Metrics', METRICS.filter(function (m) { return d.m[m[0]] !== '' && d.m[m[0]] != null; }).map(function (m) { return m[1] + ': ' + d.m[m[0]]; }).join('; ') || 'None entered (Unverified)'],
           ['Guardian', d.path === 'adult' ? 'Not needed' : d.g.name + ' (' + d.g.rel + ')'],
@@ -140,8 +156,12 @@
       },
       agegate: function () { if (d.path === 'under13' && !d.gcreate) bad('gcreate', 'A parent/guardian must create this account. Confirm to continue.'); },
       profile: function () {
-        if (!d.sport) bad('sport', 'Choose a sport.'); if (!d.pos) bad('pos', 'Choose a primary position.'); if (!d.grad) bad('grad', 'Choose a graduation year.');
-        if (d.sport === 'Baseball') {
+        var cs = selected();
+        if (!cs.length) bad('sp.' + SP.list[0].id + '.on', 'Choose at least one sport.');
+        cs.forEach(function (x) { if (!d.sp[x.id].pos) bad('sp.' + x.id + '.pos', 'Choose a primary ' + x.name + ' position.'); else if (d.sp[x.id].sec && d.sp[x.id].sec === d.sp[x.id].pos) bad('sp.' + x.id + '.sec', 'Secondary position must differ from primary.'); });
+        if (cs.length > 1 && !d.primary) bad('primary', 'Choose your primary sport.');
+        if (!d.grad) bad('grad', 'Choose a graduation year.');
+        if (sel('baseball')) {
           var rp = d.rp || {};
           if (!rp.twoWay) bad('rp.twoWay', 'Tell us if you want to be a two-way player in college.');
           else if (rp.twoWay === 'No') { if (!rp.role) bad('rp.role', 'Choose the college role you prefer.'); else if (rp.role === 'Position Player' && !rp.pos) bad('rp.pos', 'Choose the position you prefer.'); }
@@ -190,7 +210,7 @@
       var back = document.getElementById('wiz-back');
       if (back) back.addEventListener('click', function () { collect(); var pv = vs[idx - 1][0]; step = STEPS.map(function (s) { return s[0]; }).indexOf(pv); render(); });
       if (key === 'profile') {
-        ['level', 'sport', 'rp.twoWay', 'rp.role'].forEach(function (k) { var e = form.querySelector('[data-k="' + k + '"]'); if (e) e.addEventListener('change', function () { collect(); render(); }); });
+        ['level', 'primary', 'rp.twoWay', 'rp.role'].concat(SP.list.map(function (x) { return 'sp.' + x.id + '.on'; })).forEach(function (k) { var e = form.querySelector('[data-k="' + k + '"]'); if (e) e.addEventListener('change', function () { collect(); render(); }); });
         photo.addEventListener('change', function () {
           var f = photo.files[0]; if (!f) return;
           if (!/^image\//.test(f.type)) { alert('Please choose an image file.'); return; }
@@ -208,8 +228,8 @@
       var g = d.path === 'adult' ? null : { name: d.g.name, rel: d.g.rel, email: d.g.email, phone: d.g.phone, status: 'Pending', sent: Date.now(), share: { contact: false, photo: false, metrics: false }, msgVisible: true, dataConsent: false, log: [{ t: new Date().toISOString(), a: 'Verification code issued (demo, nothing sent)' }] };
       var rec = {
         id: 'ath-' + Date.now().toString(36), created: new Date().toISOString(), submitted: true, name: d.name.trim(), email: d.email, dob: d.dob, age: d.age, path: d.path,
-        sport: d.sport, pos: d.pos, sec: d.sec || '', grad: Number(d.grad), level: d.level, school: d.school.trim(), state: d.state.trim(), elig: d.level === 'High School' || !d.elig ? null : Number(d.elig), photo: d.photo || '',
-        rolePref: d.sport === 'Baseball' && d.rp && d.rp.twoWay ? { twoWay: d.rp.twoWay, emphasis: d.rp.twoWay === 'Yes' ? d.rp.emphasis || '' : '', role: d.rp.twoWay === 'No' ? d.rp.role || '' : '', pos: (d.rp.twoWay === 'Yes' || (d.rp.twoWay === 'No' && d.rp.role === 'Position Player')) ? d.rp.pos || '' : '' } : null,
+        sport: prim().name, pos: d.sp[prim().id].pos, sec: d.sp[prim().id].sec || '', sports: selected().map(function (x) { return { id: x.id, name: x.name, pos: d.sp[x.id].pos, sec: d.sp[x.id].sec || '', primary: x.id === prim().id }; }), grad: Number(d.grad), level: d.level, school: d.school.trim(), state: d.state.trim(), elig: d.level === 'High School' || !d.elig ? null : Number(d.elig), photo: d.photo || '',
+        rolePref: sel('baseball') && d.rp && d.rp.twoWay ? { twoWay: d.rp.twoWay, emphasis: d.rp.twoWay === 'Yes' ? d.rp.emphasis || '' : '', role: d.rp.twoWay === 'No' ? d.rp.role || '' : '', pos: (d.rp.twoWay === 'Yes' || (d.rp.twoWay === 'No' && d.rp.role === 'Position Player')) ? d.rp.pos || '' : '' } : null,
         metrics: {}, guardian: g, verifiers: [], verified: {}, privacy: { list: !!d.privacy.list, contact: !!d.privacy.contact, photo: !!d.privacy.photo, metrics: !!d.privacy.metrics }, terms: true
       };
       METRICS.forEach(function (m) { var v = d.m[m[0]]; if (v !== '' && v != null) rec.metrics[m[0]] = Number(v); });

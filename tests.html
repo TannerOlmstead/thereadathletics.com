@@ -16,7 +16,7 @@ li.ok::before { content: "PASS  "; color: #1b7f3b; font-weight: 700; }
 li.bad::before { content: "FAIL  "; color: #e41e3f; font-weight: 700; }
 ul { list-style: none; padding: 0; }
 </style>
-<script src="site-config.js"></script></head>
+<script src="site-config.js"></script><script src="sports-config.js"></script></head>
 <body>
 <h1>Recruit Score, Tier, And Confidence Tests</h1>
 <p>Runs every boundary, validation, color, label, sort, and filter test in your browser. Sample data only. Open this page and check the summary.</p>
@@ -117,6 +117,12 @@ ul { list-style: none; padding: 0; }
     });        test('Sample-label flag controls the hide class on <html>', function () {
       var on = !!(window.SITE_CONFIG && window.SITE_CONFIG.SHOW_SAMPLE_LABELS);
       yes(document.documentElement.classList.contains('hide-sample-labels') === !on, 'html class matches SHOW_SAMPLE_LABELS');
+    });
+    test('Sports config has exactly the 8 launch sports with positions; only Baseball scores', function () {
+      var L = window.TheReadSports.list; eq(L.length, 8);
+      eq(L.map(function (x) { return x.name; }).join('|'), 'Baseball|Men\u2019s Basketball|Women\u2019s Basketball|Football|Men\u2019s Soccer|Women\u2019s Soccer|Softball|Women\u2019s Volleyball');
+      yes(L.every(function (x) { return x.positions.length > 0; }), 'positions');
+      eq(L.filter(function (x) { return x.scoring; }).length, 1);
     });
     test('Rankings row: Grad Class is the 4th column after Player Name', function () {
       var t = document.createElement('table'); t.innerHTML = '<tbody>' + D.rankingRowHtml(D.players[0]) + '</tbody>';

@@ -3,6 +3,10 @@
   'use strict';
 
   const POS = ['P', 'C', '1B', '2B', '3B', 'SS', 'OF'];
+  const SPORTS = (window.TheReadSports && window.TheReadSports.list) || [{ id: 'baseball', name: 'Baseball', positions: POS, scoring: true }];
+  const SPORT_NAMES = SPORTS.map((x) => x.name);
+  const sportPos = (name) => { const x = SPORTS.filter((y) => y.name === name)[0]; return x ? x.positions : []; };
+  const ALLPOS = SPORTS.reduce((a, x) => a.concat(x.positions.filter((q) => a.indexOf(q) < 0)), []);
   const GRADES = ['F', 'D-', 'D', 'D+', 'C-', 'C', 'C+', 'B-', 'B', 'B+', 'A-', 'A', 'A+'];
   const GRADE_TABLE = { 'A+': 98, A: 95, 'A-': 92, 'B+': 88, B: 85, 'B-': 82, 'C+': 78, C: 75, 'C-': 72, 'D+': 68, D: 65, 'D-': 62, F: 50 };
   const STAFF_BASELINE = 80, STAFF_DIVISOR = 6, STAFF_CAP = 3;
@@ -145,7 +149,9 @@
   const loadAdded = () => { try { const a = JSON.parse(localStorage.getItem(STORE_KEY) || '[]'); return Array.isArray(a) ? a : []; } catch (e) { return []; } };
   const saveAdded = (a) => { try { localStorage.setItem(STORE_KEY, JSON.stringify(a)); return true; } catch (e) { return false; } };
   loadAdded().forEach((a) => {
-    if (!a || !a.id || !a.name || POS.indexOf(a.pos) < 0) return;
+    if (!a || !a.id || !a.name) return;
+    if (SPORT_NAMES.indexOf(a.sport) < 0) a.sport = 'Baseball';
+    if (sportPos(a.sport).indexOf(a.pos) < 0) return;
     const p = Object.assign({ sec: '', twoWay: false, state: '', method: 'Coach Entry (Unverified)', notes: '', eval: '', links: {}, ht: null, wt: null, gpa: null,
       staff: null, fit: null, need: null, adj: null, pri: null, hc: null, pc: null, ac: null, committed: '', coach: '', action: '', level: 'High School', photo: '', elig: null, projRole: '', pref: null }, a, { entered: true });
     if (PROJ_ROLES.indexOf(p.projRole) < 0) p.projRole = '';
@@ -159,10 +165,19 @@
     let recs = [];
     try { recs = JSON.parse(localStorage.getItem('theReadDemoAthletes') || '[]'); } catch (e) { recs = []; }
     if (!Array.isArray(recs) || !window.TheReadAthlete) return;
-    recs.forEach((r) => {
-      if (!r || !r.id || POS.indexOf(r.pos) < 0 || !window.TheReadAthlete.listed(r)) return;
+    const ents = [];
+    recs.forEach((r0) => {
+      if (!r0 || !r0.id) return;
+      const sl = Array.isArray(r0.sports) && r0.sports.length ? r0.sports : [{ name: r0.sport || 'Baseball', pos: r0.pos, sec: r0.sec, primary: true }];
+      sl.forEach((sx) => {
+        const nm = SPORT_NAMES.indexOf(sx.name) < 0 ? 'Baseball' : sx.name, bb = nm === 'Baseball';
+        ents.push(Object.assign({}, r0, { sport: nm, pos: sx.pos, sec: sx.sec || '', metrics: bb ? r0.metrics : {}, rolePref: bb ? r0.rolePref : null, _sx: sl.length > 1 && !sx.primary ? '-' + nm.replace(/[^a-z]/gi, '').slice(0, 5).toUpperCase() : '', _aid: r0.id }));
+      });
+    });
+    ents.forEach((r) => {
+      if (!r || !r.id || sportPos(r.sport).indexOf(r.pos) < 0 || !window.TheReadAthlete.listed(r)) return;
       const A = window.TheReadAthlete, m = r.metrics || {}, share = (k) => A.shares(r, k), gv = r.path !== 'adult';
-      const p = { id: 'ATH-' + r.id.replace(/[^a-z0-9]/gi, '').slice(-6).toUpperCase(), name: r.name, grad: r.grad, pos: r.pos, sec: r.sec || '', twoWay: !!(r.rolePref && r.rolePref.twoWay === 'Yes'), state: r.state || '', hs: r.school || '',
+      const p = { id: 'ATH-' + r.id.replace(/[^a-z0-9]/gi, '').slice(-6).toUpperCase() + r._sx, sport: r.sport, athKey: 'ATH-' + r._aid.replace(/[^a-z0-9]/gi, '').slice(-6).toUpperCase(), name: r.name, grad: r.grad, pos: r.pos, sec: r.sec || '', twoWay: !!(r.rolePref && r.rolePref.twoWay === 'Yes'), state: r.state || '', hs: r.school || '',
         method: 'Athlete-Created (Self-Reported' + (A.anyVerified(r) ? ', some metrics verified by third party (demo)' : ', Unverified') + ')', notes: 'Athlete-Created' + (gv ? '; Guardian-Verified (demo)' : '') + '. Contact info ' + (share('contact') ? 'shared by athlete.' : 'Not shared.'),
         eval: '', links: {}, ht: null, wt: null, gpa: null, staff: null, fit: null, need: null, adj: null, pri: null, hc: null, pc: null, ac: null, committed: '', coach: '', action: '',
         level: LEVELS.indexOf(r.level) < 0 ? 'Other' : r.level, photo: share('photo') ? r.photo || '' : '', elig: r.elig == null ? null : r.elig, entered: true, athleteCreated: true, guardianVerified: gv, pref: r.rolePref || null, projRole: '' };
@@ -172,7 +187,7 @@
       players.push(p);
     });
   })();
-  players.forEach((p) => { if (p.pref === undefined) p.pref = null; if (p.projRole === undefined) p.projRole = ''; });
+  players.forEach((p) => { if (!p.sport) p.sport = 'Baseball'; if (!p.athKey && p.athleteCreated) p.athKey = p.id; if (p.pref === undefined) p.pref = null; if (p.projRole === undefined) p.projRole = ''; });
   players.forEach((p) => { p.tier = TRC.getPlayerTier(p.rs); p.confLevel = TRC.getConfidenceLevel(p.conf); p.recruitScore = p.rs; p.confidencePercentage = p.conf; });
   // ---------- Program scores: documented formulas, no random numbers ----------
   const PHIL_OPTS = ['Prefer Pitching', 'Prefer Position Players', 'Balanced Approach', 'Best Player Available', 'Need-Based Recruiting'];
@@ -615,6 +630,7 @@
     ['grad', 'Grad Class', (p) => p.grad, 'c-grad'],
     ['lvl', 'Level / Class', (p) => lvlCell(p), 'c-level'],
     ['elig', 'Eligibility Left', (p) => esc(eligTxt(p)), 'c-elig'],
+    ['sport', 'Sport', (p) => esc(p.sport), 'c-sport'],
     ['pos', 'Primary Position', (p) => p.pos, 'c-pos'],
     ['sec', 'Secondary Position', (p) => p.sec || '&mdash;', 'c-sec'],
     ['rs', 'Recruit Score', (p) => TRC.formatRecruitScore(p.rs), 'c-rs rd-num', TRC.TEXT.recruitScoreTooltip],
@@ -635,7 +651,8 @@
     root.innerHTML =
       '<form class="controls" id="r-form" aria-label="Filter rankings" onsubmit="return false">' +
       '<label>Search<input type="search" id="f-q" placeholder="Name, position, class, or state" /></label>' +
-      '<label>Position<select id="f-pos"><option value="">All</option>' + POS.map((x) => '<option>' + x + '</option>').join('') + '</select></label>' +
+      '<label>Sport<select id="f-sport"><option value="">All</option>' + SPORT_NAMES.map((x) => '<option>' + x + '</option>').join('') + '</select></label>' +
+      '<label>Position<select id="f-pos"><option value="">All</option>' + ALLPOS.map((x) => '<option>' + x + '</option>').join('') + '</select></label>' +
       '<label>Class<select id="f-class"><option value="">All</option>' + [2027, 2028, 2029, 2030].map((g) => '<option>' + g + '</option>').join('') + '</select></label>' +
       '<label>Playing Level<select id="f-level"><option value="">All</option>' + LEVELS.map((x) => '<option>' + x + '</option>').join('') + '</select></label>' +
       '<label>Role Preference<select id="f-pref"><option value="">All</option>' + PREF_CATS.map((x) => '<option>' + x + '</option>').join('') + '</select></label>' +
@@ -649,10 +666,10 @@
     const tbl = $('#r-table', root);
     const picked = (name) => Array.from(root.querySelectorAll('input[name="' + name + '"]:checked')).map((i) => i.value);
     function draw() {
-      const fp = $('#f-pos', root).value, fc = $('#f-class', root).value, fl = $('#f-level', root).value, fr = $('#f-pref', root).value;
+      const fp = $('#f-pos', root).value, fc = $('#f-class', root).value, fl = $('#f-level', root).value, fr = $('#f-pref', root).value, fsp = $('#f-sport', root).value;
       let list = TRC.filterAthletes(players, {
         search: $('#f-q', root).value, tiers: picked('tier'), confidences: picked('conf'),
-        extra: (p) => (!fp || p.pos === fp) && (!fc || String(p.grad) === fc) && (!fl || p.level === fl) && (!fr || prefCat(p) === fr)
+        extra: (p) => (!fsp || p.sport === fsp) && (!fp || p.pos === fp) && (!fc || String(p.grad) === fc) && (!fl || p.level === fl) && (!fr || prefCat(p) === fr)
       });
       const k = state.key, dir = state.dir === 1 ? 'asc' : 'desc';
       if (k === 'rs') list = TRC.sortAthletes(list, 'recruitScore', dir);
@@ -837,9 +854,21 @@
     const b = e.target.closest && e.target.closest('[data-connect]'); if (!b) return;
     const panel = document.getElementById(b.getAttribute('aria-controls')); if (!panel) return;
     const open = panel.hidden; panel.hidden = !open; b.setAttribute('aria-expanded', open ? 'true' : 'false');
-  });  function photoHead(p) {
+  });  const scoreNote = (p) => { const x = SPORTS.filter((y) => y.name === p.sport)[0]; return x && !x.scoring ? '<p class="coach-note"><strong>Scoring Not Yet Available</strong> for ' + esc(p.sport) + '. Recruit Score is Not Rated and Confidence is Unknown until its tables exist (Coming Soon).</p>' : ''; };
+  const sportSwitch = (p) => {
+    const sibs = players.filter((q) => p.athKey && q.athKey === p.athKey);
+    if (sibs.length < 2) return scoreNote(p);
+    return '<div class="pc-sub pc-sports" role="group" aria-label="Sports for ' + esc(p.name) + '"><strong>Sports:</strong> ' + sibs.map((q) => '<button type="button" class="button ' + (q.id === p.id ? 'button-primary' : 'button-secondary') + '" data-sport-card="' + q.id + '"' + (q.id === p.id ? ' aria-pressed="true"' : ' aria-pressed="false"') + '>' + esc(q.sport) + ' (' + esc(q.pos) + ')</button>').join(' ') + '</div>' + scoreNote(p);
+  };
+  document.addEventListener('click', (e) => { const b = e.target.closest && e.target.closest('[data-sport-card]'); if (b && byId[b.getAttribute('data-sport-card')]) openCardModal(b.getAttribute('data-sport-card'), b); });
+  document.addEventListener('change', (e) => {
+    const s = e.target; if (!s || s.name !== 'sport' || !s.form || s.form.id !== 'md-form') return;
+    const ps = s.form.elements.pos, list = sportPos(s.value);
+    ps.innerHTML = '<option value="">Select</option>' + list.map((x) => '<option>' + x + '</option>').join('');
+  });
+  function photoHead(p) {
     const img = p.photo ? '<img src="' + esc(p.photo) + '" alt="Profile photo of ' + esc(p.name) + '" loading="lazy" referrerpolicy="no-referrer">' : SIL;
-    return '<div class="pc-head"><div class="pc-photo">' + img + '</div><div><h2 class="pc-name">' + esc(p.name) + '</h2><p class="pc-sub">' + esc(p.pos) + ' \u00b7 Class of ' + p.grad + ' \u00b7 ' + esc(p.state) + ' \u00b7 ' + esc(LEVEL_SHORT[p.level] || p.level) + '</p><p class="pc-sub pc-role">Role Preference: ' + esc(prefTxt(p)) + ' <span class="pill gray">Athlete Preference, Not A Rating</span> &middot; Projected College Role: ' + esc(projTxt(p)) + ' <span class="pill amber">Coach-Entered</span>' + (p.athleteCreated ? ' <span class="pill navy">Athlete-Created</span>' + (p.guardianVerified ? ' <span class="pill green">Guardian-Verified (Demo)</span>' : '') : '') + '</p><p class="coach-note">' + (p.photo ? 'Photo provided with the profile.' : 'No athlete-provided photo yet. Photos appear here only when the athlete adds one.') + ' Sample Data / Fictional Example.</p><button type="button" class="button button-primary pc-connect-btn" data-connect aria-expanded="false" aria-controls="pc-connect-' + p.id + '">Connect</button></div></div>' + connectHtml(p);
+    return '<div class="pc-head"><div class="pc-photo">' + img + '</div><div><h2 class="pc-name">' + esc(p.name) + '</h2><p class="pc-sub">' + esc(p.sport) + ' ' + esc(p.pos) + ' \u00b7 Class of ' + p.grad + ' \u00b7 ' + esc(p.state) + ' \u00b7 ' + esc(LEVEL_SHORT[p.level] || p.level) + '</p>' + sportSwitch(p) + '<p class="pc-sub pc-role">Role Preference: ' + esc(prefTxt(p)) + ' <span class="pill gray">Athlete Preference, Not A Rating</span> &middot; Projected College Role: ' + esc(projTxt(p)) + ' <span class="pill amber">Coach-Entered</span>' + (p.athleteCreated ? ' <span class="pill navy">Athlete-Created</span>' + (p.guardianVerified ? ' <span class="pill green">Guardian-Verified (Demo)</span>' : '') : '') + '</p><p class="coach-note">' + (p.photo ? 'Photo provided with the profile.' : 'No athlete-provided photo yet. Photos appear here only when the athlete adds one.') + ' Sample Data / Fictional Example.</p><button type="button" class="button button-primary pc-connect-btn" data-connect aria-expanded="false" aria-controls="pc-connect-' + p.id + '">Connect</button></div></div>' + connectHtml(p);
   }
   function openCardModal(id, opener) {
     const p = byId[id]; if (!p) return;
@@ -1304,6 +1333,7 @@
       '<div class="md-grid">' +
       '<label>Player Name *<input name="name" type="text" maxlength="80" required /></label>' +
       '<label>Grad Year *<select name="grad" required>' + opt([2026, 2027, 2028, 2029, 2030, 2031], 'Select') + '</select></label>' +
+      '<label>Sport *<select name="sport" required>' + opt(SPORT_NAMES, 'Select') + '</select></label>' +
       '<label>Primary Position *<select name="pos" required>' + opt(POS, 'Select') + '</select></label>' +
       '<label>Current Playing Level<select name="level">' + opt(LEVELS) + '</select></label>' +
       '<label>Years Of Eligibility Left (JUCO / college; leave blank if unknown)<input name="elig" type="number" min="0" max="6" step="1" inputmode="numeric" /></label>' +
@@ -1325,7 +1355,8 @@
       '<div class="md-actions"><button type="submit" class="button button-primary">Add Prospect</button> <button type="button" class="button button-secondary" id="md-clear">Remove All Added Prospects</button></div></form></details>' +
       '<form class="controls" id="md-filters" aria-label="Filter master database" onsubmit="return false">' +
       '<label>Search<input type="search" id="md-q" placeholder="Name, school, state, notes" /></label>' +
-      '<label>Position<select id="md-pos">' + opt(POS, 'All') + '</select></label>' +
+      '<label>Sport<select id="md-sport">' + opt(SPORT_NAMES, 'All') + '</select></label>' +
+      '<label>Position<select id="md-pos">' + opt(ALLPOS, 'All') + '</select></label>' +
       '<label>Grad Year<select id="md-grad">' + opt([2026, 2027, 2028, 2029, 2030, 2031], 'All') + '</select></label>' +
       '<label>Current Playing Level<select id="md-level">' + opt(LEVELS, 'All') + '</select></label>' +
       '<label>Source<select id="md-src"><option value="">All</option><option value="s">Sample</option><option value="a">Coach-Entered (Demo)</option><option value="x">Athlete-Created</option></select></label>' +
@@ -1339,9 +1370,9 @@
       k.innerHTML = kpi('Total Players', players.length) + kpi('Sample Players', players.filter((p) => !p.entered).length) + kpi('Coach-Entered (Demo)', players.filter((p) => p.entered && !p.athleteCreated).length) + kpi('Athlete-Created (Demo)', players.filter((p) => p.athleteCreated).length) + kpi('Possible Duplicates', players.filter((p) => dupCount[dupKey(p)] > 1).length) + kpi('Missing 60 Time (Position Players)', players.filter((p) => p.pos !== 'P' && p.t60 == null).length);
     }
     function draw() {
-      const q = $('#md-q', root).value.trim().toLowerCase(), fp = $('#md-pos', root).value, fg = $('#md-grad', root).value, fs = $('#md-src', root).value, fl = $('#md-level', root).value, fr = $('#md-pref', root).value;
-      let list = players.filter((p) => (!fp || p.pos === fp) && (!fg || String(p.grad) === fg) && (!fl || p.level === fl) && (!fr || prefCat(p) === fr) && (!fs || (fs === 'x' ? !!p.athleteCreated : fs === 'a' ? !!p.entered && !p.athleteCreated : !p.entered)) &&
-        (!q || [p.name, p.id, p.hs, p.state, p.pos, p.sec, p.notes, p.method].join(' ').toLowerCase().indexOf(q) >= 0));
+      const q = $('#md-q', root).value.trim().toLowerCase(), fp = $('#md-pos', root).value, fg = $('#md-grad', root).value, fs = $('#md-src', root).value, fl = $('#md-level', root).value, fr = $('#md-pref', root).value, fsp = $('#md-sport', root).value;
+      let list = players.filter((p) => (!fsp || p.sport === fsp) && (!fp || p.pos === fp) && (!fg || String(p.grad) === fg) && (!fl || p.level === fl) && (!fr || prefCat(p) === fr) && (!fs || (fs === 'x' ? !!p.athleteCreated : fs === 'a' ? !!p.entered && !p.athleteCreated : !p.entered)) &&
+        (!q || [p.name, p.id, p.sport, p.hs, p.state, p.pos, p.sec, p.notes, p.method].join(' ').toLowerCase().indexOf(q) >= 0));
       const col = COLS.filter((c) => c[0] === state.key)[0];
       list = list.slice().sort((a, b) => {
         const x = col[2](a), y = col[2](b);
@@ -1374,7 +1405,8 @@
       if (!rec.name) errs.push('Player Name is required.');
       rec.grad = parseInt(v('grad'), 10);
       if (!rec.grad) errs.push('Grad Year is required.');
-      rec.pos = v('pos');
+      rec.sport = v('sport'); rec.pos = v('pos');
+      if (!rec.sport) errs.push('Sport is required.'); else if (rec.pos && sportPos(rec.sport).indexOf(rec.pos) < 0) errs.push('Primary Position must be one of the ' + rec.sport + ' positions.');
       if (!rec.pos) errs.push('Primary Position is required.');
       rec.sec = v('sec'); rec.level = v('level') || 'High School'; rec.photo = v('photo');
       rec.elig = null;

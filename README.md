@@ -11,6 +11,13 @@ Static recruiting-intelligence website for athletes, independent recruiting prof
 - Honesty items stay true: no claim that messages are encrypted, emails are sent or identity is verified.
 - **Before launch:** turn labels back on or replace all sample data with real data (see the ROADMAP pre-launch checklist).
 
+## Sports
+
+- The launch sports live in ONE file, `sports-config.js`: Baseball, Men's Basketball, Women's Basketball, Football, Men's Soccer, Women's Soccer, Softball, Women's Volleyball (same as the home hero tiles, which are built from it). Edit positions or add sports only there.
+- Athletes can pick every sport they play, then choose primary and secondary positions for each, and one primary sport. Baseball-only extras (College Role Preference, measurables) appear only under Baseball.
+- The Master Database stores one entry per athlete per sport. Rankings and Master Database have a Sport filter; the Player Card has a sport switcher.
+- Scoring tables exist for Baseball only. Other sports show Scoring Not Yet Available: Recruit Score Not Rated, Confidence Unknown (never 0 or Bronze).
+
 ## Pages
 
 | Page | Purpose |

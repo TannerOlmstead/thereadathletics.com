@@ -134,6 +134,20 @@ test('Athlete profile page exists and is wired', function () {
   var r = new XMLHttpRequest(); r.open('GET','athlete-profile.html',false); try{r.send();}catch(e){}
   if (r.responseText) eq(/data-coach-page="athprofile"/.test(r.responseText) && /athlete-profile\.js/.test(r.responseText), true, 'page loads script');
 });
+  test('getAvgFBVGrade reference behavior and pitcher PPG', function () {
+    var f = TheReadScore.getAvgFBVGrade;
+    [null, undefined, NaN].forEach(function (v) { var r = f(v); eq(r.letterGrade, null, 'letter'); eq(r.status, 'Missing', 'status'); });
+    var threw = null; try { f(-1); } catch (e) { threw = e; }
+    eq(threw instanceof RangeError && threw.message === 'Avg FBV cannot be negative.', true, 'error');
+    [[64.9,'F',1],[65,'D',3],[67.9,'D',3],[68,'C-',5],[70.9,'C-',5],[71,'C',6],[73.9,'C',6],[74,'C+',7],[76.9,'C+',7],[77,'B-',7.5],[79.9,'B-',7.5],[80,'B',8],[82.9,'B',8],[83,'B+',8.5],[85.9,'B+',8.5],[86,'A-',9],[88.9,'A-',9],[89,'A',9.5],[91.9,'A',9.5],[92,'A+',10]].forEach(function (c) { var r = f(c[0]); eq(r.letterGrade, c[1], 'letter ' + c[0]); eq(r.gradeValue, c[2], 'value ' + c[0]); eq(r.status, 'Graded', 'status ' + c[0]); });
+    var bench = [];
+    var r = TheReadScore.compute({ pos: 'P', metrics: { avgFBV: 86, maxFBV: 92, ht: 77, wt: 245 }, verified: {} }, bench);
+    eq(r.comps[0].pts, 90, 'avg pts'); eq(r.comps[1].pts, 95, 'max pts'); eq(r.comps[2].pts, 100, 'frame pts'); eq(Math.round(r.rs * 1000) / 1000, 94.5, 'PPG 40/30/30');
+    var r2 = TheReadScore.compute({ pos: 'P', metrics: { maxFBV: 92 }, verified: {} }, bench);
+    eq(r2.comps[0].pts, 100, 'avg filled from max per velocity policy'); eq(r2.comps[2].used, false, 'frame left out');
+    var r3 = TheReadScore.compute({ pos: 'P', metrics: { ht: 77, wt: 245 }, verified: {} }, bench);
+    eq(r3.rs, null, 'Not Rated without velocity');
+  });
   test('getMaxFBVGrade reference behavior', function () {
     var f = TheReadScore.getMaxFBVGrade;
     [null, undefined, NaN, Infinity].forEach(function (v) { var r = f(v); eq(r.letterGrade, null, 'letter ' + v); eq(r.gradeValue, null, 'value ' + v); eq(r.status, 'Missing', 'status ' + v); });

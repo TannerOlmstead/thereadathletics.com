@@ -62,7 +62,8 @@
     p.avgFBV = (isP || p.twoWay) ? Math.round((79 + 11 * q + r() * 2) * 10) / 10 : null;
     p.maxFBV = p.avgFBV == null ? null : Math.round((p.avgFBV + 2 + r() * 3) * 10) / 10;
     p.tv = Math.round((78 + 15 * q + r() * 3) * 10) / 10;
-    p.t60 = isP ? null : Math.round((7.7 - 1.1 * q + r() * 0.25) * 100) / 100;
+    const t60Off = { OF: -0.12, SS: -0.1, '2B': -0.05, '3B': 0.05, '1B': 0.2, C: 0.25 }[pos] || 0;
+    p.t60 = isP ? null : Math.round(Math.min(7.6, Math.max(6.4, 7.2 - 0.65 * q + r() * 0.2 + t60Off)) * 100) / 100;
     p.pop = pos === 'C' ? Math.round((2.15 - 0.3 * q + r() * 0.05) * 100) / 100 : null;
     p.opg = isP ? null : Math.round((p.rs + (r() - 0.5) * 12) * 10) / 10;
     p.dpg = isP ? null : Math.round((p.rs + (r() - 0.5) * 12) * 10) / 10;
@@ -72,7 +73,6 @@
     p.ath = Math.round((54 + 30 * q + r() * 12) * 10) / 10;
     let miss = 0;
     if (i % 9 === 4 && p.avgEV != null) { p.avgEV = null; miss++; }
-    if (i % 11 === 6 && p.t60 != null) { p.t60 = null; miss++; }
     if (i % 7 === 3 && p.avgFBV != null) { p.avgFBV = null; miss++; }
     if (i % 8 === 2) { if (p.maxEV != null) { p.maxEV = null; miss++; } }
     p.conf = Math.max(48, Math.min(100, Math.round(55 + 45 * r() - miss * 11)));

@@ -1910,3 +1910,38 @@ tbody th, .coach-card tbody th { background: #f1f4fa; color: var(--navy); text-t
 .md-del { font: inherit; font-size: .75rem; padding: 2px 8px; border: 1px solid var(--scarlet); background: #fff; color: var(--scarlet); cursor: pointer; border-radius: 3px; }
 .md-table th button { background: none; border: 0; color: inherit; font: inherit; font-weight: 800; text-transform: uppercase; cursor: pointer; padding: 0; }
 .md-table thead th { position: sticky; top: 0; z-index: 1; background: var(--navy); color: #fff; }
+/* ===== Workspace header, THE READ AI note, player pop-up, commitments layout, grading/connect ===== */
+.ws-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 10px 14px; color: #fff; font-size: .85rem; font-weight: 700; }
+.ws-actions a { color: #fff; text-decoration: none; font-family: var(--font-display); font-style: italic; text-transform: uppercase; letter-spacing: .04em; }
+.ws-actions a:hover { text-decoration: underline; }
+.ws-actions a:focus-visible { outline: 3px solid #fff; outline-offset: 3px; }
+.ws-prog { background: rgba(255,255,255,.16); padding: .3rem .6rem; font-weight: 700; }
+.ws-prog em { font-style: normal; font-weight: 600; opacity: .9; }
+.ws-seg { display: inline-flex; border: 2px solid #fff; }
+.ws-seg a { padding: .25rem .6rem; }
+.ws-seg a[aria-current="true"] { background: var(--navy); }
+.ws-bell b { margin-left: 4px; background: #fff; color: var(--scarlet); padding: 0 .4rem; font-size: .75rem; }
+.read-note .read-label { display: block; font-size: .78rem; text-transform: uppercase; letter-spacing: .06em; margin-bottom: .35rem; color: var(--navy); }
+.read-note .read-label .tr { font-weight: 800; }
+.pc-head { display: flex; gap: 16px; align-items: center; margin: 0 0 1rem; }
+.pc-photo { flex: none; width: 96px; height: 96px; border: 3px solid var(--navy); overflow: hidden; background: #e9edf6; }
+.pc-photo img, .pc-photo svg { width: 100%; height: 100%; object-fit: cover; display: block; }
+.pc-name { margin: 0; color: var(--navy); }
+.pc-sub { margin: .2rem 0; font-weight: 700; color: #3b4660; }
+body.pc-open { overflow: hidden; }
+.pc-modal { position: fixed; inset: 0; z-index: 1000; display: flex; align-items: center; justify-content: center; padding: 16px; }
+.pc-backdrop { position: absolute; inset: 0; background: rgba(10,20,40,.7); }
+.pc-dialog { position: relative; background: #fff; width: min(980px, 100%); max-height: calc(100vh - 32px); display: flex; flex-direction: column; border-top: 6px solid var(--scarlet); box-shadow: 0 20px 60px rgba(0,0,0,.4); }
+.pc-dialog:focus { outline: none; }
+.pc-bar { display: flex; flex-wrap: wrap; gap: 8px; justify-content: space-between; align-items: center; padding: .6rem 1rem; background: var(--navy); color: #fff; font-weight: 800; }
+.pc-bar .button { padding: .4rem .8rem; font-size: .85rem; background: #fff; color: var(--navy); }
+.pc-close { background: var(--scarlet); color: #fff; border: 2px solid #fff; padding: .4rem .8rem; font-weight: 800; cursor: pointer; min-height: 40px; }
+.pc-close:focus-visible, .pc-bar .button:focus-visible { outline: 3px solid #fff; outline-offset: 2px; }
+.pc-body { overflow: auto; padding: 1rem; -webkit-overflow-scrolling: touch; }
+.commit-layout { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 18px; align-items: start; margin: 1.2rem 0; }
+.commit-side { display: grid; gap: 18px; }
+.commit-side .card { margin: 0; }
+@media (max-width: 1000px) { .commit-layout { grid-template-columns: 1fr; } }
+@media (max-width: 560px) { .pc-head { flex-direction: column; align-items: flex-start; } .pc-modal { padding: 0; } .pc-dialog { max-height: 100vh; height: 100vh; } }.site-header .container.nav-wrap { flex-wrap: wrap; }
+.nav-actions.ws-actions { order: 9; flex: 1 0 100%; margin-left: 0; justify-content: flex-end; border-top: 1px solid rgba(255,255,255,.35); padding: 6px 0 2px; }
+@media (max-width: 1100px) { .nav-actions.ws-actions { display: none; } }

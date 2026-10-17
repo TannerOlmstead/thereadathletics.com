@@ -122,6 +122,17 @@ This site is plain HTML/CSS/JS with no build step. There is **no backend**: form
 - [x] Coach Fit tab: Adjusted Priority Score column (average of Recruit Score, Coach Fit, Priority Score).
 - [ ] Owner to confirm the weights (position/skill/philosophy) and the Long-Term Projection input; Staff Score and HC/PC/AC grades need real coach entry.
 
+## Coach workspace batch (done in this PR)
+
+- [x] Recruiting board "#" removed from Adjusted Recruit Score; Adjusted formula bounded (+/- 2.5) and documented.
+- [x] Commitments: summary tables in a right sidebar.
+- [x] THE READ AI context notes on every workspace tab except H2H.
+- [x] Player-name pop-up card with optional athlete-provided photo.
+- [x] Coach Grading tab (browser-saved demo) feeding Staff Score.
+- [x] Connect tab with JUCO / transfer portal section (sample entries only).
+- [x] Current Playing Level field, filters and columns.
+- [x] Workspace header (no Sign In / Get Started).
+- [ ] Needs a backend: real grading storage per coach account, messaging, athlete photo upload, and whether Staff Score should weight into Priority Score.
 ## Open decisions (from the owner workbook; not built)
 
 - [ ] Final weights for OPG, SOPG, DPG, SDPG, PPG and whether height is position-adjusted in Athletic Score

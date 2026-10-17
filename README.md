@@ -64,6 +64,16 @@ All logic lives in one shared module, `classification.js` (`window.TheReadClassi
 
 No score in the coach workspace is random. Team Need Score, Coach Fit Score, Adjusted Recruit Score and Priority Score are computed in `coach.js` from documented formulas using the program's ranked inputs (positional needs, position and skill priorities, and the 1-5 Recruiting Philosophy ranking, which must use each rank once). The Coach Fit tab's Adjusted Priority Score is the simple average of Recruit Score, Coach Fit Score and Priority Score. Missing inputs are skipped or leave the score blank, never 0. Staff Score and HC/PC/AC grades are coach opinions and stay blank until entered. The formulas are shown on the Team Needs, Coach Fit and Rankings pages under How This Is Calculated. None of these scores change Player Tier or Confidence. Program settings are sample data saved only in the browser.
 
+## Coach Workspace Additions
+
+- **Player pop-up:** clicking any player name in the coach or department workspace opens a pop-up player card (close button, Esc, focus kept inside, scrolls on phones) with an "Open Full Player Card" link. It does not leave the page.
+- **Profile photo:** the pop-up and Player Card show a photo only if one was provided for the player (Add Prospect has an athlete-provided photo URL field); otherwise a plain silhouette. No stock or fake photos. Real athlete uploads need a backend.
+- **Current Playing Level:** High School, JUCO, 4-Year College / Transfer Portal, or Other. It is on Add Prospect, Master Database, Rankings (filter and column), Recruiting Board (filter and column) and the Player Card. A few fictional JUCO and transfer players are in the sample data.
+- **Coach Grading tab:** staff members enter 0-100 grades (shown with a letter) plus notes and a date. Staff Score is the average of grades entered and stays blank until one exists (never 0). Saved in this browser only (demo). Grades never change Tier or Confidence. Staff Score is not yet part of Priority Score; the owner must confirm a weight.
+- **Connect tab:** a sample directory of high school coaches, private instructors, JUCO coaches, 4-year coaches and players with a role filter and a JUCO / transfer portal list. Messaging is not live; all entries are fictional.
+- **Adjusted Recruit Score:** Recruit Score plus ((Coach Fit + Team Need) / 2 - 50) / 20, limited to +/- 2.5 points and kept within 0-100. It is always a formula, never random.
+- **THE READ AI notes:** every workspace page except H2H has a short rule-based note labeled "THE READ AI Preview - Generated From Sample Data". It explains the page and never overrides a score or tier.
+- **Header:** workspace pages show the sample program name, a Coach / Athletic Dept. switch, notifications placeholder, Settings, Public Site and Sign Out (placeholder) instead of Sign In / Get Started.
 ## Files
 
 - `classification.js` and `classification.tests.js` - shared Tier/Confidence/Recruit Score module and its tests (`tests.html`).

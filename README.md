@@ -58,6 +58,8 @@ All logic lives in one shared module, `classification.js` (`window.TheReadClassi
 - **Player Tier** uses the full stored score before rounding: 95.0+ Platinum, 85.0+ Gold, 70.0+ Silver, below 70.0 Bronze, missing = Not Rated (never Bronze). Stored 94.96 displays 95.0 but is Gold.
 - **Confidence** uses the full stored percentage: 90.0%+ High, 60.0%+ Medium, below 60.0% Low, missing = Unknown (never Low). Stored 89.96% displays 90.0% but is Medium.
 - Tier and Confidence are separate badges and columns (Recruit Score | Tier | Confidence), with visible labels, accessible names, and tooltips. Color is never the only signal and never fills a whole cell or row.
+- Platinum badge is a shiny blue-tinted metallic (bg #A9C4E4 with gradient #E3EEFA to #8FB0D8, border #5F86B5, text #0B1F3A, contrast at least 7.4:1) so it reads differently from neutral gray Silver (#A7ADB4). Colors live only in `classification.js`.
+- **Adding a prospect by hand** in the Master Database also puts them on your Recruiting Board automatically (logged as Added, Coach-Entered). Athlete-signup players and existing players still need the green (+).
 - Tier sorts semantically (Platinum, Gold, Silver, Bronze, Not Rated last in both directions); Confidence sorts by percentage with Unknown last. Tier and Confidence filters are multi-select (OR within a group, AND across groups and search).
 - Staff Score, Coach Fit, Team Need, Adjusted Recruit Score, Priority Score, GPA, Confidence, and payment/founding status never change Tier. H2H and THE READ summaries never call a player more talented because of higher Confidence.
 - Tests: open `tests.html` in a browser (runs `classification.tests.js` plus sample-data checks). No Node or build step is needed.

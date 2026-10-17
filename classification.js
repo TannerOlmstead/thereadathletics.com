@@ -9,7 +9,7 @@
   'use strict';
 
   var PLAYER_TIER_CONFIG = {
-    'Platinum': { label: 'Platinum', minimumScore: 95, backgroundColor: '#A8B4C4', textColor: '#172033', borderColor: '#7F8C9F', sortOrder: 4, rangeLabel: '95.0-100.0' },
+    'Platinum': { label: 'Platinum', minimumScore: 95, backgroundColor: '#A9C4E4', bgGradient: 'linear-gradient(135deg,#E3EEFA,#A9C4E4 45%,#8FB0D8 70%,#D4E4F6)', textColor: '#0B1F3A', borderColor: '#5F86B5', sortOrder: 4, rangeLabel: '95.0-100.0' },
     'Gold': { label: 'Gold', minimumScore: 85, backgroundColor: '#D4A017', textColor: '#241A00', borderColor: '#AA7D00', sortOrder: 3, rangeLabel: '85.0-94.9' },
     'Silver': { label: 'Silver', minimumScore: 70, backgroundColor: '#A7ADB4', textColor: '#1A1A1A', borderColor: '#7E858D', sortOrder: 2, rangeLabel: '70.0-84.9' },
     'Bronze': { label: 'Bronze', minimumScore: 0, backgroundColor: '#A8632A', textColor: '#FFFFFF', borderColor: '#7E451C', sortOrder: 1, rangeLabel: '0.0-69.9' },
@@ -100,7 +100,7 @@
   function renderTierBadge(recruitScore, options) {
     var o = options || {};
     var t = getPlayerTier(recruitScore), c = PLAYER_TIER_CONFIG[t];
-    var style = 'background-color:' + c.backgroundColor + ';color:' + c.textColor + ';border-color:' + c.borderColor;
+    var style = 'background-color:' + c.backgroundColor + (c.bgGradient ? ';background-image:' + c.bgGradient : '') + ';color:' + c.textColor + ';border-color:' + c.borderColor;
     var tip = t === 'Not Rated' ? 'Recruit Score has not been calculated. Not Rated is not the same as Bronze.' : TEXT.tierTooltip;
     var focus = o.focusable ? ' tabindex="0"' : '';
     return '<span class="rd-badge rd-tier rd-' + (o.size || 'medium') + '" data-tier="' + esc(t) + '" style="' + style + '"' + focus + badgeAttrs(tierAccessibleLabel(recruitScore), tip, o) + '>' + esc(c.label) + '</span>';
@@ -110,7 +110,7 @@
   function renderConfidenceBadge(confidencePercentage, options) {
     var o = options || {};
     var l = getConfidenceLevel(confidencePercentage), c = CONFIDENCE_LEVEL_CONFIG[l];
-    var style = 'background-color:' + c.backgroundColor + ';color:' + c.textColor + ';border-color:' + c.borderColor;
+    var style = 'background-color:' + c.backgroundColor + (c.bgGradient ? ';background-image:' + c.bgGradient : '') + ';color:' + c.textColor + ';border-color:' + c.borderColor;
     var showPct = o.showPercentage !== false && l !== 'Unknown';
     var tip = l === 'Low' ? TEXT.lowConfidenceTooltip : TEXT.confidenceTooltip;
     var focus = o.focusable ? ' tabindex="0"' : '';

@@ -1295,7 +1295,7 @@
     ];
     const opt = (arr, blank) => (blank ? '<option value="">' + blank + '</option>' : '') + arr.map((x) => '<option>' + x + '</option>').join('');
     const msg = sessionStorage.getItem('theReadMdMsg') || '';
-    sessionStorage.removeItem('theReadMdMsg');
+    sessionStorage.removeItem('theReadMdMsg'); const autoId = sessionStorage.getItem('theReadMdAuto'); sessionStorage.removeItem('theReadMdAuto'); if (autoId && byId[autoId] && byId[autoId].entered && !Board.has(autoId)) Board.add(autoId);
     root.innerHTML =
       '<div class="kpi-row" id="md-kpis"></div>' +
       bl(['<strong>Master Database</strong> is the one list every other workspace page reads from. Sample players are fictional.', '<strong>For college coaches</strong> adding prospects from their offline recruiting board, not for high school coaches or private instructors creating athlete accounts (a separate signup flow).', '<strong>Prospects you add are private</strong> and coach-entered (unverified, not athlete-verified). They are saved only in this browser as a demo until a backend exists.', '<strong>Blank stays blank:</strong> missing fields are never counted as 0.', '<strong>Level / Class</strong> shows level and graduating class (HS 2027, JUCO 2028, Tr 2029). <strong>Eligibility Left</strong> is an entered number, never guessed.']) +
@@ -1404,7 +1404,7 @@
       rec.id = 'E' + String(max + 1).padStart(3, '0');
       cur.push(rec);
       if (!saveAdded(cur)) { ul.innerHTML = '<li>This browser blocked saving. The player was not added.</li>'; return; }
-      sessionStorage.setItem('theReadMdMsg', rec.name + ' was added from your board as ' + rec.id + ' (demo, saved in this browser only).');
+      sessionStorage.setItem('theReadMdMsg', 'Added to Master Database and your Recruiting Board: ' + rec.name + ' (' + rec.id + ', Coach-Entered).'); sessionStorage.setItem('theReadMdAuto', rec.id);
       location.reload();
     });
   };

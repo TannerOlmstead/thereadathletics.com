@@ -58,7 +58,7 @@
   // ----- colors (exact approved values) -----
   var T = C.PLAYER_TIER_CONFIG, F = C.CONFIDENCE_LEVEL_CONFIG;
   function colors(c, bg, tx, bd) { eq(c.backgroundColor, bg); eq(c.textColor, tx); eq(c.borderColor, bd); }
-  test('Platinum colors', function () { colors(T.Platinum, '#A8B4C4', '#172033', '#7F8C9F'); });
+  test('Platinum colors', function () { colors(T.Platinum, '#A9C4E4', '#0B1F3A', '#5F86B5'); yes(/^linear-gradient\(135deg,#E3EEFA/.test(T.Platinum.bgGradient), 'gradient'); yes(T.Platinum.backgroundColor !== T.Silver.backgroundColor, 'distinct from silver'); });
   test('Gold colors', function () { colors(T.Gold, '#D4A017', '#241A00', '#AA7D00'); });
   test('Silver colors', function () { colors(T.Silver, '#A7ADB4', '#1A1A1A', '#7E858D'); });
   test('Bronze colors (white text)', function () { colors(T.Bronze, '#A8632A', '#FFFFFF', '#7E451C'); });
@@ -76,7 +76,7 @@
   // ----- badges -----
   test('Tier badge: visible label, colors, accessible name', function () {
     var h = C.renderTierBadge(96.4);
-    yes(h.indexOf('>Platinum</span>') > -1, 'visible label'); yes(h.indexOf('background-color:#A8B4C4') > -1); yes(h.indexOf('color:#172033') > -1); yes(h.indexOf('border-color:#7F8C9F') > -1);
+    yes(h.indexOf('>Platinum</span>') > -1, 'visible label'); yes(h.indexOf('background-color:#A9C4E4') > -1); yes(h.indexOf('background-image:linear-gradient') > -1); yes(h.indexOf('color:#0B1F3A') > -1); yes(h.indexOf('border-color:#5F86B5') > -1);
     yes(h.indexOf('aria-label="Player Tier: Platinum. Recruit Score 96.4."') > -1, 'aria-label');
   });
   test('Tier badge: every tier shows its visible label', function () {

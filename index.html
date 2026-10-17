@@ -7,7 +7,7 @@
       name="description"
       content="THE READ is a recruiting intelligence platform for coaches, athletes, staff, and programs. Verified data, objective scoring, private evaluations, and recruiting workflows in one place."
     />
-    <title>THE READ | Recruiting Intelligence</title>
+    <title>THE READ Athletics | Recruiting Intelligence</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -20,29 +20,33 @@
   <body>
     <header class="site-header">
       <div class="container nav-wrap">
-        <div class="brand" aria-label="THE READ home">
-          <div class="brand-mark" aria-hidden="true">
-            <span>TR</span>
-          </div>
+        <a class="brand" href="index.html" aria-label="THE READ Athletics home">
+          <div class="brand-mark" aria-hidden="true"><span>TR</span></div>
           <div class="wordmark">
             <span class="wordmark-main">THE READ</span>
             <span class="wordmark-sub">ATHLETICS</span>
           </div>
-        </div>
-        <nav class="main-nav" aria-label="Main navigation">
-          <a href="#platform">Platform</a>
-          <a href="#scoring">Scoring</a>
-          <a href="#workflow">Workflow</a>
-          <a href="#pricing">Pricing</a>
+        </a>
+        <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="main-nav">Menu</button>
+        <nav class="main-nav" id="main-nav" aria-label="Main navigation">
+          <a href="features.html">Features</a>
+          <a href="scoring.html">Scoring</a>
+          <a href="sport-guide.html">Sports</a>
+          <a href="internal-preview.html">Preview</a>
+          <a href="pricing.html">Pricing</a>
+          <a href="resources.html">Resources</a>
+          <a href="faq.html">FAQ</a>
+          <a href="security.html">Security</a>
+  <a class="mobile-only" href="contact.html#demo">Request demo</a>
         </nav>
         <div class="nav-actions">
-          <a class="nav-link" href="#contact">Talk to sales</a>
-          <a class="button button-primary" href="#contact">Request demo</a>
+          <a class="nav-link" href="contact.html">Contact</a>
+          <a class="button button-primary" href="contact.html#demo">Request demo</a>
         </div>
       </div>
     </header>
 
-    <main>
+    <main id="main">
       <section class="hero">
         <div class="container hero-grid">
           <div class="hero-copy">
@@ -52,9 +56,14 @@
               THE READ brings objective scores, private staff evaluations, fit analysis,
               recruiting boards, and communication into one secure system built for college programs.
             </p>
+            <div id="paths" class="audience-grid" role="list" aria-label="Choose your path">
+              <a class="audience-card" role="listitem" href="player-signup.html"><strong>I&rsquo;m an athlete</strong><span>Build a free profile and share your graduation year, sports, and goals.</span><em>Create a profile &rarr;</em></a>
+              <a class="audience-card" role="listitem" href="individual-signup.html"><strong>I&rsquo;m a coach, scout, or evaluator</strong><span>Consistent templates and clean records for your own athletes.</span><em>Get a workspace &rarr;</em></a>
+              <a class="audience-card" role="listitem" href="institution-signup.html"><strong>I represent an institution</strong><span>One shared board and private evaluations for your athletic department.</span><em>Request access &rarr;</em></a>
+            </div>
             <div class="cta-row">
-              <a class="button button-primary" href="#contact">Request a demo</a>
-              <a class="button button-secondary" href="#platform">Explore the platform</a>
+              <a class="button button-primary" href="contact.html#demo">Request a demo</a>
+              <a class="button button-secondary" href="internal-preview.html">See the product preview</a>
             </div>
             <ul class="hero-points" aria-label="Key benefits">
               <li>Locked objective grades</li>
@@ -63,17 +72,17 @@
             </ul>
           </div>
 
-          <div class="hero-panel" aria-label="Platform overview panel">
+          <div class="hero-panel" aria-label="Platform overview panel (fictional sample data)">
             <div class="panel-topbar">
-              <span class="dot red"></span>
-              <span class="dot amber"></span>
-              <span class="dot green"></span>
+              <span class="dot red" aria-hidden="true"></span>
+              <span class="dot amber" aria-hidden="true"></span>
+              <span class="dot green" aria-hidden="true"></span>
             </div>
 
             <div class="panel-body">
               <div class="score-row">
                 <div>
-                  <p class="label">Recruit Score</p>
+                  <p class="label">Recruit Score &middot; sample</p>
                   <div class="large-score">9.4</div>
                 </div>
                 <div class="confidence high">
@@ -112,24 +121,12 @@
         </div>
       </section>
 
-      <section class="stats-bar">
+      <section class="stats-bar" aria-label="At a glance">
         <div class="container stats-grid">
-          <div>
-            <strong>92%</strong>
-            <span>Staff efficiency gain</span>
-          </div>
-          <div>
-            <strong>1 view</strong>
-            <span>All recruiting data in one place</span>
-          </div>
-          <div>
-            <strong>3x faster</strong>
-            <span>Evaluation and board updates</span>
-          </div>
-          <div>
-            <strong>100%</strong>
-            <span>Objective-grade integrity</span>
-          </div>
+          <div><strong>6</strong><span>Scores, with facts and opinions kept apart</span></div>
+          <div><strong>8</strong><span>Sports in the field guide</span></div>
+          <div><strong>5</strong><span>Board stages, Discovered to Committed</span></div>
+          <div><strong>Free</strong><span>Athlete profile</span></div>
         </div>
       </section>
 
@@ -143,17 +140,17 @@
           <div class="feature-grid">
             <article class="feature-card">
               <div class="icon">01</div>
-              <h3>Verified athlete data</h3>
+              <h3><a href="objective-features.html">Verified athlete data</a></h3>
               <p>Track objective metrics, verification status, and historical source integrity without losing context.</p>
             </article>
             <article class="feature-card">
               <div class="icon">02</div>
-              <h3>Private evaluations</h3>
+              <h3><a href="evaluations.html">Private evaluations</a></h3>
               <p>Staff opinions remain separate from universal grades and program-specific recruiting priorities.</p>
             </article>
             <article class="feature-card">
               <div class="icon">03</div>
-              <h3>Recruiting board</h3>
+              <h3><a href="workflow.html">Recruiting board</a></h3>
               <p>Prioritize athletes by fit, need, confidence, and team strategy without unnecessary CRM clutter.</p>
             </article>
             <article class="feature-card">
@@ -163,13 +160,13 @@
             </article>
             <article class="feature-card">
               <div class="icon">05</div>
-              <h3>Task &amp; calendar</h3>
+              <h3><a href="workflow.html">Task &amp; calendar</a></h3>
               <p>Assign evaluations, schedule visits, verify metrics, and preserve recruiting history automatically.</p>
             </article>
             <article class="feature-card">
               <div class="icon">06</div>
               <h3>THE READ AI</h3>
-              <p>Deliver concise, evidence-based summaries that highlight what matters without replacing staff judgment.</p>
+              <p>Planned: Deliver concise, evidence-based summaries that highlight what matters without replacing staff judgment.</p>
             </article>
           </div>
         </div>
@@ -316,19 +313,24 @@
       </section>
     </main>
 
-    <footer id="contact" class="site-footer">
-      <div class="container footer-inner">
-        <div>
-          <div class="brand footer-brand">
-            <div class="brand-mark">TR</div>
-            <span>THE READ</span>
+    <footer class="site-footer">
+      <div class="container">
+        <div class="footer-cols">
+          <div>
+            <a class="brand footer-brand" href="index.html" aria-label="THE READ Athletics home">
+              <div class="brand-mark" aria-hidden="true">TR</div>
+              <span>THE READ</span>
+            </a>
+            <p>Recruiting intelligence for institutions, coaches, athletes, and trusted programs.</p>
+            <p><a href="mailto:hello@thereadathletics.com"><strong>hello@thereadathletics.com</strong></a></p>
           </div>
-          <p>Recruiting intelligence built for institutions, coaches, athletes, and trusted programs.</p>
+          <div class="footer-col"><h4>Get started</h4><a href="player-signup.html">Athletes</a><a href="individual-signup.html">Coaches &amp; evaluators</a><a href="institution-signup.html">Institutions</a><a href="contact.html#demo">Request a demo</a></div>
+          <div class="footer-col"><h4>Product</h4><a href="features.html">Features</a><a href="scoring.html">How scoring works</a><a href="sport-guide.html">Sport guide</a><a href="internal-preview.html">Product preview</a><a href="pricing.html">Pricing</a></div>
+          <div class="footer-col"><h4>Company</h4><a href="resources.html">Resources</a><a href="faq.html">FAQ</a><a href="security.html">Security &amp; privacy</a><a href="success-stories.html">Success stories</a><a href="contact.html">Contact</a></div>
         </div>
-
-        <div class="footer-actions">
-          <a class="button button-primary" href="mailto:hello@thereadathletics.com">hello@thereadathletics.com</a>
-          <a class="button button-secondary" href="tel:+15550199">(555) 0199</a>
+        <div class="footer-bottom">
+          <span>&copy; <span data-year>2026</span> THE READ Athletics</span>
+          <span><a href="privacy.html">Privacy</a> &middot; <a href="terms.html">Terms</a> &middot; <a href="contact.html">Contact</a></span>
         </div>
       </div>
     </footer>

@@ -176,3 +176,5 @@ This site is plain HTML/CSS/JS with no build step. There is **no backend**: form
 - [ ] Eligibility rules differ by association, sport and situation: add a verified eligibility source/ruleset once a backend and compliance review exist; until then it is entered, not calculated.
 
 - [x] Recruiting Board THE READ AI panel now breaks down the program's actual board (position vs top Team Needs, Level/Class and eligibility, Priority mix, pipeline stages from the action log, Tier/Confidence mix, upcoming visits). Empty board prompts adding from the Master Database. Deterministic, live, sample-labeled; never changes scores.
+
+- [x] Workflow page audit: added per-role workflows (athlete, parent/guardian, HS coach, instructor, verified data provider, JUCO, 4-year staff, athletic department, THE READ admin) and the automated action-logged Stage model; unbuilt items labeled Coming Soon (guardian accounts, compliance tools, admin/support, verifier data imports).

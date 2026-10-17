@@ -99,3 +99,5 @@ Open `index.html` in a browser, or run a simple static server from this folder, 
 - **Bulleted descriptions:** tab and page intros use short bullet lists with a bold key term instead of long paragraphs.
 
 - **Board breakdown (THE READ AI preview):** the Recruiting Board panel summarizes only the prospects on your board (by position vs top needs, Level/Class and eligibility, Priority mix, pipeline stage, Tier/Confidence, upcoming visits). It updates when you add/remove players or log actions, and never changes scores.
+
+- **workflow.html:** shows the built workflow and a per-role section; stages match the automated action-logged model. Unbuilt roles/features are labeled Coming Soon.

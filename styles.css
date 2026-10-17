@@ -1969,3 +1969,6 @@ body.pc-open { overflow: hidden; }
 .pc-compose fieldset { border: 1px solid #d6dcea; margin: .5rem 0; }
 .pc-to { display: block; padding: .15rem 0; }
 @media (max-width: 800px) { .msg-layout { grid-template-columns: 1fr; } .msg { max-width: 100%; } }
+
+.pc-board-row{margin:.5rem 0}.btn-board{min-height:36px;padding:.3rem .8rem;font-size:.85rem}.ba-wrap{max-height:340px;overflow:auto}.b-edit{max-width:11rem;min-height:32px}.signed-in{border-left:4px solid var(--scarlet,#E41E3F);padding-left:.75rem}.demo-controls{margin:.75rem 0;padding:.5rem .75rem;border:1px dashed #14284B;border-radius:6px}.demo-controls summary{cursor:pointer;font-weight:700;color:#14284B}
+

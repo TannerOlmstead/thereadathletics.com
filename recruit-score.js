@@ -22,11 +22,15 @@
   var round1 = function (n) { return Math.round(n * 10) / 10; };
   var num = function (v) { return v == null || v === '' || isNaN(Number(v)) ? null : Number(v); };
 
+  var getMaxFBVGrade = function (maxFBV) {
+    var v = maxFBV == null || maxFBV === '' ? NaN : Number(maxFBV);
+    if (!isFinite(v)) return { letterGrade: null, gradeValue: null, status: 'Missing' };
+    if (v < 0) throw new RangeError('Max FBV cannot be negative.');
+    for (var i = 0; i < MAX_FBV_BANDS.length; i++) if (v >= MAX_FBV_BANDS[i][0]) return { letterGrade: MAX_FBV_BANDS[i][1], gradeValue: MAX_FBV_BANDS[i][2], status: 'Graded' };
+  };
   var maxFbvGrade = function (mph) {
-    if (mph == null || mph === '') return { none: true, why: 'Max FBV not entered' };
-    var v = typeof mph === 'number' ? mph : (/^\s*-?\d+(\.\d+)?\s*$/.test(String(mph)) ? Number(mph) : NaN);
-    if (!isFinite(v) || v < 0) return { error: 'Max FBV must be a number of 0 or more' };
-    for (var i = 0; i < MAX_FBV_BANDS.length; i++) if (v >= MAX_FBV_BANDS[i][0]) return { grade: MAX_FBV_BANDS[i][1], score: MAX_FBV_BANDS[i][2], pts: MAX_FBV_BANDS[i][2] * 10 };
+    try { var g = getMaxFBVGrade(mph); } catch (e) { return { error: e.message }; }
+    return g.letterGrade ? { grade: g.letterGrade, score: g.gradeValue, pts: g.gradeValue * 10 } : { none: true, why: 'Max FBV not entered' };
   };
 
   var frame = function (pos, ht, wt) {
@@ -108,5 +112,5 @@
     return h;
   };
 
-  window.TheReadScore = { compute: compute, panel: panel, frame: frame, maxFbvGrade: maxFbvGrade, MAX_FBV_BANDS: MAX_FBV_BANDS, ASSUMPTIONS: ASSUMPTIONS, MIN_BENCH: MIN_BENCH };
+  window.TheReadScore = { compute: compute, panel: panel, frame: frame, maxFbvGrade: maxFbvGrade, getMaxFBVGrade: getMaxFBVGrade, MAX_FBV_BANDS: MAX_FBV_BANDS, ASSUMPTIONS: ASSUMPTIONS, MIN_BENCH: MIN_BENCH };
 })();

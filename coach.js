@@ -1119,7 +1119,7 @@
       '<div class="kpi-row">' + kpi('Total Commitments', list.length) + kpi('Avg Recruit Score', num(avgOf('rs', list))) + kpi('Avg Adjusted Recruit Score', num(avgOf('adj', list))) + kpi('Highest Recruit Score', num(best('rs', list).rs)) + '</div>' +
       LVL_LEGEND + '<div class="commit-layout"><div class="commit-main"><div class="table-wrap"><table><caption class="visually-hidden">Commitments (fictional data)</caption><thead><tr>' + ['Player Name', 'Primary Position', 'Secondary Position', 'Level / Class', 'Eligibility Left', 'State', 'Athletic Score', 'Recruit Score', 'Tier', 'Confidence', 'Adjusted Recruit Score', 'Committed School', 'Commitment Date', 'Evaluation Method', 'Player Notes'].map((h) => '<th scope="col">' + h + '</th>').join('') + '</tr></thead><tbody>' +
       list.map((p) => '<tr><td>' + cardLink(p) + '</td><td>' + p.pos + '</td><td>' + (p.sec || '&mdash;') + '</td><td>' + lvlCell(p) + '</td><td>' + esc(eligTxt(p)) + '</td><td>' + p.state + '</td><td>' + num(p.ath) + '</td><td class="rd-num">' + TRC.formatRecruitScore(p.rs) + '</td><td>' + tierBadge(p) + '</td><td>' + confBadge(p) + '</td><td>' + num(p.adj) + '</td><td>' + esc(p.committed) + '</td><td>' + p.commitDate + '</td><td>' + p.method + '</td><td>' + esc(p.notes) + '</td></tr>').join('') + '</tbody></table></div></div>' +
-      '<aside class="commit-side" aria-label="THE READ and commitment summary tables">' + theRead('Commitments are tracked in the shared database; your program\u2019s notes stay private. All schools and players are fictional. The tables on the right summarize the list: commits by position, the strongest commits by confidence, priority and adjusted score, and a school ranking by average Recruit Score. Scores come from the documented formulas, not opinion.') +
+      '<aside class="commit-side" aria-label="Commitment summary tables">' + 
       card('Commitments By Position', miniTable(['Position', 'Commitments'], posRows, 'Commitments by position')) +
       card('Commitment Quality', miniTable(['Measure', 'Player', 'Value'], [
         '<tr><th scope="row">Avg Confidence Score</th><td>&mdash;</td><td>' + num(avgOf('conf', list)) + '%</td></tr>',
@@ -1128,7 +1128,7 @@
         leader('Highest Priority Score Commit', 'pri', list, false, 0),
         leader('Highest Adjusted Recruit Score Commitment', 'adj', list)], 'Commitment quality')) +
       card('College Rankings', miniTable(['Rank', 'School', 'Commits', 'Avg Recruit Score'], schoolRows(schools), 'College rankings') + '<p class="coach-note">Sample schools only. Rankings reflect the average Recruit Score of each school\u2019s fictional commits.</p>') +
-      '</aside></div>';
+      theRead('Commitments are tracked in the shared database; your program\u2019s notes stay private. All schools and players are fictional. The tables on the right summarize the list: commits by position, the strongest commits by confidence, priority and adjusted score, and a school ranking by average Recruit Score. Scores come from the documented formulas, not opinion.') + '</aside></div>';
   };
 
   pages.analytics = (root) => {

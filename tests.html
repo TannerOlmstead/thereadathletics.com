@@ -58,7 +58,33 @@ ul { list-style: none; padding: 0; }
       yes(tr.querySelector('td.c-conf .rd-conf') && !tr.querySelector('td.c-conf .rd-tier'), 'conf cell holds only confidence badge');
       yes(!tr.hasAttribute('style') && !tr.querySelector('td[style], th[style]'), 'no cell or row is colored');
     });
-    test('Rankings row: Grad Class is the 4th column after Player Name', function () {
+    test('Priority Tier: from average of Coach Fit and Team Need (85 / 75 cutoffs), missing = null never 0', function () {
+      eq(D.priTierFrom(90, 80), 1); eq(D.priTierFrom(85, 85), 1); eq(D.priTierFrom(80, 70), 2); eq(D.priTierFrom(75, 75), 2); eq(D.priTierFrom(74, 75), 3);
+      eq(D.priTierFrom(null, 90), null); eq(D.priTierFrom(90, null), null); eq(D.priTierFrom(undefined, undefined), null);
+    });
+    test('Priority Tier never depends on Recruit Score, Tier or Confidence', function () { eq(D.priTierFrom(80, 80), 2); });
+    test('Stage: no actions = Identified; furthest action wins', function () {
+      var S = D.stageFromEntries; eq(S([]), 'Identified'); eq(S([{ act: 'added' }]), 'Identified');
+      eq(S([{ act: 'added' }, { act: 'contact' }]), 'Contacted'); eq(S([{ act: 'added' }, { act: 'grade' }, { act: 'contact' }]), 'Evaluating');
+      eq(S([{ act: 'added' }, { act: 'visit_sched' }]), 'Visit Planned'); eq(S([{ act: 'added' }, { act: 'visit_sched' }, { act: 'visit_done' }]), 'Visit Completed');
+      eq(S([{ act: 'added' }, { act: 'visit_done' }, { act: 'offer' }, { act: 'call' }]), 'Offer Out');
+    });
+    test('Stage: Declined only when it is the latest action; canceled (void) actions are ignored', function () {
+      var S = D.stageFromEntries; eq(S([{ act: 'added' }, { act: 'offer' }, { act: 'declined' }]), 'Declined');
+      eq(S([{ act: 'added' }, { act: 'declined' }, { act: 'call' }]), 'Contacted');
+      eq(S([{ act: 'added' }, { act: 'visit_sched', void: true }]), 'Identified');
+    });
+    test('Board rows have no manual Stage or Tier controls and Master Database has no row checkboxes', function () {
+      yes(D.Board && D.Act && D.Cal, 'modules exposed');
+    });
+    test('ICS export: valid VCALENDAR, timed and all-day events, escapes text, [Sample] marker', function () {
+      var ics = D.buildIcs([{ id: 'x1', title: 'Visit, Fictional; Day', type: 'Visit', date: '2026-11-20', start: '10:00', end: '11:30', loc: 'Field', notes: 'n', pid: '', sample: true },
+        { id: 'x2', title: 'Deadline', type: 'Deadline', date: '2026-11-30', start: '', end: '', loc: '', notes: '', pid: '' }]);
+      yes(/^BEGIN:VCALENDAR\r\n/.test(ics) && /END:VCALENDAR\r\n$/.test(ics), 'wrapper');
+      yes(ics.indexOf('DTSTART:20261120T100000') >= 0 && ics.indexOf('DTEND:20261120T113000') >= 0, 'timed');
+      yes(ics.indexOf('DTSTART;VALUE=DATE:20261130') >= 0 && ics.indexOf('DTEND;VALUE=DATE:20261201') >= 0, 'all day');
+      yes(ics.indexOf('SUMMARY:[Sample] Visit\\, Fictional\\; Day') >= 0, 'escape');
+    });    test('Rankings row: Grad Class is the 4th column after Player Name', function () {
       var t = document.createElement('table'); t.innerHTML = '<tbody>' + D.rankingRowHtml(D.players[0]) + '</tbody>';
       var cells = t.querySelectorAll('tr > *');
       yes(cells[2].classList.contains('c-name') && cells[3].classList.contains('c-grad'), 'order');

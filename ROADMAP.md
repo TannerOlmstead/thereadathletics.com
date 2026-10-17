@@ -166,3 +166,7 @@ This site is plain HTML/CSS/JS with no build step. There is **no backend**: form
 - [x] Sample data: every fictional position player now has a 60 Time (6.4-7.6 s, faster at OF/SS/2B, slower at C/1B); pitchers stay blank. Sample Data only.
 
 - [x] Add To Board icon button (green + / green checkmark, accessible, remove with Undo toast)
+
+- [x] Recruiting Board automation: row-selection checkboxes removed (the green +/check is the only add control). Priority Tier is computed and read-only: average of Coach Fit and Team Need, 85+ = Priority 1, 75-84.9 = Priority 2, below 75 = Priority 3, "Not Enough Data" if either is missing. Stage is derived from a timestamped per-prospect activity log (Added, Message Sent, Grade, Visit Scheduled, Visit Completed, Offer, Committed, Declined) stamped with the signed-in coach; no manual Stage control. Thresholds are proposed and need owner confirmation.
+- [x] Calendar for all roles (coach, athletic department, athlete views): month/week/agenda, add/edit/delete events, linked player, role visibility, .ics export. "Schedule Visit" creates the event and logs Visit Scheduled; marking it completed logs Visit Completed. Demo only (localStorage).
+- [ ] Calendar backend: shared accounts/storage, reminders, invites, time zones, and an NCAA contact/evaluation/quiet/dead-period layer (dates to be sourced from official NCAA calendars, none invented); under-18 contact rules to be defined.

@@ -220,9 +220,38 @@
   const USER_KEY = 'theReadDemoUser';
   const ME = () => { let id = 'A'; try { id = sessionStorage.getItem(USER_KEY) || 'A'; } catch (e) { /* ignore */ } return COACHES.filter((c) => c.id === id)[0] || COACHES[0]; };
 
+  // Activity log: every coach action on a prospect is stamped with the signed-in coach. Stage is derived from it (no manual stage).
+  const ACT_KEY = 'theReadDemoActivity';
+  const ACT = {
+    added: ['Added To Board', 1, 'Identified'], contact: ['Message Sent', 2, 'Contacted'], call: ['Call Logged', 2, 'Contacted'],
+    grade: ['Grade Submitted', 3, 'Evaluating'], visit_sched: ['Visit Scheduled', 4, 'Visit Planned'], visit_done: ['Visit Completed', 5, 'Visit Completed'],
+    offer: ['Offer Made', 6, 'Offer Out'], committed: ['Committed', 7, 'Committed'], declined: ['Declined', 0, 'Declined'], visit_cancel: ['Visit Canceled', 0, null]
+  };
+  const stageFromEntries = (es) => {
+    const live = (es || []).filter((e) => !e.void && ACT[e.act] && ACT[e.act][2]);
+    if (!live.length) return 'Identified';
+    if (live[live.length - 1].act === 'declined') return 'Declined';
+    const ok = live.filter((e) => e.act !== 'declined');
+    if (!ok.length) return 'Identified';
+    return ACT[ok.reduce((a, e) => (ACT[e.act][1] > ACT[a.act][1] ? e : a), ok[0]).act][2];
+  };
+  const Act = (() => {
+    let m = {};
+    try { const v = JSON.parse(localStorage.getItem(ACT_KEY)); if (v && typeof v === 'object' && !Array.isArray(v)) m = v; } catch (e) { /* ignore */ }
+    const save = () => { try { localStorage.setItem(ACT_KEY, JSON.stringify(m)); return true; } catch (e) { return false; } };
+    const stamp = () => { const d = new Date(), z = (n) => String(n).padStart(2, '0'); return d.getFullYear() + '-' + z(d.getMonth() + 1) + '-' + z(d.getDate()) + 'T' + z(d.getHours()) + ':' + z(d.getMinutes()); };
+    const entries = (pid) => { const all = m[pid] || []; let s0 = 0; all.forEach((e, i) => { if (e.act === 'added') s0 = i; }); return all.slice(s0); };
+    return {
+      entries: entries,
+      stage: (pid) => stageFromEntries(entries(pid)),
+      log: (pid, act, note, ev, by) => { const c = ME(); (m[pid] = m[pid] || []).push({ act: act, ts: stamp(), by: by || c.name, role: by ? '' : c.role, note: note || '', ev: ev || '', void: false }); return save(); },
+      voidEv: (ev) => { Object.keys(m).forEach((pid) => m[pid].forEach((e) => { if (e.ev === ev && e.act.indexOf('visit_') === 0 && e.act !== 'visit_cancel') e.void = true; })); save(); }
+    };
+  })();
+
   // Recruiting board = this program's private list of references (player ids) plus program-only fields. The Master Database stays the shared source.
   const BOARD_KEY = 'theReadDemoBoard';
-  const STAGES = ['Identified', 'Contacted', 'Evaluating', 'Visit Planned', 'Offer Out'];
+  const STAGE_ORDER = ['Identified', 'Contacted', 'Evaluating', 'Visit Planned', 'Visit Completed', 'Offer Out', 'Committed'];
   const Board = (() => {
     let map = null;
     try { const v = JSON.parse(localStorage.getItem(BOARD_KEY)); if (v && typeof v === 'object' && !Array.isArray(v)) map = v; } catch (e) { /* ignore */ }
@@ -230,14 +259,14 @@
     if (!map) {
       map = {};
       players.filter((p) => !p.committed).sort((a, b) => (b.pri || 0) - (a.pri || 0)).slice(0, 6).forEach((p) => {
-        map[p.id] = { tier: p.board || 3, stage: 'Identified', notes: '', staffNotes: '', demoSeed: true };
+        map[p.id] = { notes: '', staffNotes: '', demoSeed: true }; Act.log(p.id, 'added', 'Demo seed', '', 'Demo seed');
       });
       save();
     }
     return {
       has: (id) => !!map[id],
       get: (id) => map[id],
-      add: (id, tier) => { if (!byId[id] || byId[id].committed || map[id]) return false; map[id] = { tier: tier || 3, stage: 'Identified', notes: '', staffNotes: '' }; return save(); },
+      add: (id, tier) => { if (!byId[id] || byId[id].committed || map[id]) return false; map[id] = { notes: '', staffNotes: '' }; Act.log(id, 'added'); return save(); },
       remove: (id) => { delete map[id]; return save(); },
       restore: (id, v) => { map[id] = v; return save(); },
       update: (id, f) => { if (map[id]) { Object.keys(f).forEach((k) => { map[id][k] = f[k]; }); } return save(); },
@@ -272,6 +301,7 @@
   const syncBoardBtns = (id) => {
     const p = byId[id], on = Board.has(id);
     document.querySelectorAll('[data-addboard="' + id + '"]').forEach((x) => paintBoardBtn(x, p, on));
+    refreshAct(id);
   };
   document.addEventListener('click', (e) => {
     const b = e.target.closest && e.target.closest('[data-addboard]');
@@ -288,6 +318,171 @@
     }
   });
 
+  // Priority Tier is computed (read-only): average of Coach Fit and Team Need. Missing input = no tier, never 0.
+  const priTierFrom = (fit, need) => { if (fit == null || need == null) return null; const a = (fit + need) / 2; return a >= 85 ? 1 : a >= 75 ? 2 : 3; };
+  const priTier = (p) => priTierFrom(p.fit, p.need);
+  const priPill = (p) => { const t = priTier(p); return t ? '<span class="pill pill-t' + t + '" title="Average of Coach Fit ' + p.fit + ' and Team Need ' + p.need + ' = ' + ((p.fit + p.need) / 2).toFixed(1) + '">Priority ' + t + '</span>' : '<span class="pill" title="Needs both a Coach Fit Score and a Team Need Score">Not Enough Data</span>'; };
+
+  const z2 = (n) => String(n).padStart(2, '0');
+  const isoD = (d) => d.getFullYear() + '-' + z2(d.getMonth() + 1) + '-' + z2(d.getDate());
+  const parseD = (s) => new Date(+s.slice(0, 4), +s.slice(5, 7) - 1, +s.slice(8, 10));
+  const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+  const DOW = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+  const niceD = (s) => { const d = parseD(s); return MONTHS[d.getMonth()].slice(0, 3) + ' ' + d.getDate() + ', ' + d.getFullYear(); };
+  const t12 = (t) => { if (!t) return ''; const h = +t.slice(0, 2); return ((h % 12) || 12) + ':' + t.slice(3, 5) + ' ' + (h < 12 ? 'AM' : 'PM'); };
+  const niceTs = (ts) => niceD(ts.slice(0, 10)) + ', ' + t12(ts.slice(11, 16));
+
+  const EV_TYPES = ['Visit', 'Evaluation/Showcase', 'Call', 'Camp/Tournament', 'Deadline', 'Other'];
+  const CAL_ROLES = [['coach', 'Coaches'], ['dept', 'Athletic Department'], ['athlete', 'Athletes']];
+  const CAL_KEY = 'theReadDemoCalendar';
+  const calRole = () => ({ deptcal: 'dept', athcal: 'athlete' })[document.body.dataset.coachPage] || 'coach';
+  const Cal = (() => {
+    const seed = () => [
+      { id: 's1', title: 'Fictional Fall Showcase', type: 'Evaluation/Showcase', date: '2026-11-07', start: '09:00', end: '15:00', loc: 'Fictional Field (Sample)', notes: 'Sample event. Not a real showcase.', pid: '', vis: ['coach', 'dept', 'athlete'], role: 'coach', by: 'Sample', status: 'scheduled', sample: true },
+      { id: 's2', title: 'Fictional Winter Camp', type: 'Camp/Tournament', date: '2026-12-05', start: '', end: '', loc: 'Fictional Campus (Sample)', notes: 'Sample event. Not a real camp.', pid: '', vis: ['coach', 'dept', 'athlete'], role: 'coach', by: 'Sample', status: 'scheduled', sample: true },
+      { id: 's3', title: 'Sample Questionnaire Deadline', type: 'Deadline', date: '2026-11-15', start: '', end: '', loc: '', notes: 'Sample reminder only. No real deadline.', pid: '', vis: ['coach', 'dept', 'athlete'], role: 'coach', by: 'Sample', status: 'scheduled', sample: true }
+    ];
+    let list = null;
+    try { const v = JSON.parse(localStorage.getItem(CAL_KEY)); if (Array.isArray(v)) list = v; } catch (e) { /* ignore */ }
+    if (!list) list = seed();
+    const save = () => { try { localStorage.setItem(CAL_KEY, JSON.stringify(list)); return true; } catch (e) { return false; } };
+    return {
+      visible: (role) => list.filter((e) => e.vis.indexOf(role) >= 0 || e.role === role),
+      get: (id) => list.filter((e) => e.id === id)[0],
+      add: (e) => { e.id = 'e' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5); list.push(e); save(); return e; },
+      update: (id, f) => { const e = list.filter((x) => x.id === id)[0]; if (e) { Object.keys(f).forEach((k) => { e[k] = f[k]; }); save(); } return e; },
+      remove: (id) => { list = list.filter((e) => e.id !== id); save(); },
+      reset: () => { list = seed(); save(); }
+    };
+  })();
+  const evSort = (a, b) => (a.date + (a.start || '')).localeCompare(b.date + (b.start || '')) || a.title.localeCompare(b.title);
+  const icsEsc = (s) => String(s || '').replace(/\\/g, '\\\\').replace(/;/g, '\\;').replace(/,/g, '\\,').replace(/\r?\n/g, '\\n');
+  const buildIcs = (events) => {
+    const dt = (d, t) => d.replace(/-/g, '') + 'T' + t.replace(':', '') + '00';
+    const L = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//THE READ Athletics//Demo Calendar//EN', 'CALSCALE:GREGORIAN'];
+    events.slice().sort(evSort).forEach((e) => {
+      L.push('BEGIN:VEVENT', 'UID:' + e.id + '@thereadathletics-demo', 'DTSTAMP:' + new Date().toISOString().replace(/[-:]/g, '').slice(0, 15) + 'Z');
+      if (e.start) {
+        let end = e.end;
+        if (!end) { const h = (+e.start.slice(0, 2) + 1) % 24; end = z2(h) + e.start.slice(2); }
+        L.push('DTSTART:' + dt(e.date, e.start), 'DTEND:' + dt(e.date, end));
+      } else {
+        const n = parseD(e.date); n.setDate(n.getDate() + 1);
+        L.push('DTSTART;VALUE=DATE:' + e.date.replace(/-/g, ''), 'DTEND;VALUE=DATE:' + isoD(n).replace(/-/g, ''));
+      }
+      L.push('SUMMARY:' + icsEsc((e.sample ? '[Sample] ' : '') + e.title), 'CATEGORIES:' + icsEsc(e.type));
+      if (e.loc) L.push('LOCATION:' + icsEsc(e.loc));
+      L.push('DESCRIPTION:' + icsEsc((e.notes || '') + (e.pid && byId[e.pid] ? ' Player: ' + byId[e.pid].name + '.' : '') + ' Demo calendar from THE READ Athletics.'), 'END:VEVENT');
+    });
+    L.push('END:VCALENDAR');
+    return L.join('\r\n') + '\r\n';
+  };
+
+  // Activity block (timeline + coach actions) shown on the Player Card, the popup card and the Recruiting Board.
+  const stageOf = (pid) => (Board.has(pid) ? Act.stage(pid) : 'Not On Your Board');
+  const pendingVisit = (pid) => {
+    const es = Act.entries(pid).filter((e) => !e.void);
+    for (let i = es.length - 1; i >= 0; i--) {
+      if (es[i].act === 'visit_done') return null;
+      if (es[i].act === 'visit_sched') return es[i];
+    }
+    return null;
+  };
+  const actBlock = (pid) => {
+    if (!Board.has(pid)) return '<p class="coach-note">Add this player to your Recruiting Board to log actions and schedule visits.</p>';
+    const es = Act.entries(pid);
+    const tl = es.length ? '<ol class="act-log">' + es.slice().reverse().map((e) => '<li' + (e.void ? ' class="void"' : '') + '><time>' + esc(niceTs(e.ts)) + '</time> <strong>' + esc((ACT[e.act] || [e.act])[0]) + '</strong>' + (e.void ? ' (canceled)' : '') + (e.note ? ' &mdash; ' + esc(e.note) : '') + ' <span class="act-by">by ' + esc(e.by) + (e.role ? ' (' + esc(e.role) + ')' : '') + '</span></li>').join('') + '</ol>' : '<p class="coach-note">No logged actions yet.</p>';
+    const pv = pendingVisit(pid), nm = esc(byId[pid].name);
+    return '<div class="act-actions"><button type="button" class="button button-primary" data-sched-visit="' + pid + '">Schedule Visit</button>' +
+      (pv && pv.ev ? ' <button type="button" class="button button-secondary" data-visit-done="' + pv.ev + '" data-pid="' + pid + '">Mark Visit Completed</button>' : '') +
+      ' <button type="button" class="button button-secondary" data-act="call" data-pid="' + pid + '" aria-label="Log a call with ' + nm + '">Log Call</button>' +
+      ' <button type="button" class="button button-secondary" data-act="offer" data-pid="' + pid + '" aria-label="Log an offer made to ' + nm + '">Offer Made</button>' +
+      ' <button type="button" class="button button-secondary" data-act="declined" data-pid="' + pid + '" aria-label="Log that ' + nm + ' declined">Player Declined</button></div>' + tl;
+  };
+  const pcActCard = (pid) => card('Recruiting Activity', '<p class="act-stage">Stage: <strong data-stage-for="' + pid + '">' + esc(stageOf(pid)) + '</strong> <span class="coach-note">(set automatically from the actions below)</span></p><div data-pcact="' + pid + '">' + actBlock(pid) + '</div>', 'wide');
+  function refreshAct(pid) {
+    document.querySelectorAll('[data-stage-for="' + pid + '"]').forEach((x) => { x.textContent = stageOf(pid); });
+    document.querySelectorAll('[data-pcact="' + pid + '"]').forEach((x) => { x.innerHTML = actBlock(pid); });
+  }
+
+  // One event dialog for the calendar page and the Schedule Visit button.
+  function eventDialog(o) {
+    const old = document.getElementById('cal-dlg'); if (old) old.remove();
+    const dlg = document.createElement('dialog'); dlg.id = 'cal-dlg'; dlg.className = 'cal-dlg'; dlg.setAttribute('aria-labelledby', 'cal-dlg-h');
+    const role = calRole(), ev = o.ev || null, isNew = !ev;
+    const pid = ev ? ev.pid : (o.pid || '');
+    const type = ev ? ev.type : (o.type || 'Other');
+    const vis = ev ? ev.vis : (role === 'athlete' ? ['athlete'] : ['coach', 'dept']);
+    const title = ev ? ev.title : (type === 'Visit' && pid ? 'Campus Visit: ' + byId[pid].name : '');
+    const opts = (list, cur) => list.map((x) => '<option value="' + esc(x[0]) + '"' + (x[0] === cur ? ' selected' : '') + '>' + esc(x[1]) + '</option>').join('');
+    const onB = players.filter((p) => Board.has(p.id)), rest = players.filter((p) => !Board.has(p.id));
+    const plSel = role === 'athlete' ? '' : '<label>Linked Player (From Master Database)<select name="pid"><option value="">None</option>' + (onB.length ? '<optgroup label="On Your Recruiting Board">' + opts(onB.map((p) => [p.id, p.name]), pid) + '</optgroup>' : '') + '<optgroup label="All Players">' + opts(rest.map((p) => [p.id, p.name]), pid) + '</optgroup></select></label>';
+    dlg.innerHTML = '<form method="dialog" class="cal-form" novalidate><h2 id="cal-dlg-h">' + (isNew ? 'Add Event' : 'Edit Event') + '</h2>' +
+      (ev && ev.sample ? '<p class="coach-note">Sample event (fictional). You can edit or delete it.</p>' : '') +
+      '<label>Title<input type="text" name="title" maxlength="80" required value="' + esc(title) + '" /></label>' +
+      '<label>Type<select name="type">' + opts(EV_TYPES.map((x) => [x, x]), type) + '</select></label>' +
+      '<div class="cal-row"><label>Date<input type="date" name="date" required value="' + esc(ev ? ev.date : (o.date || isoD(new Date()))) + '" /></label><label>Start Time<input type="time" name="start" value="' + esc(ev ? ev.start : '') + '" /></label><label>End Time<input type="time" name="end" value="' + esc(ev ? ev.end : '') + '" /></label></div>' +
+      '<label>Location<input type="text" name="loc" maxlength="100" value="' + esc(ev ? ev.loc : '') + '" /></label>' + plSel +
+      '<label>Notes<textarea name="notes" rows="3" maxlength="400">' + esc(ev ? ev.notes : '') + '</textarea></label>' +
+      '<fieldset class="cal-vis"><legend>Who Can See This</legend>' + CAL_ROLES.map((r) => '<label class="cal-chk"><input type="checkbox" name="vis" value="' + r[0] + '"' + (vis.indexOf(r[0]) >= 0 || r[0] === role ? ' checked' : '') + (r[0] === role ? ' disabled' : '') + ' /> ' + r[1] + (r[0] === role ? ' (you)' : '') + '</label>').join('') + '<span class="coach-note">Demo only: no invitations or notifications are sent.</span></fieldset>' +
+      '<ul class="md-errors" role="alert"></ul>' +
+      '<div class="md-actions"><button type="submit" class="button button-primary" value="save">Save Event</button> <button type="button" class="button button-secondary" data-x="cancel">Cancel</button>' +
+      (ev && ev.type === 'Visit' && ev.status !== 'completed' ? ' <button type="button" class="button button-secondary" data-x="done">Mark Completed</button>' : '') +
+      (ev ? ' <button type="button" class="md-del" data-x="del">Delete Event</button>' : '') + '</div></form>';
+    document.body.appendChild(dlg);
+    const f = dlg.querySelector('form'), errs = dlg.querySelector('.md-errors');
+    const finish = (msg) => { try { dlg.close(); } catch (e) { dlg.removeAttribute('open'); } dlg.remove(); if (msg) toast(esc(msg)); if (o.onDone) o.onDone(); };
+    dlg.addEventListener('click', (e) => {
+      const x = e.target.getAttribute && e.target.getAttribute('data-x');
+      if (x === 'cancel') finish();
+      if (x === 'del' && ev) {
+        Cal.remove(ev.id);
+        if (ev.type === 'Visit' && ev.pid) { Act.voidEv(ev.id); if (Board.has(ev.pid)) Act.log(ev.pid, 'visit_cancel', ev.date, ev.id); refreshAct(ev.pid); }
+        finish('Event deleted.');
+      }
+      if (x === 'done' && ev) {
+        Cal.update(ev.id, { status: 'completed' });
+        if (ev.pid && Board.has(ev.pid)) { Act.log(ev.pid, 'visit_done', ev.date, ev.id); refreshAct(ev.pid); }
+        finish('Visit marked completed.');
+      }
+    });
+    f.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const g = (n) => f.elements[n] ? f.elements[n].value.trim() : '';
+      const msgs = [];
+      if (!g('title')) msgs.push('Title is required.');
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(g('date')) || isNaN(parseD(g('date')).getTime())) msgs.push('Choose a valid date.');
+      if (g('end') && !g('start')) msgs.push('Add a start time before an end time.');
+      if (g('start') && g('end') && g('end') <= g('start')) msgs.push('End time must be after the start time.');
+      errs.innerHTML = msgs.map((m) => '<li>' + esc(m) + '</li>').join('');
+      if (msgs.length) return;
+      const v = Array.from(f.querySelectorAll('input[name="vis"]:checked')).map((i) => i.value);
+      if (v.indexOf(role) < 0) v.push(role);
+      const me = role === 'coach' ? ME().name : role === 'dept' ? 'Athletic Department (Sample)' : 'Athlete (Sample)';
+      const data = { title: g('title'), type: g('type'), date: g('date'), start: g('start'), end: g('end'), loc: g('loc'), notes: g('notes'), pid: g('pid'), vis: v };
+      let saved;
+      if (isNew) { saved = Cal.add(Object.assign(data, { role: role, by: me, status: 'scheduled', sample: false })); }
+      else { saved = Cal.update(ev.id, data); }
+      if (saved && data.type === 'Visit' && data.pid && Board.has(data.pid) && (isNew || ev.date !== data.date || ev.start !== data.start)) {
+        Act.log(data.pid, 'visit_sched', (isNew ? '' : 'Rescheduled: ') + niceD(data.date) + (data.start ? ' ' + t12(data.start) : '') + (data.loc ? ' at ' + data.loc : ''), saved.id);
+      }
+      if (data.pid) refreshAct(data.pid);
+      finish(isNew ? 'Event added to the calendar (demo, saved in this browser only).' : 'Event updated.');
+    });
+    if (dlg.showModal) dlg.showModal(); else dlg.setAttribute('open', '');
+    const first = f.elements.title; if (first) first.focus();
+  }
+  document.addEventListener('click', (e) => {
+    const t = e.target.closest && e.target.closest('[data-sched-visit],[data-visit-done],[data-act]');
+    if (!t) return;
+    if (t.hasAttribute('data-sched-visit')) { eventDialog({ pid: t.getAttribute('data-sched-visit'), type: 'Visit' }); return; }
+    if (t.hasAttribute('data-visit-done')) {
+      const id = t.getAttribute('data-visit-done'), pid = t.getAttribute('data-pid');
+      Cal.update(id, { status: 'completed' }); Act.log(pid, 'visit_done', '', id); refreshAct(pid); toast('Visit marked completed. Stage updated.'); return;
+    }
+    const pid = t.getAttribute('data-pid'), a = t.getAttribute('data-act');
+    Act.log(pid, a); refreshAct(pid); toast(esc(ACT[a][0]) + ' logged for ' + esc(byId[pid].name) + '. Stage: ' + esc(Act.stage(pid)) + '.');
+  });
   const db = {
     total: players.length,
     avgRS: avg(players.map((p) => p.rs)),
@@ -458,6 +653,7 @@
           '<p class="coach-note">' + TRC.TEXT.cardTier + ' ' + TRC.TEXT.cardConfidence + ' Missing data lowers Confidence, not Recruit Score.</p>', 'kvs rd-triple') +
         card('Grades', field('OPG', num(p.opg)) + field('SOPG', num(p.sopg)) + field('DPG', num(p.dpg)) + field('SDPG', num(p.sdpg)) + field('PPG', num(p.ppg)), 'kvs') +
         card('Team Evaluation', field('HC Grade', nv(p.hc)) + field('PC Grade', nv(p.pc)) + field('AC Grade', nv(p.ac)) + field('Staff Score', staffTxt(p)) + field('Coach Fit Score', nv(p.fit)) + field('Team Need Score', nv(p.need)) + field('Adjusted Recruit Score', num(p.adj)) + field('Priority Score', nv(p.pri)), 'kvs') +
+        pcActCard(p.id) +
         card('Measurables', field('Avg EV', num(p.avgEV) + ' mph') + field('Max EV', num(p.maxEV) + ' mph') + field('Avg FBV', num(p.avgFBV) + ' mph') + field('Max FBV', num(p.maxFBV) + ' mph') + field('Throwing Velo', num(p.tv) + ' mph') + field('60 Time', num(p.t60, 2) + ' s') + field('Pop Time', num(p.pop, 2) + ' s'), 'kvs') +
         card('Database Benchmarks', field('Avg EV vs Avg', bench('avgEV', p)) + field('Max EV vs Avg', bench('maxEV', p)) + field('Avg FBV vs Avg', bench('avgFBV', p)) + field('60 Time vs Avg', bench('t60', p, true, 2)) + field('Overall Standing', stand), 'kvs') +
         card('External Profile Links', field('PBR', 'Not linked in demo') + field('PG', 'Not linked in demo') + field('NCSA', 'Not linked in demo') + field('Fieldlevel', 'Not linked in demo') + field('Video', 'Not linked in demo'), 'kvs') +
@@ -487,6 +683,7 @@
   const MessageService = (function () {
     const KEY = 'theReadDemoMessages', ME = 'You (Sample Program Coach)';
     const now = () => new Date().toISOString().slice(0, 16);
+    const logMsg = (cid) => { if (String(cid).indexOf('pl:') === 0) { const pid = cid.slice(3); if (Board.has(pid)) { Act.log(pid, 'contact', 'Via Connect (demo, not sent)'); refreshAct(pid); } } };
     const seed = () => [
       { id: 't-c5', cid: 'c5', unread: 1, blocked: false, reported: false, messages: [{ from: 'me', ts: '2026-09-02T10:15', body: 'Coach Tolliver, we are looking at a few JUCO sophomores for next fall. Who should we talk to on your roster?' }, { from: 'them', ts: '2026-09-03T08:40', body: 'Thanks for reaching out. Two of our pitchers are open to 4-year offers. Happy to set up a call. (Sample message)' }] },
       { id: 't-c7', cid: 'c7', unread: 0, blocked: false, reported: false, messages: [{ from: 'them', ts: '2026-08-28T14:05', body: 'We are also tracking the portal for outfielders. Want to compare notes? (Sample message)' }, { from: 'me', ts: '2026-08-28T16:30', body: 'Yes, send what you are seeing and we will share ours.' }] },
@@ -508,9 +705,9 @@
       startThread: (c, body) => {
         let th = state.filter((x) => x.cid === c.id)[0];
         if (!th) { th = { id: 't-' + c.id.replace(':', '-'), cid: c.id, unread: 0, blocked: false, reported: false, messages: [] }; state.push(th); }
-        th.messages.push({ from: 'me', ts: now(), body: String(body).slice(0, 1000) }); save(); return th.id;
+        th.messages.push({ from: 'me', ts: now(), body: String(body).slice(0, 1000) }); save(); logMsg(th.cid); return th.id;
       },
-      send: (id, body) => { const th = state.filter((x) => x.id === id)[0]; if (!th || th.blocked) return false; th.messages.push({ from: 'me', ts: now(), body: String(body).slice(0, 1000) }); save(); return true; },
+      send: (id, body) => { const th = state.filter((x) => x.id === id)[0]; if (!th || th.blocked) return false; th.messages.push({ from: 'me', ts: now(), body: String(body).slice(0, 1000) }); save(); logMsg(th.cid); return true; },
       markRead: (id) => { const th = state.filter((x) => x.id === id)[0]; if (th) { th.unread = 0; save(); } },
       setBlocked: (id, v) => { const th = state.filter((x) => x.id === id)[0]; if (th) { th.blocked = !!v; save(); } },
       report: (id) => { const th = state.filter((x) => x.id === id)[0]; if (th) { th.reported = true; save(); } },
@@ -813,10 +1010,16 @@
       theRead('Coach Fit measures program fit, not talent. Recruit Score stays the same for every program; Coach Fit changes with each program\u2019s priorities. Adjusted Priority Score is the simple average of Recruit Score, Coach Fit and Priority, so a player with a high Recruit Score but a poor fit can rank below a slightly lower-rated player who fits what you need. Blank scores are never treated as 0.');
   };
 
+  const boardFormula = () => '<section class="card coach-card how-calc"><h2>How This Is Calculated</h2><ul class="plain-list">' +
+    '<li><strong>Priority Tier</strong> = the average of the player&rsquo;s Coach Fit Score and Team Need Score: 85 or higher is Priority 1, 75 to 84.9 is Priority 2, below 75 is Priority 3. If either score is missing it shows &ldquo;Not Enough Data&rdquo; (never treated as 0). It is read-only. It never changes Player Tier or Confidence, and Tier and Confidence never change it.</li>' +
+    '<li><strong>Stage</strong> comes from the actions logged for the player since they were added to your board, using the furthest action reached: Added To Board = Identified; Message Sent or Call Logged = Contacted; Staff Grade Submitted = Evaluating; Visit Scheduled = Visit Planned; Visit Completed = Visit Completed; Offer Made = Offer Out; Committed = Committed. If the most recent action is Player Declined, the Stage is Declined. Deleting a scheduled visit cancels its action. There is no manual Stage control.</li>' +
+    '<li>Each logged action records the date, time and the signed-in coach. Messages sent from Connect and grades from Coach Grading are logged automatically for players on your board; Schedule Visit, Log Call, Offer Made and Player Declined are the buttons under Activity &amp; Actions.</li></ul>' +
+    '<p class="coach-note">Sample Data / Fictional Example. Saved only in this browser (demo).</p></section>';
+
   pages.board = (root) => {
     const board = Board.list();
     const ours = players.filter((p) => p.committed === OUR);
-    const tierOf = (p) => (Board.get(p.id) || {}).tier || 3;
+    const tierOf = (p) => priTier(p);
     const t = (n) => board.filter((p) => tierOf(p) === n);
     const tierName = { 1: 'Priority 1', 2: 'Priority 2', 3: 'Priority 3' };
     const bmsg = sessionStorage.getItem('theReadBoardMsg') || ''; sessionStorage.removeItem('theReadBoardMsg');
@@ -826,28 +1029,27 @@
       '<tr><th scope="row">Highest Adjusted Recruit Score</th><td>' + (best('adj', board) ? cardLink(best('adj', board)) + '</td><td>' + num(best('adj', board).adj) : '&mdash;</td><td>&mdash;') + '</td></tr>',
       '<tr><th scope="row">Average Priority Score</th><td>&mdash;</td><td>' + num(avgOf('pri', board)) + '</td></tr>'], 'Board snapshot')) : '';
     root.innerHTML =
-      '<p class="coach-note md-note"><strong>Your Recruiting Board</strong> is your program\u2019s own list. It is not an extension of the Master Database and you cannot add players here: go to the <a href="coach-master-database.html">Master Database</a> (or use &ldquo;Add To Board&rdquo; on Rankings or a Player Card) to add prospects. Here you only manage who is already on your board. The board stores only a reference to each player plus your private fields (priority tier, stage, notes), so player data stays in the shared Master Database. Saved only in this browser as a demo; a real version needs a backend. The first few entries are demo seeds you can remove.</p>' +
+      '<p class="coach-note md-note"><strong>Your Recruiting Board</strong> is your program\u2019s own list. It is not an extension of the Master Database and you cannot add players here: go to the <a href="coach-master-database.html">Master Database</a> (or use &ldquo;Add To Board&rdquo; on Rankings or a Player Card) to add prospects. Here you only manage who is already on your board. The board stores only a reference to each player plus your private notes, so player data stays in the shared Master Database. Priority Tier and Stage are calculated automatically (see How This Is Calculated below), not picked by hand. Saved only in this browser as a demo; a real version needs a backend. The first few entries are demo seeds you can remove.</p>' +
       (bmsg ? '<p class="coach-note md-msg" role="status">' + esc(bmsg) + '</p>' : '') +
       '<div class="kpi-row">' + kpi('On Your Board', board.length) + kpi('Priority 1 Targets', t(1).length) + kpi('Priority 2 Targets', t(2).length) + kpi('Priority 3 Targets', t(3).length) + kpi('Committed Players', ours.length) + kpi('Open Spots', 14 - ours.length) + '</div>' +
       '<h2 class="coach-h2">Your Board</h2>' +
-      '<form class="controls" onsubmit="return false"><label>Priority Tier<select id="b-tier"><option value="">All</option><option value="1">Priority 1</option><option value="2">Priority 2</option><option value="3">Priority 3</option></select></label>' +
+      '<form class="controls" onsubmit="return false"><label>Priority Tier<select id="b-tier"><option value="">All</option><option value="1">Priority 1</option><option value="2">Priority 2</option><option value="3">Priority 3</option><option value="0">Not Enough Data</option></select></label><label>Stage<select id="b-stage"><option value="">All</option>' + STAGE_ORDER.concat(['Declined']).map((x) => '<option>' + x + '</option>').join('') + '</select></label>' +
       '<label>Playing Level<select id="b-level"><option value="">All</option>' + LEVELS.map((x) => '<option>' + x + '</option>').join('') + '</select></label><label>Position<select id="b-pos"><option value="">All</option>' + POS.map((x) => '<option>' + x + '</option>').join('') + '</select></label></form>' +
       '<div class="table-wrap"><table id="b-table"></table></div>' +
-      '<div class="coach-grid">' + snap + '</div>' +
+      '<div class="coach-grid">' + snap + '</div>' + boardFormula() +
       theRead('Your private board (fictional): you decide who is on it, so it reflects your program rather than the whole database. Priority 1 targets are the players your staff would pursue first. Players who commit elsewhere drop off the board automatically. Adjusted Recruit Score is the Recruit Score nudged by fit, need and staff grades, within a small documented limit. Playing Level separates high school recruits from JUCO and transfer-portal players. Rankings and the Master Database still show every player.');
     function draw() {
-      const ft = $('#b-tier', root).value, fp = $('#b-pos', root).value, fl = $('#b-level', root).value;
-      const list = board.filter((p) => (!ft || String(tierOf(p)) === ft) && (!fp || p.pos === fp) && (!fl || p.level === fl)).sort((a, b) => tierOf(a) - tierOf(b) || (b.pri || 0) - (a.pri || 0));
-      const sel = (id, k, opts, cur) => '<select class="b-edit" data-id="' + id + '" data-k="' + k + '" aria-label="' + k + ' for ' + esc(byId[id].name) + '">' + opts.map((o) => '<option value="' + o[0] + '"' + (String(o[0]) === String(cur) ? ' selected' : '') + '>' + o[1] + '</option>').join('') + '</select>';
+      const fs = $('#b-stage', root).value, ft = $('#b-tier', root).value, fp = $('#b-pos', root).value, fl = $('#b-level', root).value;
+      const list = board.filter((p) => (!ft || String(tierOf(p) || 0) === ft) && (!fs || Act.stage(p.id) === fs) && (!fp || p.pos === fp) && (!fl || p.level === fl)).sort((a, b) => (tierOf(a) || 9) - (tierOf(b) || 9) || (b.pri || 0) - (a.pri || 0));
       $('#b-table', root).innerHTML = '<caption class="visually-hidden">Recruiting board (fictional data)</caption><thead><tr>' + ['Priority Tier', 'Stage', 'Player Name', 'Primary Position', 'Secondary Position', 'Class', 'Playing Level', 'State', 'Athletic Score', 'Recruit Score', 'Tier', 'Confidence', 'Adjusted Recruit Score', 'Priority Score', 'Evaluation Method', 'Player Notes', 'Staff Notes', 'Remove'].map((h) => '<th scope="col">' + h + '</th>').join('') + '</tr></thead><tbody>' +
         (list.length ? list.map((p) => {
           const e = Board.get(p.id);
-          return '<tr><td>' + sel(p.id, 'tier', [[1, 'Priority 1'], [2, 'Priority 2'], [3, 'Priority 3']], e.tier) + '</td><td>' + sel(p.id, 'stage', STAGES.map((s) => [s, s]), e.stage) + '</td><td>' + cardLink(p) + '</td><td>' + p.pos + '</td><td>' + (p.sec || '&mdash;') + '</td><td>' + p.grad + '</td><td>' + esc(LEVEL_SHORT[p.level] || p.level) + '</td><td>' + p.state + '</td><td>' + num(p.ath) + '</td><td class="rd-num">' + TRC.formatRecruitScore(p.rs) + '</td><td>' + tierBadge(p) + '</td><td>' + confBadge(p) + '</td><td>' + num(p.adj) + '</td><td>' + nv(p.pri) + '</td><td>' + p.method + '</td><td><input type="text" class="b-edit" data-id="' + p.id + '" data-k="notes" maxlength="200" value="' + esc(e.notes || '') + '" aria-label="Notes for ' + esc(p.name) + '" /></td><td><input type="text" class="b-edit" data-id="' + p.id + '" data-k="staffNotes" maxlength="200" value="' + esc(e.staffNotes || '') + '" aria-label="Staff notes for ' + esc(p.name) + '" /></td><td><button type="button" class="md-del" data-rm="' + p.id + '" aria-label="Remove ' + esc(p.name) + ' from board">Remove From Board</button></td></tr>';
+          return '<tr><td>' + priPill(p) + '</td><td><strong data-stage-for="' + p.id + '">' + esc(Act.stage(p.id)) + '</strong><details class="act-det"><summary>Activity &amp; Actions</summary><div data-pcact="' + p.id + '">' + actBlock(p.id) + '</div></details></td><td>' + cardLink(p) + '</td><td>' + p.pos + '</td><td>' + (p.sec || '&mdash;') + '</td><td>' + p.grad + '</td><td>' + esc(LEVEL_SHORT[p.level] || p.level) + '</td><td>' + p.state + '</td><td>' + num(p.ath) + '</td><td class="rd-num">' + TRC.formatRecruitScore(p.rs) + '</td><td>' + tierBadge(p) + '</td><td>' + confBadge(p) + '</td><td>' + num(p.adj) + '</td><td>' + nv(p.pri) + '</td><td>' + p.method + '</td><td><input type="text" class="b-edit" data-id="' + p.id + '" data-k="notes" maxlength="200" value="' + esc(e.notes || '') + '" aria-label="Notes for ' + esc(p.name) + '" /></td><td><input type="text" class="b-edit" data-id="' + p.id + '" data-k="staffNotes" maxlength="200" value="' + esc(e.staffNotes || '') + '" aria-label="Staff notes for ' + esc(p.name) + '" /></td><td><button type="button" class="md-del" data-rm="' + p.id + '" aria-label="Remove ' + esc(p.name) + ' from board">Remove From Board</button></td></tr>';
         }).join('') : '<tr class="rd-empty"><td colspan="18">' + (board.length ? 'No prospects match these filters.' : 'Your board is empty. Go to the <a href="coach-master-database.html">Master Database</a> and use &ldquo;Add To Board&rdquo; to add prospects here.') + '</td></tr>') + '</tbody>';
     }
     root.addEventListener('change', (e) => {
       const ed = e.target.closest('.b-edit');
-      if (ed) { Board.update(ed.dataset.id, { [ed.dataset.k]: ed.dataset.k === 'tier' ? Number(ed.value) : ed.value.slice(0, 200) }); if (ed.dataset.k === 'tier') location.reload(); return; }
+      if (ed) { Board.update(ed.dataset.id, { [ed.dataset.k]: ed.value.slice(0, 200) }); return; }
       draw();
     });
     root.addEventListener('click', (e) => {
@@ -960,9 +1162,8 @@
     players.forEach((p) => { dupCount[dupKey(p)] = (dupCount[dupKey(p)] || 0) + 1; });
     const link = (p) => LINKS.filter((l) => p.links && p.links[l[0]]).map((l) => '<a href="' + esc(p.links[l[0]]) + '" target="_blank" rel="noopener noreferrer">' + l[1].replace(' Link', '') + '</a>').join(' ') || '&mdash;';
     const n2 = (k, d) => (p) => num(p[k], d);
-    const picked = new Set();
     const COLS = [
-      ['board', 'Recruiting Board', (p) => (Board.has(p.id) ? 1 : 0), (p) => (p.committed || Board.has(p.id) ? '' : '<input type="checkbox" class="md-pick" value="' + esc(p.id) + '"' + (picked.has(p.id) ? ' checked' : '') + ' aria-label="Select ' + esc(p.name) + ' to add to board" /> ') + boardBtn(p)],
+      ['board', 'Recruiting Board', (p) => (Board.has(p.id) ? 1 : 0), (p) => boardBtn(p)],
       ['src', 'Source', (p) => (p.entered ? 'Coach-Entered (Demo)' : 'Sample'), (p) => (p.entered ? '<span class="pill amber">Coach-Entered (Demo)</span> <button type="button" class="md-del" data-del="' + esc(p.id) + '" aria-label="Remove ' + esc(p.name) + '">Remove</button>' : '<span class="pill gray">Sample</span>')],
       ['id', 'Player ID', (p) => p.id, (p) => esc(p.id)],
       ['name', 'Player Name', (p) => p.name, (p) => cardLink(p)],
@@ -1030,7 +1231,7 @@
       '<label>Current Playing Level<select id="md-level">' + opt(LEVELS, 'All') + '</select></label>' +
       '<label>Source<select id="md-src"><option value="">All</option><option value="s">Sample</option><option value="a">Coach-Entered (Demo)</option></select></label>' +
       '<button type="button" class="button button-secondary" id="md-reset">Reset</button></form>' +
-      '<p class="coach-count" id="md-count" role="status"></p><div class="md-actions"><button type="button" class="button button-primary" id="md-bulk">Add Selected To Board</button> <span id="md-bulk-msg" role="status" class="coach-note"></span></div><div class="table-wrap md-wrap"><table id="md-table" class="rd-table md-table"></table></div>' +
+      '<p class="coach-count" id="md-count" role="status"></p><div class="table-wrap md-wrap"><table id="md-table" class="rd-table md-table"></table></div>' +
       '<p class="coach-note">SAMPLE DATA / FICTIONAL EXAMPLE. Helper columns from the owner workbook are calculated, not stored.</p>' + theRead('This is the single list behind every other tab: ' + players.length + ' players, ' + players.filter((p) => p.entered).length + ' of them added by you. Added prospects show Not Rated and Unknown until the calculation service exists, so they sort last and are never scored 0. The Possible Duplicate column flags the same name and class appearing twice.');
     const tbl = $('#md-table', root);
     function kpis() {
@@ -1057,18 +1258,8 @@
     root.addEventListener('input', (e) => { if (e.target.closest('#md-filters')) draw(); });
     root.addEventListener('change', (e) => {
       if (e.target.closest('#md-filters')) draw();
-      const pk = e.target.closest('.md-pick');
-      if (pk) { if (pk.checked) picked.add(pk.value); else picked.delete(pk.value); }
     });
     root.addEventListener('click', (e) => {
-      if (e.target.id === 'md-bulk') {
-        const ids = Array.from(picked);
-        if (!ids.length) { $('#md-bulk-msg', root).textContent = 'Select at least one player first.'; return; }
-        ids.forEach((id) => Board.add(id));
-        picked.clear(); draw();
-        $('#md-bulk-msg', root).textContent = ids.length + ' prospect' + (ids.length === 1 ? '' : 's') + ' added to your recruiting board (demo, saved in this browser only).';
-        return;
-      }
       const b = e.target.closest('button[data-k]');
       if (b) { const k = b.dataset.k; if (state.key === k) state.dir *= -1; else { state.key = k; state.dir = 1; } draw(); return; }
       if (e.target.closest('#md-reset')) { $('#md-filters', root).reset(); draw(); return; }
@@ -1228,6 +1419,7 @@
       store[pid] = store[pid] || {};
       store[pid][cid] = { score: score, note: f.elements.note.value.trim().slice(0, 300), date: date };
       if (!saveGrades(store)) { $('#gr-errors', root).innerHTML = '<li>This browser blocked saving. The grade was not saved.</li>'; return; }
+      if (Board.has(pid)) Act.log(pid, 'grade', 'Staff grade entered');
       sessionStorage.setItem('theReadGrMsg', 'Grade saved for ' + byId[pid].name + ' (demo, this browser only). Staff Score and Adjusted Recruit Score were recalculated.');
       location.reload();
     });
@@ -1306,7 +1498,7 @@
       '<div class="kpi-row">' + kpi('Programs (Sample)', PROGRAMS.length) + kpi('Class Spots Targeted', tot((p) => p.target)) + kpi('Committed (Sample)', tot((p) => p.committed)) + kpi('Open Spots', tot((p) => p.target - p.committed)) + kpi('Sample Recruiting Spend', money(tot((p) => p.spend))) + '</div>' +
       '<div class="coach-grid">' +
       card('All Programs At A Glance', miniTable(['Program', 'Coach', 'Target Class', 'Committed', 'Open Spots', 'Top Needs', 'Sample Spend'], PROGRAMS.map((p) => '<tr><th scope="row">' + p.sport + '</th><td>' + esc(p.coach) + '</td><td>' + p.target + '</td><td>' + p.committed + '</td><td>' + (p.target - p.committed) + '</td><td>' + p.needs.join(', ') + '</td><td>' + money(p.spend) + '</td></tr>'), 'All programs at a glance') + '<p class="coach-note">Sample Data / Fictional Example. Every program, coach, and number here is made up.</p>', 'wide') +
-      card('Who Is Recruiting Whom (Baseball Sample)', miniTable(['Player', 'Pos', 'Class', 'Tier', 'Recruiting Coach', 'Next Step'], players.filter((p) => !p.committed && Board.has(p.id) && Board.get(p.id).tier <= 2).sort((a, b) => Board.get(a.id).tier - Board.get(b.id).tier || (b.pri || 0) - (a.pri || 0)).slice(0, 10).map((p) => '<tr><td>' + cardLink(p) + '</td><td>' + p.pos + '</td><td>' + p.grad + '</td><td><span class="pill pill-t' + Board.get(p.id).tier + '">Priority ' + Board.get(p.id).tier + '</span></td><td>' + esc((COACHES.filter((c) => c.id === p.coach)[0] || { name: 'Unassigned' }).name) + '</td><td>' + (p.action || '&mdash;') + '</td></tr>'), 'Who is recruiting whom'), 'wide') +
+      card('Who Is Recruiting Whom (Baseball Sample)', miniTable(['Player', 'Pos', 'Class', 'Tier', 'Recruiting Coach', 'Next Step'], players.filter((p) => !p.committed && Board.has(p.id) && priTier(p) && priTier(p) <= 2).sort((a, b) => priTier(a) - priTier(b) || (b.pri || 0) - (a.pri || 0)).slice(0, 10).map((p) => '<tr><td>' + cardLink(p) + '</td><td>' + p.pos + '</td><td>' + p.grad + '</td><td>' + priPill(p) + '</td><td>' + esc((COACHES.filter((c) => c.id === p.coach)[0] || { name: 'Unassigned' }).name) + '</td><td>' + (p.action || '&mdash;') + '</td></tr>'), 'Who is recruiting whom'), 'wide') +
       '</div>' + coachLink + deptBanner('Department overview (fictional): one view of every program. Each coach\u2019s private notes stay private. Open Spots is the target class size minus current commitments, so a program with several open spots and few listed needs is the one to check first. Spend and budget figures are invented samples.');
   };
 
@@ -1358,7 +1550,98 @@
       card('Contact And Dead Period Reminders', '<ul class="dept-list"><li>Contact, evaluation, quiet, and dead periods differ by sport and governing body.</li><li>Check your official calendar before scheduling any visit or contact.</li><li>Add your own dates to this calendar once real scheduling is built (roadmap).</li></ul><p class="coach-note">These are reminders, not rules. THE READ does not provide compliance advice.</p>') +
       '</div>' + coachLink + deptBanner('Schedule (fictional): one calendar across programs, with reminders to confirm contact and dead periods. Events are ordered by date so staff can see when several programs are on the road at once. Dates here are invented.');
   };
-  window.TheReadCoach = { players: players, rankingRowHtml: rankingRowHtml };
+  function calendarPage(root, role) {
+    const st = { view: 'month', cur: isoD(new Date()), type: '' };
+    const who = role === 'athlete' ? 'Athlete' : role === 'dept' ? 'Athletic Department' : 'Coach';
+    root.innerHTML =
+      '<div class="preview-banner" role="note">DEMO CALENDAR &mdash; events you add are saved only in this browser (localStorage). No invitations, reminders or notifications are sent, and nothing syncs between people yet. Three clearly labeled sample events are included; delete them any time.</div>' +
+      '<p class="coach-note">Viewing as: <strong>' + who + '</strong>. You see events shared with your role plus events you created. ' + (role === 'athlete' ? 'Athletes control who can see their own events.' : 'Pick who can see each event when you add it.') + '</p>' +
+      '<div class="cal-bar"><div class="cal-nav" role="group" aria-label="Calendar navigation"><button type="button" class="button button-secondary" data-c="prev">Previous</button><button type="button" class="button button-secondary" data-c="today">Today</button><button type="button" class="button button-secondary" data-c="next">Next</button></div>' +
+      '<h2 class="cal-title" id="cal-title" aria-live="polite"></h2>' +
+      '<div class="cal-views" role="group" aria-label="Calendar view"><button type="button" class="button" data-v="month">Month</button><button type="button" class="button" data-v="week">Week</button><button type="button" class="button" data-v="agenda">Agenda</button></div></div>' +
+      '<div class="cal-bar"><label>Event Type<select id="cal-type"><option value="">All Types</option>' + EV_TYPES.map((t) => '<option>' + t + '</option>').join('') + '</select></label>' +
+      '<div class="md-actions"><button type="button" class="button button-primary" data-c="add">Add Event</button> <button type="button" class="button button-secondary" data-c="ics">Export .ics</button> <button type="button" class="button button-secondary" data-c="reset">Reset Demo Calendar</button></div></div>' +
+      '<div id="cal-body"></div>' +
+      '<section class="card coach-card how-calc"><h2>How This Calendar Works</h2><ul class="plain-list">' +
+      '<li>Event types: Visit, Evaluation/Showcase, Call, Camp/Tournament, Deadline, Other. Each event has a date, optional start and end time, location, notes, an optional linked player from the Master Database, and who can see it.</li>' +
+      (role === 'athlete' ? '' : '<li>Scheduling a Visit for a player on your Recruiting Board (from the board, a Player Card, or here) adds the calendar event and logs &ldquo;Visit Scheduled,&rdquo; which moves that player&rsquo;s Stage to Visit Planned. Marking the visit completed logs &ldquo;Visit Completed.&rdquo; Deleting the visit cancels the logged action.</li>') +
+      '<li>Export .ics downloads the events you can see so you can open them in another calendar app. Times are exported without a time zone.</li>' +
+      '<li>Roadmap: NCAA-style contact, evaluation, quiet and dead periods will be added as an official-calendar layer. No such dates are shown or invented here, and this page is not compliance advice. A real version needs accounts, shared storage and reminders.</li></ul></section>' +
+      (role === 'athlete' ? '<aside class="read-note" aria-label="Preview of THE READ AI, generated from sample data"><strong class="read-label"><span class="tr">THE READ</span> AI Preview &mdash; Generated From Sample Data</strong> <span>Your calendar shows only events shared with athletes or created by you. Coaches cannot see events you keep private.</span></aside>' : (role === 'dept' ? deptBanner('Calendar (fictional): staff across programs can see events shared with the Athletic Department, which helps spot when several programs are on the road. Visit events tied to a player also move that player&rsquo;s recruiting Stage on the coach side.') : theRead('Your calendar shows events shared with coaches. Visits linked to players on your board update their Stage automatically, so you can see who has been scheduled and who has not. Dates are whatever your staff enters; none are invented.')));
+    const body = root.querySelector('#cal-body'), title = root.querySelector('#cal-title');
+    const evs = () => Cal.visible(role).filter((e) => !st.type || e.type === st.type).sort(evSort);
+    const typeIx = (t) => EV_TYPES.indexOf(t);
+    const evBtn = (e) => '<button type="button" class="cal-ev cal-t' + typeIx(e.type) + '" data-ev="' + e.id + '"><span class="cal-ev-t">' + esc(e.type) + (e.status === 'completed' ? ' &middot; Done' : '') + '</span> ' + (e.start ? esc(t12(e.start)) + ' ' : '') + esc(e.title) + (e.sample ? ' (Sample)' : '') + '</button>';
+    const monthStart = () => { const d = parseD(st.cur); d.setDate(1); return d; };
+    const weekStart = () => { const d = parseD(st.cur); d.setDate(d.getDate() - d.getDay()); return d; };
+    function draw() {
+      root.querySelectorAll('[data-v]').forEach((b) => { b.setAttribute('aria-pressed', b.dataset.v === st.view ? 'true' : 'false'); b.classList.toggle('button-primary', b.dataset.v === st.view); b.classList.toggle('button-secondary', b.dataset.v !== st.view); });
+      const list = evs(), today = isoD(new Date());
+      if (st.view === 'month') {
+        const ms = monthStart(); title.textContent = MONTHS[ms.getMonth()] + ' ' + ms.getFullYear();
+        const g = new Date(ms); g.setDate(1 - ms.getDay());
+        let html = '<div class="table-wrap"><table class="cal-month"><caption class="visually-hidden">' + title.textContent + ' calendar</caption><thead><tr>' + DOW.map((d) => '<th scope="col"><span class="cal-dow-full">' + d + '</span><span class="cal-dow-short" aria-hidden="true">' + d.slice(0, 3) + '</span></th>').join('') + '</tr></thead><tbody>';
+        for (let w = 0; w < 6; w++) {
+          html += '<tr>';
+          for (let d = 0; d < 7; d++) {
+            const k = isoD(g), out = g.getMonth() !== ms.getMonth();
+            if (out && w === 5 && d === 0) { html = html.replace(/<tr>$/, ''); w = 9; break; }
+            html += '<td class="cal-day' + (out ? ' out' : '') + (k === today ? ' today' : '') + '"><button type="button" class="cal-daynum" data-day="' + k + '" aria-label="Add event on ' + esc(niceD(k)) + '">' + g.getDate() + (k === today ? '<span class="visually-hidden"> (today)</span>' : '') + '</button>' + list.filter((e) => e.date === k).map(evBtn).join('') + '</td>';
+            g.setDate(g.getDate() + 1);
+          }
+          if (w < 9) html += '</tr>';
+        }
+        body.innerHTML = html + '</tbody></table></div>';
+      } else if (st.view === 'week') {
+        const ws = weekStart(), we = new Date(ws); we.setDate(we.getDate() + 6);
+        title.textContent = niceD(isoD(ws)) + ' \u2013 ' + niceD(isoD(we));
+        let html = '<div class="cal-week">';
+        for (let i = 0; i < 7; i++) {
+          const d = new Date(ws); d.setDate(d.getDate() + i); const k = isoD(d), L = list.filter((e) => e.date === k);
+          html += '<section class="cal-wk-day' + (k === today ? ' today' : '') + '"><h3>' + DOW[d.getDay()] + ', ' + esc(niceD(k)) + ' <button type="button" class="cal-daynum" data-day="' + k + '" aria-label="Add event on ' + esc(niceD(k)) + '">+ Add</button></h3>' + (L.length ? L.map(evBtn).join('') : '<p class="coach-note">No events.</p>') + '</section>';
+        }
+        body.innerHTML = html + '</div>';
+      } else {
+        title.textContent = 'Agenda from ' + niceD(st.cur);
+        const L = list.filter((e) => e.date >= st.cur);
+        let html = '', last = '';
+        L.forEach((e) => {
+          if (e.date !== last) { html += (last ? '</ul>' : '') + '<h3 class="cal-ag-h">' + DOW[parseD(e.date).getDay()] + ', ' + esc(niceD(e.date)) + '</h3><ul class="cal-ag">'; last = e.date; }
+          const pl = e.pid && byId[e.pid] ? ' &middot; Player: ' + esc(byId[e.pid].name) : '';
+          html += '<li>' + evBtn(e) + '<span class="coach-note">' + (e.start ? esc(t12(e.start)) + (e.end ? ' to ' + esc(t12(e.end)) : '') : 'All day') + (e.loc ? ' &middot; ' + esc(e.loc) : '') + pl + '</span></li>';
+        });
+        body.innerHTML = L.length ? html + '</ul>' : '<p class="coach-note">No upcoming events from this date. Use Add Event to schedule one.</p>';
+      }
+    }
+    const move = (n) => {
+      const d = parseD(st.cur);
+      if (st.view === 'month') { d.setDate(1); d.setMonth(d.getMonth() + n); } else d.setDate(d.getDate() + n * (st.view === 'week' ? 7 : 30));
+      st.cur = isoD(d); draw();
+    };
+    root.addEventListener('click', (e) => {
+      const c = e.target.closest('[data-c]'), v = e.target.closest('[data-v]'), ev = e.target.closest('[data-ev]'), day = e.target.closest('[data-day]');
+      if (v) { st.view = v.dataset.v; draw(); return; }
+      if (ev) { eventDialog({ ev: Cal.get(ev.dataset.ev), onDone: draw }); return; }
+      if (day) { eventDialog({ date: day.dataset.day, onDone: draw }); return; }
+      if (!c) return;
+      const a = c.dataset.c;
+      if (a === 'prev') move(-1); else if (a === 'next') move(1); else if (a === 'today') { st.cur = isoD(new Date()); draw(); }
+      else if (a === 'add') eventDialog({ date: st.view === 'month' ? undefined : st.cur, onDone: draw });
+      else if (a === 'reset') { Cal.reset(); draw(); toast('Demo calendar reset to the sample events.'); }
+      else if (a === 'ics') {
+        const list = evs();
+        if (!list.length) { toast('No events to export.'); return; }
+        const url = URL.createObjectURL(new Blob([buildIcs(list)], { type: 'text/calendar' }));
+        const l = document.createElement('a'); l.href = url; l.download = 'the-read-calendar.ics'; document.body.appendChild(l); l.click(); l.remove(); setTimeout(() => URL.revokeObjectURL(url), 1000);
+      }
+    });
+    root.addEventListener('change', (e) => { if (e.target.id === 'cal-type') { st.type = e.target.value; draw(); } });
+    draw();
+  }
+  pages.calendar = (root) => calendarPage(root, 'coach');
+  pages.deptcal = (root) => calendarPage(root, 'dept');
+  pages.athcal = (root) => calendarPage(root, 'athlete');
+  window.TheReadCoach = { players: players, rankingRowHtml: rankingRowHtml, priTierFrom: priTierFrom, stageFromEntries: stageFromEntries, buildIcs: buildIcs, Board: Board, Act: Act, Cal: Cal };
   document.addEventListener('DOMContentLoaded', () => {
     const root = document.getElementById('coach-app');
     const page = document.body.dataset.coachPage;

@@ -16,7 +16,7 @@ li.ok::before { content: "PASS  "; color: #1b7f3b; font-weight: 700; }
 li.bad::before { content: "FAIL  "; color: #e41e3f; font-weight: 700; }
 ul { list-style: none; padding: 0; }
 </style>
-<script src="site-config.js"></script><script src="sports-config.js"></script></head>
+<script src="site-config.js"></script><script src="sports-config.js"></script><script src="divisions-config.js"></script></head>
 <body>
 <h1>Recruit Score, Tier, And Confidence Tests</h1>
 <p>Runs every boundary, validation, color, label, sort, and filter test in your browser. Sample data only. Open this page and check the summary.</p>
@@ -195,6 +195,7 @@ test('Per-metric verification and interests API', function () {
   if (saved == null) localStorage.removeItem('theReadDemoInterests'); else localStorage.setItem('theReadDemoInterests', saved);
 });
 test('Department scope API: allPlayersFor filters by config sport', function () { var C = window.TheReadCoach, n = TheReadSports.list[0].name; yes(typeof C.allPlayersFor === 'function' && !!C.ours, 'API exposed'); var all = C.allPlayersFor(), b = C.allPlayersFor(n); yes(b.length > 0 && b.length <= all.length && b.every(function (p) { return p.sport === n; }), 'only ' + n); yes(all.every(function (p) { return TheReadSports.names.indexOf(p.sport) >= 0; }), 'every player sport is a launch sport'); });
+test('Division config: five associations, D3 has no athletic aid fields, no invented rule numbers', function () { var D = window.TheReadDivisions; eq(D.list.map(function (x) { return x.id; }).join(','), 'd1,d2,d3,naia,njcaa', 'ids'); yes(D.get('NCAA D3') === D.byId.d3, 'legacy signup value maps'); var d3 = D.byId.d3; eq(d3.aid, 'none', 'D3 aid'); yes(!d3.limitFields.some(function (f) { return f[0] === 'sa' || f[0] === 'su'; }), 'no scholarship fields for D3'); yes(D.byId.njcaa.kpis[0][0] === 'Transfers Placed', 'JUCO key metric'); D.list.forEach(function (x) { yes(x.links.length > 0 && x.sections.length > 0 && x.eligValues.indexOf('Not Provided') === 0, x.id + ' complete'); yes(!/\b\d{2,}\s*(scholarships|roster spots)/i.test(JSON.stringify(x)), x.id + ' has no hardcoded limits'); }); });
 test('Rankings row: Grad Class is the 4th column after Player Name', function () {
       var t = document.createElement('table'); t.innerHTML = '<tbody>' + D.rankingRowHtml(D.players[0]) + '</tbody>';
       var cells = t.querySelectorAll('tr > *');

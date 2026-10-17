@@ -22,11 +22,16 @@
   var csv = function (rows) { return rows.map(function (r) { return r.map(function (c) { var s = String(c == null ? '' : c); return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; }).join(','); }).join('\r\n'); };
   var download = function (name, text) { var u = URL.createObjectURL(new Blob([text], { type: 'text/csv' })); var a = document.createElement('a'); a.href = u; a.download = name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(function () { URL.revokeObjectURL(u); }, 1000); };
 
+  var DV = window.TheReadDivisions, DIVC = DV ? DV.current() : null, DIV = DIVC && DIVC.div;
+  if (!DIV) return;
+  var divName = function () { return DIV.name + (DIVC.sub ? ' (' + DIVC.sub + ')' : ''); };
+  var dvSel = function () { return '<label>Division View <select id="ad-div">' + DV.list.map(function (x) { return '<option value="' + x.id + '"' + (x.id === DIV.id ? ' selected' : '') + '>' + esc(x.name) + '</option>'; }).join('') + '</select></label>'; };
   var DEPT_TABS = [
     ['Overview', 'department-overview.html'], ['Sports', 'department-sports.html'], ['Finances', 'department-finances.html'],
     ['Roster & Scholarships', 'department-roster.html'], ['Compliance', 'department-compliance.html'], ['Staff & Permissions', 'department-staff.html'],
     ['Calendar', 'department-calendar.html'], ['Reports & Data', 'department-reports.html'], ['Billing', 'department-billing.html'], ['Settings', 'department-settings.html']
   ];
+  if (DIV.tabs) DEPT_TABS.forEach(function (t) { if (DIV.tabs[t[0]]) t[0] = DIV.tabs[t[0]]; });
   var SCOPED_DEPT = ['department-overview.html', 'department-finances.html', 'department-roster.html', 'department-compliance.html', 'department-staff.html', 'department-calendar.html', 'department-reports.html'];
   var page = (location.pathname.split('/').pop() || '').toLowerCase();
   var withCtx = function (href) { return CTX ? href + (href.indexOf('?') < 0 ? '?' : '&') + 'dsport=' + encodeURIComponent(CTX.id) : href; };
@@ -48,15 +53,17 @@
     if (CTX) {
       var opts = '<option value="">All Sports</option>' + SP.list.filter(function (s) { return subscribed(d, s); }).map(function (s) { return '<option value="' + s.id + '"' + (s.id === CTX.id ? ' selected' : '') + '>' + esc(s.name) + '</option>'; }).join('');
       html += '<div class="ad-crumbs"><nav aria-label="Breadcrumb"><a href="department-overview.html" data-noctx>Athletic Department</a> &rsaquo; <a href="department-sports.html" data-noctx>Sports</a> &rsaquo; <strong>' + esc(CTX.name) + '</strong></nav>' +
-        '<span class="ad-tools"><a href="department-sports.html" data-noctx>&larr; Back To All Sports</a><label>Switch Sport <select id="ad-switch">' + opts + '</select></label><span class="pill" title="Change in Staff &amp; Permissions">Department Access: ' + (d.perms.edit ? 'Edit Enabled' : 'Read-Only') + '</span></span></div>';
+        '<span class="ad-tools"><a href="department-sports.html" data-noctx>&larr; Back To All Sports</a><label>Switch Sport <select id="ad-switch">' + opts + '</select></label>' + dvSel() + '<span class="pill" title="Change in Staff &amp; Permissions">Department Access: ' + (d.perms.edit ? 'Edit Enabled' : 'Read-Only') + '</span></span></div>';
       html += '<nav class="dept-subnav" aria-label="Athletic Department tabs"><span class="ws-label">Athletic Department</span>' + DEPT_TABS.filter(function (t) { return SCOPED_DEPT.indexOf(t[1]) >= 0; }).map(function (t) { return tab(t[0], t[1], true); }).join('') + '<a class="ws-out" href="department-overview.html" data-noctx>All Sports View</a></nav>';
       html += '<nav class="coach-subnav" aria-label="Program tabs for ' + esc(CTX.name) + '"><span class="ws-label">Program: ' + esc(CTX.name) + '</span>' + coachLinks.map(function (c) { return tab(c[0], c[1], true); }).join('') + '</nav>';
     } else if (isDept) {
-      html += '<div class="ad-crumbs"><nav aria-label="Breadcrumb"><strong>Athletic Department</strong> &rsaquo; All Sports</nav><span class="ad-tools"><a href="department-sports.html" data-noctx>Pick A Sport To Open Its Full Workspace &rarr;</a></span></div>';
+      html += '<div class="ad-crumbs"><nav aria-label="Breadcrumb"><strong>Athletic Department</strong> &rsaquo; All Sports</nav><span class="ad-tools"><a href="department-sports.html" data-noctx>Pick A Sport To Open Its Full Workspace &rarr;</a>' + dvSel() + '<span class="pill">' + esc(divName()) + '</span></span></div>';
       html += '<nav class="dept-subnav" aria-label="Athletic Department workspace"><span class="ws-label">Athletic Department</span>' + DEPT_TABS.map(function (t) { return tab(t[0], t[1], false); }).join('') + '</nav>';
     } else return;
     var wrap = document.createElement('div'); wrap.className = 'ad-nav'; wrap.innerHTML = html;
     old.parentNode.replaceChild(wrap, old);
+    var dsel = document.getElementById('ad-div');
+    if (dsel) dsel.addEventListener('change', function () { DV.set(dsel.value, ''); location.reload(); });
     var sw = document.getElementById('ad-switch');
     if (sw) sw.addEventListener('change', function () {
       if (!sw.value) { location.href = 'department-overview.html'; return; }
@@ -99,23 +106,32 @@
       (off.length ? '<p class="coach-note">Not Subscribed: ' + off.map(function (s) { return esc(s.name); }).join(', ') + '. <a href="department-billing.html">Manage In Billing</a>.</p>' : '');
   };
 
+  var refLinks = function () { return '<p class="coach-note"><strong>Verify With Your Compliance Office / Official Governing Body.</strong> ' + DIV.links.map(function (l) { return '<a href="' + l[1] + '" target="_blank" rel="noopener">' + esc(l[0]) + '</a>'; }).join(' &middot; ') + '. THE READ does not supply rule numbers; every limit here is entered by you.</p>'; };
   P.roster = function (root, d) {
-    var list = sportsShown(d);
+    var list = sportsShown(d), F = DIV.limitFields;
     var rows = list.map(function (s) {
-      var l = d.lim[s.id] || {}, f = function (k, lab) { return '<td><input type="number" min="0" step="0.1" data-s="' + s.id + '" data-k="' + k + '" value="' + (l[k] == null ? '' : l[k]) + '" aria-label="' + esc(s.name + ' ' + lab) + '"></td>'; };
-      var rem = l.sa != null && l.su != null ? (l.sa - l.su).toFixed(1) : '&mdash;', rr = l.rl != null && l.rs != null ? (l.rl - l.rs) : '&mdash;';
-      return '<tr><th scope="row">' + esc(s.name) + '</th>' + f('rs', 'Roster Size') + f('rl', 'Roster Limit') + f('sa', 'Scholarship Equivalencies Available') + f('su', 'Scholarship Equivalencies Used') + '<td>' + rr + '</td><td>' + rem + '</td></tr>';
+      var l = d.lim[s.id] || {};
+      var cells = F.map(function (f) { return '<td><input type="number" min="0" step="0.1" data-s="' + s.id + '" data-k="' + f[0] + '" value="' + (l[f[0]] == null ? '' : l[f[0]]) + '" aria-label="' + esc(s.name + ' ' + f[1]) + '"></td>'; }).join('');
+      var rr = l.rl != null && l.rs != null ? (l.rl - l.rs) : '&mdash;';
+      return '<tr><th scope="row">' + esc(s.name) + '</th>' + cells + '<td>' + rr + '</td></tr>';
     });
-    var t = d.t9;
-    var tf = function (k, lab) { return '<div class="field"><label for="t9-' + k + '">' + lab + '</label><input id="t9-' + k + '" type="number" min="0" step="1" data-t9="' + k + '" value="' + (t[k] == null ? '' : t[k]) + '"></div>'; };
+    var head = ['Sport'].concat(F.map(function (f) { return f[1]; }), ['Roster Spots Left']);
+    var t = d.t9, tf = function (k, lab) { return '<div class="field"><label for="t9-' + k + '">' + lab + '</label><input id="t9-' + k + '" type="number" min="0" step="1" data-t9="' + k + '" value="' + (t[k] == null ? '' : t[k]) + '"></div>'; };
     var pct = t.mp != null && t.wp != null && t.mp + t.wp > 0 ? (100 * t.wp / (t.mp + t.wp)).toFixed(1) + '% Women' : '&mdash;';
+    var hasT9 = DIV.sections.some(function (x) { return /Title IX/.test(x); });
+    var C = CR(), B = C.Board, ps = allPlayers(CTX && CTX.name).filter(function (p) { return B && B.has(p.id) && !p.committed; });
+    var el = d.elig || {};
+    var eligTbl = ps.length ? table(['Prospect', 'Sport', DIV.eligLabel], ps.map(function (p) { return '<tr><th scope="row">' + esc(p.name) + '</th><td>' + esc(p.sport) + '</td><td><select data-elig="' + esc(p.id) + '" aria-label="' + esc(DIV.eligLabel + ' for ' + p.name) + '">' + DIV.eligValues.map(function (v) { return '<option' + ((el[p.id] || 'Not Provided') === v ? ' selected' : '') + '>' + v + '</option>'; }).join('') + '</select></td></tr>'; }), 'Prospect eligibility statuses') : empty('No prospects on the Recruiting Board yet.');
     root.innerHTML = '<div class="coach-grid">' +
-      card('Roster &amp; Scholarship Equivalency By Sport', '<p class="coach-note">Enter your own numbers. NCAA and conference limits differ by sport and division, so THE READ does not supply them. Blank means not entered, and nothing here is treated as zero.</p>' + table(['Sport', 'Roster Size', 'Roster Limit', 'Equivalencies Available', 'Equivalencies Used', 'Roster Spots Left', 'Equivalencies Left'], rows, 'Roster and scholarship equivalency by sport'), 'wide') +
-      card('Gender Equity / Title IX Snapshot', '<p class="coach-note">Informational only, from numbers you enter. This is not a compliance determination; confirm with your compliance office and counsel.</p><div class="form-grid">' + tf('mp', 'Men\u2019s Participants') + tf('wp', 'Women\u2019s Participants') + tf('ms', 'Men\u2019s Scholarship Dollars') + tf('ws', 'Women\u2019s Scholarship Dollars') + '</div><p><strong>Participation Split:</strong> ' + pct + '</p>') + '</div>';
+      card(DIV.aid === 'none' ? 'Roster &amp; Admissions Support' : 'Roster &amp; Aid By Sport', '<p class="coach-note">' + esc(DIV.financeNote) + ' Blank means not entered; nothing is treated as zero.</p>' + refLinks() + table(head, rows, 'Roster and aid by sport'), 'wide') +
+      card('Roster Fields Tracked (' + esc(DIV.short) + ')', '<ul class="dept-list">' + DIV.rosterFields.map(function (x) { return '<li>' + esc(x) + '</li>'; }).join('') + '</ul>') +
+      card(esc(DIV.eligLabel), '<p class="coach-note">Entered by staff or the athlete. Not checked against any official system and not verification.</p>' + eligTbl, 'wide') +
+      (hasT9 ? card('Gender Equity / Title IX Snapshot', '<p class="coach-note">Informational only, from numbers you enter. Not a compliance determination.</p><div class="form-grid">' + tf('mp', 'Men\u2019s Participants') + tf('wp', 'Women\u2019s Participants') + (DIV.aid === 'none' ? '' : tf('ms', 'Men\u2019s Scholarship Dollars') + tf('ws', 'Women\u2019s Scholarship Dollars')) + '</div><p><strong>Participation Split:</strong> ' + pct + '</p>') : '') + '</div>';
     on(root, 'change', function (e) {
       var i = e.target, dd = load();
       if (i.dataset.s) { dd.lim[i.dataset.s] = dd.lim[i.dataset.s] || {}; dd.lim[i.dataset.s][i.dataset.k] = num(i.value); save(dd); P.roster(root, dd); }
       else if (i.dataset.t9) { dd.t9[i.dataset.t9] = num(i.value); save(dd); P.roster(root, dd); }
+      else if (i.dataset.elig) { dd.elig = dd.elig || {}; dd.elig[i.dataset.elig] = i.value; save(dd); }
     });
   };
 
@@ -124,7 +140,7 @@
     var MS = window.TheReadMessaging, ths = MS && MS.listThreads ? MS.listThreads() : [];
     var rows = ths.map(function (t) { var last = t.messages[t.messages.length - 1] || {}; return '<tr><th scope="row">' + esc(t.name) + '</th><td>' + esc(t.role) + '</td><td>' + t.messages.length + '</td><td>' + esc((last.ts || '').replace('T', ' ')) + '</td><td>' + (t.role === 'Player' ? 'Athlete Contact: Check Minor And NCAA Contact Rules' : '&mdash;') + (t.blocked ? ' &middot; Blocked' : '') + (t.reported ? ' &middot; Reported' : '') + '</td></tr>'; });
     root.innerHTML = '<div class="coach-grid">' +
-      card('NCAA Calendar Reminders', '<ul class="dept-list"><li>Contact, evaluation, quiet, and dead periods differ by sport and division.</li><li>Always confirm dates on the official NCAA and conference calendars before scheduling any visit or contact. <a href="https://www.ncaa.org" target="_blank" rel="noopener">NCAA Official Site</a></li><li>Under-18 athletes: guardian visibility rules apply to coach messages. See Messaging Oversight below.</li></ul><p class="coach-note">These are reminders, not rules. THE READ does not supply or invent compliance dates. See also the <a href="department-schedule.html">Recruiting Schedule</a>.</p>') +
+      card('Calendar &amp; Compliance Reminders (' + esc(DIV.short) + ')', '<p class="coach-note">' + esc(DIV.calNote) + '</p><ul class="dept-list">' + DIV.sections.map(function (x) { return '<li>' + esc(x) + '</li>'; }).join('') + '</ul><p class="coach-note">Reminders only: THE READ does not supply or invent dates, limits or rules. Under-18 athletes: guardian visibility rules apply to coach messages.</p>' + refLinks()) +
       card('Your Compliance Dates', '<form id="cd-form" class="calc"><div class="form-grid"><div class="field"><label for="cd-d">Date</label><input id="cd-d" type="date" required></div><div class="field"><label for="cd-l">Label</label><input id="cd-l" required maxlength="80"></div><div class="field"><label for="cd-s">Sport</label><select id="cd-s"><option value="">All Sports</option>' + SP.list.map(function (s) { return '<option value="' + s.id + '">' + esc(s.name) + '</option>'; }).join('') + '</select></div></div><button class="button" type="submit">Add Date</button></form>' +
         (dates.length ? table(['Date', 'Sport', 'Label', ''], dates.map(function (x) { var s = SP.get(x.sport); return '<tr><td>' + esc(x.date) + '</td><td>' + esc(s ? s.name : 'All Sports') + '</td><td>' + esc(x.label) + '</td><td><button type="button" class="button button-secondary" data-cd-del="' + x.id + '">Remove</button></td></tr>'; }), 'Compliance dates') : empty('No dates entered yet.'))) +
       card('Messaging Oversight', (rows.length ? table(['Contact', 'Role', 'Messages', 'Last Message', 'Flags'], rows, 'Messaging oversight') : empty('No conversations yet.')) + '<p class="coach-note">Shows conversations saved in this browser. Real department-wide audit logging needs accounts and a server (roadmap).</p>', 'wide') + '</div>';
@@ -196,12 +212,37 @@
 
   P.settings = function (root, d) {
     var s = d.school;
-    root.innerHTML = '<form id="se-form" class="card coach-card calc"><h2>School Information</h2><div class="form-grid"><div class="field"><label for="se-n">School Name</label><input id="se-n" maxlength="100" value="' + esc(s.name) + '"></div><div class="field"><label for="se-m">Mascot</label><input id="se-m" maxlength="60" value="' + esc(s.mascot) + '"></div><div class="field"><label for="se-c">Brand Color</label><input id="se-c" type="color" value="' + esc(s.color || '#E41E3F') + '"></div><div class="field"><label for="se-l">Logo (Optional, Under 300 KB)</label><input id="se-l" type="file" accept="image/*"></div></div>' + (s.logo ? '<p><img src="' + esc(s.logo) + '" alt="School logo preview" style="max-height:80px"></p>' : '') + '<button class="button" type="submit">Save Settings</button><div id="se-out" role="status" aria-live="polite" class="callout"></div><p class="coach-note">Saved in this browser only.</p></form>';
+    root.innerHTML = '<form id="se-form" class="card coach-card calc"><h2>School Information</h2><div class="form-grid"><div class="field"><label for="se-dv">Division / Association</label><select id="se-dv">' + DV.list.map(function (x) { return '<option value="' + x.id + '"' + (x.id === DIV.id ? ' selected' : '') + '>' + esc(x.name) + '</option>'; }).join('') + '</select></div><div class="field"><label for="se-sb">Subdivision / Level</label><select id="se-sb"><option value="">Not Applicable</option>' + DIV.subs.map(function (x) { return '<option' + (x === DIVC.sub ? ' selected' : '') + '>' + esc(x) + '</option>'; }).join('') + '</select></div><div class="field"><label for="se-n">School Name</label><input id="se-n" maxlength="100" value="' + esc(s.name) + '"></div><div class="field"><label for="se-m">Mascot</label><input id="se-m" maxlength="60" value="' + esc(s.mascot) + '"></div><div class="field"><label for="se-c">Brand Color</label><input id="se-c" type="color" value="' + esc(s.color || '#E41E3F') + '"></div><div class="field"><label for="se-l">Logo (Optional, Under 300 KB)</label><input id="se-l" type="file" accept="image/*"></div></div>' + (s.logo ? '<p><img src="' + esc(s.logo) + '" alt="School logo preview" style="max-height:80px"></p>' : '') + '<button class="button" type="submit">Save Settings</button><div id="se-out" role="status" aria-live="polite" class="callout"></div><p class="coach-note">Saved in this browser only.</p></form>';
+    root.querySelector('#se-dv').addEventListener('change', function (e) { var x = DV.get(e.target.value), sb = root.querySelector('#se-sb'); sb.innerHTML = '<option value="">Not Applicable</option>' + x.subs.map(function (y) { return '<option>' + esc(y) + '</option>'; }).join(''); });
     root.querySelector('#se-form').addEventListener('submit', function (e) {
       e.preventDefault(); var dd = load(), f = root.querySelector('#se-l').files[0], out = root.querySelector('#se-out');
-      var fin = function (logo) { dd.school = { name: root.querySelector('#se-n').value.trim(), mascot: root.querySelector('#se-m').value.trim(), color: root.querySelector('#se-c').value, logo: logo }; save(dd); out.textContent = 'Settings saved.'; };
+      var fin = function (logo) { DV.set(root.querySelector('#se-dv').value, root.querySelector('#se-sb').value); dd.school = { name: root.querySelector('#se-n').value.trim(), mascot: root.querySelector('#se-m').value.trim(), color: root.querySelector('#se-c').value, logo: logo }; save(dd); out.textContent = 'Settings saved.'; if (root.querySelector('#se-dv').value !== DIV.id) location.reload(); };
       if (f) { if (f.size > 300000) { out.textContent = 'Logo is too large. Choose an image under 300 KB.'; return; } var r = new FileReader(); r.onload = function () { fin(String(r.result)); P.settings(root, load()); }; r.readAsDataURL(f); } else fin(dd.school.logo || '');
     });
+  };
+
+  var divExtras = function (root) {
+    if (!root) return;
+    var d = load(), list = sportsShown(d), tot = function (k) { var n = 0, any = false; list.forEach(function (s) { var v = (d.lim[s.id] || {})[k]; if (v != null) { n += v; any = true; } }); return any ? n : null; };
+    var C = CR(), B = C.Board, ps = allPlayers(CTX && CTX.name), el = d.elig || {};
+    var onB = ps.filter(function (p) { return B && B.has(p.id) && !p.committed; });
+    var pct = function (a, b) { return a != null && b ? Math.round(1000 * a / b) / 10 + '%' : 'Not Entered'; };
+    var admitted = onB.filter(function (p) { return el[p.id] === 'Admitted' || el[p.id] === 'Enrolled'; }).length, enrolled = onB.filter(function (p) { return el[p.id] === 'Enrolled'; }).length;
+    var ne = function (v) { return v == null ? 'Not Entered' : v; };
+    var K = { aidPct: function () { return pct(tot('su'), tot('sa')); }, aidUsed: function () { return ne(tot('su')); }, rosterLeft: function () { var l = tot('rl'), r = tot('rs'); return l != null && r != null ? l - r : 'Not Entered'; }, visits: function () { return ne(tot('ovu')); }, board: function () { return onB.length; }, admitted: function () { return admitted; }, yield: function () { return admitted ? Math.round(1000 * enrolled / admitted) / 10 + '%' : 'Not Entered'; }, placed: function () { return ne(tot('tp')); }, ready: function () { return ne(tot('gr')); } };
+    if (body.dataset.coachPage === 'department') {
+      var kp = '<section class="card coach-card"><h2>' + esc(DIV.short) + ' Key Numbers</h2><div class="kpi-row">' + DIV.kpis.map(function (k) { return '<div class="kpi"><span>' + esc(k[0]) + '</span><strong>' + K[k[1]]() + '</strong></div>'; }).join('') + '</div><p class="coach-note">From numbers you enter in Roster &amp; Scholarships and prospect statuses. Division: ' + esc(divName()) + (DIVC.chosen ? '' : ' (default until you choose one in Settings)') + '.</p></section>';
+      var g = root.querySelector('.coach-grid'); if (g) g.insertAdjacentHTML('afterbegin', kp); else root.insertAdjacentHTML('afterbegin', kp);
+    }
+    if (body.dataset.coachPage === 'finances') {
+      var note = '<section class="card coach-card"><h2>' + esc(DIV.short) + ' Finance Model</h2><p class="coach-note">' + esc(DIV.financeNote) + '</p></section>';
+      if (DIV.aid === 'none') {
+        root.innerHTML = note + '<section class="card coach-card"><h2>Recruiting Budget</h2><form class="calc" onsubmit="return false"><div class="form-grid"><div class="field"><label for="f-tb">Recruiting Travel Budget ($)</label><input id="f-tb" type="number" min="0" step="100"></div><div class="field"><label for="f-sp">Recruiting Spend So Far ($)</label><input id="f-sp" type="number" min="0" step="100"></div></div><div id="f-out" class="callout" role="status" aria-live="polite">Enter your numbers.</div><p class="coach-note">Division III does not award athletic scholarships, so no scholarship equivalency fields appear. Nothing is saved or sent.</p></form></section>';
+        var fo = function () { var tb = num(root.querySelector('#f-tb').value), sp = num(root.querySelector('#f-sp').value); root.querySelector('#f-out').innerHTML = tb != null && sp != null ? '<strong>Travel Budget Remaining:</strong> $' + (tb - sp).toLocaleString() : 'Enter your numbers.'; };
+        root.querySelectorAll('input').forEach(function (i) { i.addEventListener('input', fo); });
+      } else root.insertAdjacentHTML('afterbegin', note);
+    }
+    var banner = root.querySelector('.dept-note'); if (banner) banner.insertAdjacentHTML('beforeend', '<p class="coach-note">Reminder: ' + esc(DIV.reminder) + '</p>');
   };
 
   /* ---------- init ---------- */
@@ -209,6 +250,7 @@
     buildNav();
     var root = document.getElementById('coach-app'), k = body.dataset.deptPage;
     if (root && k && P[k]) { try { P[k](root, load()); } catch (e) { root.innerHTML = '<p class="coach-note">This page could not load. Please refresh.</p>'; if (window.console) console.error(e); } }
+    divExtras(root);
     if (!CTX) return;
     var scopeNote = document.createElement('p'); scopeNote.className = 'coach-note ad-scope'; scopeNote.textContent = 'Showing ' + CTX.name + ' only.';
     if (root) root.insertBefore(scopeNote, root.firstChild);

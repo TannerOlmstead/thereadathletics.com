@@ -1,39 +1,45 @@
-THE READ Athletics
+# THE READ Athletics
 
-Static recruiting-intelligence website for athletes, independent recruiting professionals, and athletic departments.
+Static recruiting-intelligence website for athletes, independent recruiting professionals, and athletic departments. Plain HTML, CSS, and JavaScript — no build step, no frameworks. See [ROADMAP.md](ROADMAP.md) for progress and what is still a placeholder.
 
-Site functions
+## Pages
 
-Page
-Purpose
-index.html
-Public landing page with platform details, recruiting workflow, access options, sport links, and entry points to every request flow.
-individual-signup.html
-Individual workspace request for coaches, scouts, instructors, and evaluators.
-institution-signup.html
-Athletic-department access request with institution details, sports selection, and upgrade support for individual accounts.
-player-signup.html
-Athlete profile request that captures graduation year, sports, positions, and college-role preferences.
-sport-guide.html
-Expandable field guide with recruiting terminology and evaluation context for eight sports.
-internal-preview.html
-Clearly labeled fictional-data product preview of a baseball recruiting workspace.
+| Page | Purpose |
+| --- | --- |
+| `index.html` | Landing page with three audience paths (athlete, coach/evaluator, institution), platform overview, scoring summary, workflow, and pricing. |
+| `player-signup.html` | Athlete profile request: graduation year, sports, positions, college-role preferences. |
+| `individual-signup.html` | Coach, scout, instructor, and evaluator workspace request. |
+| `institution-signup.html` | Athletic-department access request with sports multi-select and upgrade support. |
+| `contact.html` | Contact and demo request form. |
+| `features.html` | Hub for the three feature areas below. |
+| `objective-features.html` | Verified measurables, events, stats, benchmarks, eligibility, video, growth trends, locked grades. |
+| `evaluations.html` | Evaluation forms, trait ratings, references, fit questionnaires, multi-evaluator scores, notes, bias guardrails. |
+| `workflow.html` | Board stages, communication log, calendar, family portal, commitments, transfer portal, scholarship budget. |
+| `scoring.html` | How the six scores work, with objective and subjective kept separate. |
+| `sport-guide.html` | Expandable guide for eight sports. |
+| `internal-preview.html` | Product preview with clearly labeled **fictional** baseball data (8 switchable views). |
+| `pricing.html` | Free athlete profile, founding plan, program plan, demo scheduling. |
+| `faq.html` | FAQ plus comparison against spreadsheets and other tools. |
+| `security.html` | Roles, minors' data protection, FERPA awareness, visibility controls. |
+| `resources.html` + `article-*.html` | Resource index and three starter articles. |
+| `success-stories.html` | Placeholder; no testimonials exist yet. |
+| `privacy.html`, `terms.html` | **Draft placeholder text — needs lawyer review.** |
+| `sitemap.xml`, `robots.txt` | SEO basics. |
 
-Interactive behavior
+## Behavior
 
-All request forms validate required fields in the browser.
-Submission prepares a prefilled email to hello@thereadathletics.com; no account, billing, or server-side data storage is created.
-Institution links can preselect a role, upgrade request, or sport with query parameters such as ?role=School%20Admin, ?application=upgrade, or ?sport=baseball.
-Institution sports selection requires at least one sport and supports a select-all option.
-The internal preview switches its active navigation state and page heading without accessing real athlete data.
-The footer automatically displays the current year.
+- All request forms validate required fields in the browser (with inline error messages).
+- On a valid submit the form opens a prefilled email to hello@thereadathletics.com. Nothing is stored on a server; no accounts or billing exist.
+- `institution-signup.html` supports `?role=Head%20Coach`, `?application=upgrade`, and `?sport=baseball` (also `softball`, `football`, `basketball`, `soccer`, `volleyball`, `trackfield`, `wrestling`). Sports require at least one selection and include Select all.
+- The product preview uses fictional data only. Its menu switches the active view and page heading (links like `internal-preview.html#scores` open a specific view).
+- The sport guide and FAQ use native expand/collapse sections; the sport guide also has Expand all / Collapse all.
+- The header collapses to a Menu button on small screens. The footer year is filled in automatically.
 
-Files
+## Files
 
-styles.css contains the responsive scarlet, navy, and white visual system.
-script.js contains the form, query-parameter, and preview interactions.
-Each HTML page loads the shared stylesheet and script directly, so no build step is required.
+- `styles.css` — scarlet (#9E1B32), navy, and white design system, responsive.
+- `script.js` — navigation toggle, form validation and mailto, query parameters, select-all, preview switching.
 
-Local preview
+## Local preview
 
-Open index.html in a browser, or use the VS Code Live Server extension for automatic refresh while editing.
+Open `index.html` in a browser, or run a simple static server from this folder, for example `python -m http.server 8000` and visit http://localhost:8000.

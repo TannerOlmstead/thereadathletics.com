@@ -1983,3 +1983,23 @@ body.pc-open { overflow: hidden; }
 .cal-dlg{border:2px solid #14284B;border-radius:10px;padding:1rem 1.25rem;max-width:34rem;width:92vw;max-height:92vh;overflow:auto}.cal-dlg::backdrop{background:rgba(20,40,75,.55)}.cal-form label{display:block;margin:.5rem 0;font-weight:600}.cal-form input[type=text],.cal-form input[type=date],.cal-form input[type=time],.cal-form select,.cal-form textarea{display:block;width:100%;min-height:36px;margin-top:.2rem}.cal-row{display:grid;grid-template-columns:repeat(3,1fr);gap:.5rem}.cal-vis{border:1px solid #d6d9e0;margin:.5rem 0;padding:.5rem}.cal-chk{display:inline-block!important;margin-right:1rem!important;font-weight:400!important}
 @media (max-width:700px){.cal-dow-full{display:none}.cal-dow-short{display:inline}.cal-day{height:5rem;font-size:.7rem}.cal-ev{font-size:.65rem}.cal-ev-t{display:none}.cal-row{grid-template-columns:1fr}}
 .intro-list{margin:0 0 1rem;padding:.8rem 1rem .8rem 2rem;list-style:disc;background:#fff;border-left:4px solid var(--scarlet,#E41E3F)}.intro-list li{margin:.2rem 0;line-height:1.45}.lvl-code{display:inline-block;font-weight:700;color:#14284B;white-space:nowrap}.lvl-legend{font-size:.9rem}.lvl-legend abbr{text-decoration:underline dotted;cursor:help}
+
+/* Athlete signup wizard + guardian demo */
+.wiz-progress { display: flex; flex-wrap: wrap; gap: 6px; list-style: none; margin: 0 0 1rem; padding: 0; counter-reset: none; }
+.wiz-progress li { flex: 1 1 120px; padding: .5rem .6rem; background: #eef1f7; color: var(--navy); font-weight: 700; font-size: .85rem; clip-path: polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 10px 100%, 0 calc(100% - 10px)); }
+.wiz-progress li span { display: inline-block; min-width: 1.6em; text-align: center; background: var(--navy); color: #fff; border-radius: 50%; margin-right: 4px; }
+.wiz-progress li.on { background: var(--scarlet); color: #fff; }
+.wiz-progress li.on span { background: #fff; color: var(--scarlet); }
+.wiz-progress li.done { background: #d7deed; }
+.age-line { font-size: 1.1rem; }
+.photo-prev { width: 96px; height: 96px; object-fit: cover; border: 3px solid var(--scarlet); margin-top: .5rem; }
+.ver-row { margin: 0 0 1rem; }
+.review-list { display: grid; grid-template-columns: minmax(130px, 220px) 1fr; gap: 6px 14px; margin: 0 0 1rem; }
+.review-list dt { font-weight: 800; color: var(--navy); }
+.review-list dd { margin: 0; }
+.st-badge { display: inline-block; padding: .15rem .6rem; font-weight: 800; font-size: .8rem; text-transform: uppercase; background: #e5e9f2; color: var(--navy); }
+.st-verified, .st-confirmeddemo { background: #d8f0e0; color: #0f5a2c; }
+.st-pending, .st-requested { background: #fff1c9; color: #6b4a00; }
+.st-declined, .st-expired { background: #fde0e4; color: #9b1030; }
+.hero-list { max-width: 60ch; }
+@media (max-width: 560px) { .review-list { grid-template-columns: 1fr; } .wiz-progress li { flex-basis: 100%; } }

@@ -24,6 +24,7 @@ ul { list-style: none; padding: 0; }
 <ul id="results"></ul>
 <script src="classification.js"></script>
 <script src="classification.tests.js"></script>
+<script src="athlete-signup.js"></script>
 <script src="coach.js"></script>
 <script>
 (function () {
@@ -96,7 +97,24 @@ ul { list-style: none; padding: 0; }
     test('Sample JUCO/transfer players carry an entered eligibility; HS sample players do not', function () {
       var nonHs = D.players.filter(function (p) { return !p.entered && p.level !== 'High School'; });
       yes(nonHs.length > 0 && nonHs.every(function (p) { return p.elig >= 1; }), 'non-HS sample elig'); yes(D.players.filter(function (p) { return p.level === 'High School'; }).every(function (p) { return p.elig == null; }), 'HS blank');
-    });    test('Rankings row: Grad Class is the 4th column after Player Name', function () {
+    });    test('Role preference: text, category, missing is Not Provided', function () {
+      eq(D.prefTxt({}), 'Not Provided', 'missing'); eq(D.prefCat({ pref: null }), 'Not Provided', 'cat missing');
+      eq(D.prefTxt({ pref: { twoWay: 'Yes', emphasis: 'Pitcher first' } }), 'Two-Way (Pitcher first)', 'yes');
+      eq(D.prefTxt({ pref: { twoWay: 'No', role: 'Position Player', pos: 'SS' } }), 'Position Player (SS)', 'no pos');
+      eq(D.prefCat({ pref: { twoWay: 'No', role: 'Pitcher' } }), 'Pitcher', 'pitcher'); eq(D.prefCat({ pref: { twoWay: 'Not Sure' } }), 'Open / Not Sure', 'open');
+      yes(D.players.every(function (p) { return p.rs == null || typeof p.rs === 'number'; }), 'preference does not touch scores');
+    });
+    test('Athlete signup: age paths and guardian gating', function () {
+      var A = window.TheReadAthlete, yr = new Date().getFullYear();
+      eq(A.ageOf((yr - 20) + '-01-01') >= 19, true, 'adult age'); eq(A.ageOf((yr + 1) + '-01-01'), null, 'future dob invalid');
+      var base = { submitted: true, privacy: { list: true, contact: true, photo: true, metrics: true } };
+      yes(A.listed(Object.assign({ path: 'adult' }, base)), 'adult listed');
+      yes(!A.listed(Object.assign({ path: 'minor', guardian: { status: 'Pending', sent: Date.now(), share: {} } }, base)), 'pending minor not listed');
+      yes(!A.listed(Object.assign({ path: 'minor', guardian: { status: 'Declined', sent: Date.now(), share: {} } }, base)), 'declined minor not listed');
+      var v = Object.assign({ path: 'minor', guardian: { status: 'Verified', sent: Date.now(), share: { contact: false, photo: true, metrics: true } } }, base);
+      yes(A.listed(v), 'verified minor listed'); yes(!A.shares(v, 'contact'), 'guardian blocks contact'); yes(A.shares(v, 'photo'), 'both allow photo');
+      eq(A.gStatus({ guardian: { status: 'Pending', sent: Date.now() - 8 * 86400000 } }), 'Expired', 'expiry');
+    });        test('Rankings row: Grad Class is the 4th column after Player Name', function () {
       var t = document.createElement('table'); t.innerHTML = '<tbody>' + D.rankingRowHtml(D.players[0]) + '</tbody>';
       var cells = t.querySelectorAll('tr > *');
       yes(cells[2].classList.contains('c-name') && cells[3].classList.contains('c-grad'), 'order');

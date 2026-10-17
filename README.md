@@ -101,3 +101,6 @@ Open `index.html` in a browser, or run a simple static server from this folder, 
 - **Board breakdown (THE READ AI preview):** the Recruiting Board panel summarizes only the prospects on your board (by position vs top needs, Level/Class and eligibility, Priority mix, pipeline stage, Tier/Confidence, upcoming visits). It updates when you add/remove players or log actions, and never changes scores.
 
 - **workflow.html:** shows the built workflow and a per-role section; stages match the automated action-logged model. Unbuilt roles/features are labeled Coming Soon.
+
+- **Athlete signup (demo):** `player-signup.html` is a 7-step wizard with parent/guardian verification for minors (`guardian-verify.html`, demo code 000000). Logic lives in `athlete-signup.js` and saves to localStorage only; no email is sent, nothing is truly verified and passwords are never stored. Athlete-created players join the Master Database only when allowed (adults who opt in; minors after guardian verification).
+- **Role preference (baseball):** athlete-entered two-way / preferred role and coach-entered Projected College Role are context only and never change scores, Tier or Confidence.

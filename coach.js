@@ -110,6 +110,33 @@
   const LVL_ORDER = { 'High School': 1, 'JUCO': 2, '4-Year College / Transfer Portal': 3, 'Other': 4 };
   const lvlSort = (p) => (LVL_ORDER[p.level] || 4) * 10000 + (p.grad || 0);
   const eligSort = (p) => (p.level === 'High School' || p.elig == null || p.elig === '' ? null : Number(p.elig));
+  // Role preference is what the ATHLETE wants in college (an athlete preference, not a rating). Projected College Role is the coach's own entry. Neither changes Recruit Score, Tier or Confidence.
+  const PREF_POS = ['C', '1B', '2B', '3B', 'SS', 'LF', 'CF', 'RF', 'DH/UT'];
+  const PROJ_ROLES = ['Pitcher', 'Position Player', 'Two-Way'];
+  const prefTxt = (p) => {
+    const r = p.pref;
+    if (!r || !r.twoWay) return 'Not Provided';
+    if (r.twoWay === 'Yes') return 'Two-Way' + (r.emphasis ? ' (' + r.emphasis + ')' : '');
+    if (r.twoWay === 'No') return r.role ? r.role + (r.role === 'Position Player' && r.pos ? ' (' + r.pos + ')' : '') : 'Not Provided';
+    return r.twoWay;
+  };
+  const prefCat = (p) => {
+    const r = p.pref;
+    if (!r || !r.twoWay) return 'Not Provided';
+    if (r.twoWay === 'Yes') return 'Two-Way';
+    if (r.twoWay === 'No' && r.role === 'Pitcher') return 'Pitcher';
+    if (r.twoWay === 'No' && r.role === 'Position Player') return 'Position Player';
+    return 'Open / Not Sure';
+  };
+  const PREF_CATS = ['Two-Way', 'Pitcher', 'Position Player', 'Open / Not Sure', 'Not Provided'];
+  // Compare-only note for THE READ blurbs: athlete role preference is context, never a score input.
+  const roleNote = (list) => {
+    const given = list.filter((p) => p.pref && p.pref.twoWay);
+    if (!given.length) return 'Role preference (what an athlete wants in college) is Not Provided for these prospects, so it is not used here.';
+    const c = {}; given.forEach((p) => { const k = prefCat(p); c[k] = (c[k] || 0) + 1; });
+    return 'Athlete role preference is shown for context only: ' + Object.keys(c).map((k) => c[k] + ' ' + k).join(', ') + ' (' + (list.length - given.length) + ' Not Provided). Two-way players are evaluated for pitching and hitting separately, and preference never changes Recruit Score, Tier or Confidence.';
+  };
+  const projTxt = (p) => p.projRole || 'Not Provided';
   const bl = (a) => '<ul class="coach-note md-note intro-list">' + a.map((x) => '<li>' + x + '</li>').join('') + '</ul>';
   const LVL_LEGEND = '<p class="coach-note lvl-legend"><strong>Level / Class codes:</strong> <abbr title="High School">HS</abbr> = high school, <abbr title="Junior college">JUCO</abbr> = junior college, <abbr title="Transfer: 4-year college player in the transfer portal">Tr</abbr> = 4-year college transfer portal, followed by the graduating class (example: HS 2027, Tr 2029). <strong>Eligibility Left</strong> is the years of eligibility entered for that player; N/A = high school, Not Provided = not entered (never assumed).</p>';
   // Master Database: coach-entered demo players live in this browser's localStorage and join the sample players here,
@@ -120,12 +147,32 @@
   loadAdded().forEach((a) => {
     if (!a || !a.id || !a.name || POS.indexOf(a.pos) < 0) return;
     const p = Object.assign({ sec: '', twoWay: false, state: '', method: 'Coach Entry (Unverified)', notes: '', eval: '', links: {}, ht: null, wt: null, gpa: null,
-      staff: null, fit: null, need: null, adj: null, pri: null, hc: null, pc: null, ac: null, committed: '', coach: '', action: '', level: 'High School', photo: '', elig: null }, a, { entered: true });
+      staff: null, fit: null, need: null, adj: null, pri: null, hc: null, pc: null, ac: null, committed: '', coach: '', action: '', level: 'High School', photo: '', elig: null, projRole: '', pref: null }, a, { entered: true });
+    if (PROJ_ROLES.indexOf(p.projRole) < 0) p.projRole = '';
     if (LEVELS.indexOf(p.level) < 0) p.level = 'Other';
     if (p.photo && !/^https?:\/\/\S+$/i.test(p.photo)) p.photo = '';
     ['opg', 'sopg', 'dpg', 'sdpg', 'ppg', 'ath', 'rs', 'conf'].forEach((k) => { p[k] = null; });
     players.push(p);
   });
+  // Athlete-created demo profiles (athlete-signup.js). Minors appear only after guardian verification; shared fields follow athlete and guardian choices.
+  (() => {
+    let recs = [];
+    try { recs = JSON.parse(localStorage.getItem('theReadDemoAthletes') || '[]'); } catch (e) { recs = []; }
+    if (!Array.isArray(recs) || !window.TheReadAthlete) return;
+    recs.forEach((r) => {
+      if (!r || !r.id || POS.indexOf(r.pos) < 0 || !window.TheReadAthlete.listed(r)) return;
+      const A = window.TheReadAthlete, m = r.metrics || {}, share = (k) => A.shares(r, k), gv = r.path !== 'adult';
+      const p = { id: 'ATH-' + r.id.replace(/[^a-z0-9]/gi, '').slice(-6).toUpperCase(), name: r.name, grad: r.grad, pos: r.pos, sec: r.sec || '', twoWay: !!(r.rolePref && r.rolePref.twoWay === 'Yes'), state: r.state || '', hs: r.school || '',
+        method: 'Athlete-Created (Self-Reported' + (A.anyVerified(r) ? ', some metrics verified by third party (demo)' : ', Unverified') + ')', notes: 'Athlete-Created' + (gv ? '; Guardian-Verified (demo)' : '') + '. Contact info ' + (share('contact') ? 'shared by athlete.' : 'Not shared.'),
+        eval: '', links: {}, ht: null, wt: null, gpa: null, staff: null, fit: null, need: null, adj: null, pri: null, hc: null, pc: null, ac: null, committed: '', coach: '', action: '',
+        level: LEVELS.indexOf(r.level) < 0 ? 'Other' : r.level, photo: share('photo') ? r.photo || '' : '', elig: r.elig == null ? null : r.elig, entered: true, athleteCreated: true, guardianVerified: gv, pref: r.rolePref || null, projRole: '' };
+      ['opg', 'sopg', 'dpg', 'sdpg', 'ppg', 'ath', 'rs', 'conf', 'pop', 'avgEV', 'maxEV', 'avgFBV', 'maxFBV', 'tv', 't60'].forEach((k) => { p[k] = share('metrics') && m[k] != null ? m[k] : null; });
+      if (share('metrics')) { p.ht = m.ht == null ? null : m.ht; p.wt = m.wt == null ? null : m.wt; }
+      ['rs', 'conf', 'ath'].forEach((k) => { p[k] = null; });
+      players.push(p);
+    });
+  })();
+  players.forEach((p) => { if (p.pref === undefined) p.pref = null; if (p.projRole === undefined) p.projRole = ''; });
   players.forEach((p) => { p.tier = TRC.getPlayerTier(p.rs); p.confLevel = TRC.getConfidenceLevel(p.conf); p.recruitScore = p.rs; p.confidencePercentage = p.conf; });
   // ---------- Program scores: documented formulas, no random numbers ----------
   const PHIL_OPTS = ['Prefer Pitching', 'Prefer Position Players', 'Balanced Approach', 'Best Player Available', 'Need-Based Recruiting'];
@@ -591,6 +638,7 @@
       '<label>Position<select id="f-pos"><option value="">All</option>' + POS.map((x) => '<option>' + x + '</option>').join('') + '</select></label>' +
       '<label>Class<select id="f-class"><option value="">All</option>' + [2027, 2028, 2029, 2030].map((g) => '<option>' + g + '</option>').join('') + '</select></label>' +
       '<label>Playing Level<select id="f-level"><option value="">All</option>' + LEVELS.map((x) => '<option>' + x + '</option>').join('') + '</select></label>' +
+      '<label>Role Preference<select id="f-pref"><option value="">All</option>' + PREF_CATS.map((x) => '<option>' + x + '</option>').join('') + '</select></label>' +
       checks('tier', 'Tier', TRC.TIER_NAMES) + checks('conf', 'Confidence', TRC.CONFIDENCE_NAMES) +
       '<button type="button" class="button button-secondary" id="r-reset">Reset</button>' +
       LVL_LEGEND + '</form><p class="coach-count" id="r-count" role="status"></p><div class="table-wrap"><table id="r-table" class="rd-table"></table></div>' +
@@ -601,10 +649,10 @@
     const tbl = $('#r-table', root);
     const picked = (name) => Array.from(root.querySelectorAll('input[name="' + name + '"]:checked')).map((i) => i.value);
     function draw() {
-      const fp = $('#f-pos', root).value, fc = $('#f-class', root).value, fl = $('#f-level', root).value;
+      const fp = $('#f-pos', root).value, fc = $('#f-class', root).value, fl = $('#f-level', root).value, fr = $('#f-pref', root).value;
       let list = TRC.filterAthletes(players, {
         search: $('#f-q', root).value, tiers: picked('tier'), confidences: picked('conf'),
-        extra: (p) => (!fp || p.pos === fp) && (!fc || String(p.grad) === fc) && (!fl || p.level === fl)
+        extra: (p) => (!fp || p.pos === fp) && (!fc || String(p.grad) === fc) && (!fl || p.level === fl) && (!fr || prefCat(p) === fr)
       });
       const k = state.key, dir = state.dir === 1 ? 'asc' : 'desc';
       if (k === 'rs') list = TRC.sortAthletes(list, 'recruitScore', dir);
@@ -791,7 +839,7 @@
     const open = panel.hidden; panel.hidden = !open; b.setAttribute('aria-expanded', open ? 'true' : 'false');
   });  function photoHead(p) {
     const img = p.photo ? '<img src="' + esc(p.photo) + '" alt="Profile photo of ' + esc(p.name) + '" loading="lazy" referrerpolicy="no-referrer">' : SIL;
-    return '<div class="pc-head"><div class="pc-photo">' + img + '</div><div><h2 class="pc-name">' + esc(p.name) + '</h2><p class="pc-sub">' + esc(p.pos) + ' \u00b7 Class of ' + p.grad + ' \u00b7 ' + esc(p.state) + ' \u00b7 ' + esc(LEVEL_SHORT[p.level] || p.level) + '</p><p class="coach-note">' + (p.photo ? 'Photo provided with the profile.' : 'No athlete-provided photo yet. Photos appear here only when the athlete adds one.') + ' Sample Data / Fictional Example.</p><button type="button" class="button button-primary pc-connect-btn" data-connect aria-expanded="false" aria-controls="pc-connect-' + p.id + '">Connect</button></div></div>' + connectHtml(p);
+    return '<div class="pc-head"><div class="pc-photo">' + img + '</div><div><h2 class="pc-name">' + esc(p.name) + '</h2><p class="pc-sub">' + esc(p.pos) + ' \u00b7 Class of ' + p.grad + ' \u00b7 ' + esc(p.state) + ' \u00b7 ' + esc(LEVEL_SHORT[p.level] || p.level) + '</p><p class="pc-sub pc-role">Role Preference: ' + esc(prefTxt(p)) + ' <span class="pill gray">Athlete Preference, Not A Rating</span> &middot; Projected College Role: ' + esc(projTxt(p)) + ' <span class="pill amber">Coach-Entered</span>' + (p.athleteCreated ? ' <span class="pill navy">Athlete-Created</span>' + (p.guardianVerified ? ' <span class="pill green">Guardian-Verified (Demo)</span>' : '') : '') + '</p><p class="coach-note">' + (p.photo ? 'Photo provided with the profile.' : 'No athlete-provided photo yet. Photos appear here only when the athlete adds one.') + ' Sample Data / Fictional Example.</p><button type="button" class="button button-primary pc-connect-btn" data-connect aria-expanded="false" aria-controls="pc-connect-' + p.id + '">Connect</button></div></div>' + connectHtml(p);
   }
   function openCardModal(id, opener) {
     const p = byId[id]; if (!p) return;
@@ -998,7 +1046,7 @@
       card('Biggest Needs', miniTable(['Rank', 'Need'], [tr(['#1 Need', 'Pitcher (Positional)']), tr(['#2 Need', 'Catcher (Positional)']), tr(['#3 Need', 'Defense (Skill)']), tr(['#4 Need', 'Shortstop (Positional)']), tr(['#5 Need', 'Long-Term Projection (Priority)'])], 'Biggest needs')) +
       card('Team Breakdown', miniTable(['Type', 'Top Item'], [tr(['Positional Need', 'P']), tr(['Skill Need', 'Pitching']), tr(['Program Priority', 'Long-Term Projection'])], 'Team breakdown')) +
       card('Recruiting Philosophy (Rank 1\u20135)', '<form id="philo-form" class="philo" onsubmit="return false">' + bl(['<strong>Rank every approach from 1 (most important) to 5.</strong>', '<strong>Use each rank once.</strong> Duplicates are rejected.', '<strong>Your ranks feed Coach Fit and Priority Score.</strong> See How This Is Calculated.']) + '<div class="form-grid">' + PHIL_OPTS.map((x, i) => '<label>' + x + '<select name="ph' + i + '" aria-label="Rank for ' + x + '">' + [1, 2, 3, 4, 5].map((n) => '<option' + (PHIL[i] === n ? ' selected' : '') + '>' + n + '</option>').join('') + '</select></label>').join('') + '</div><ul class="md-errors" id="philo-errors" role="alert"></ul><div class="md-actions"><button type="submit" class="button button-primary">Save Rankings</button> <button type="button" class="button button-secondary" id="philo-reset">Reset To Sample Default</button></div><p class="coach-note">Sample program settings, saved only in this browser. Team Needs are private to each program and are not stored in the shared Master Database.</p></form>') +
-      '</div>' + formulaPanel() + theRead('Sample program (fictional): ' + OUR + '. These private team settings feed Coach Fit and Team Need Score for this program only. Your rank 1 philosophy carries the most weight (rank 1 = 5 points down to rank 5 = 1 point), and the same player will score differently for a program with different rankings. Changing the ranks updates every score in this workspace immediately, but never a player\u2019s Tier or Confidence.');
+      '</div>' + formulaPanel() + theRead('Sample program (fictional): ' + OUR + '. These private team settings feed Coach Fit and Team Need Score for this program only. Your rank 1 philosophy carries the most weight (rank 1 = 5 points down to rank 5 = 1 point), and the same player will score differently for a program with different rankings. Changing the ranks updates every score in this workspace immediately, but never a player\u2019s Tier or Confidence. ' + roleNote(players));
     $('#philo-form', root).addEventListener('submit', (e) => {
       e.preventDefault();
       const v = PHIL_OPTS.map((x, i) => parseInt(e.target.elements['ph' + i].value, 10));
@@ -1020,7 +1068,7 @@
       card('Fit Factors', '<ul class="plain-list"><li>Recruit Score</li><li>Athletic Score</li><li>Team Need Score</li><li>Primary Position Fit</li><li>Secondary Position Fit</li><li>Confidence Score</li><li>Staff Score</li><li>Adjusted Recruit Score</li><li>Priority Score</li></ul><p class="coach-note">Fit factor weights are set per program and are not published.</p>') +
       '</div>' +
       card('Top Coach Fit', miniTable(['Fit Rank', 'Player', 'Pos', 'Level / Class', 'Eligibility Left', 'Coach Fit Score', 'Recruit Score', 'Priority Score', '<span title="Simple average of Recruit Score, Coach Fit Score and Priority Score. Blank if any is missing." tabindex="0">Adjusted Priority Score</span>'], top.map((p, i) => '<tr><th scope="row">#' + (i + 1) + ' Fit</th><td>' + cardLink(p) + '</td><td>' + p.pos + '</td><td>' + lvlCell(p) + '</td><td>' + esc(eligTxt(p)) + '</td><td>' + p.fit + '</td><td>' + num(p.rs) + '</td><td>' + nv(p.pri) + '</td><td>' + num(adjPriority(p)) + '</td></tr>'), 'Top coach fit') + '<p class="coach-note">' + (top.length ? 'Shows only prospects on your recruiting board.' : 'Your board is empty, so there is nothing to rank yet. <a href="coach-recruiting-board.html">Add prospects to your board</a> first.') + ' Sample Data / Fictional Example.</p>' + LVL_LEGEND + '<p class="coach-note">Adjusted Priority Score = (Recruit Score + Coach Fit Score + Priority Score) &divide; 3.</p>') + formulaPanel() +
-      theRead('Coach Fit measures program fit, not talent. Recruit Score stays the same for every program; Coach Fit changes with each program\u2019s priorities. Adjusted Priority Score is the simple average of Recruit Score, Coach Fit and Priority, so a player with a high Recruit Score but a poor fit can rank below a slightly lower-rated player who fits what you need. Blank scores are never treated as 0.');
+      theRead('Coach Fit measures program fit, not talent. Recruit Score stays the same for every program; Coach Fit changes with each program\u2019s priorities. Adjusted Priority Score is the simple average of Recruit Score, Coach Fit and Priority, so a player with a high Recruit Score but a poor fit can rank below a slightly lower-rated player who fits what you need.       Blank scores are never treated as 0. ' + roleNote(Board.list()));
   };
 
   const boardFormula = () => '<section class="card coach-card how-calc"><h2>How This Is Calculated</h2><ul class="plain-list">' +
@@ -1209,7 +1257,7 @@
     const n2 = (k, d) => (p) => num(p[k], d);
     const COLS = [
       ['board', 'Recruiting Board', (p) => (Board.has(p.id) ? 1 : 0), (p) => boardBtn(p)],
-      ['src', 'Source', (p) => (p.entered ? 'Coach-Entered (Demo)' : 'Sample'), (p) => (p.entered ? '<span class="pill amber">Coach-Entered (Demo)</span> <button type="button" class="md-del" data-del="' + esc(p.id) + '" aria-label="Remove ' + esc(p.name) + '">Remove</button>' : '<span class="pill gray">Sample</span>')],
+      ['src', 'Source', (p) => (p.athleteCreated ? 'Athlete-Created' : p.entered ? 'Coach-Entered (Demo)' : 'Sample'), (p) => (p.athleteCreated ? '<span class="pill navy">Athlete-Created</span>' + (p.guardianVerified ? ' <span class="pill green">Guardian-Verified (Demo)</span>' : '') : p.entered ? '<span class="pill amber">Coach-Entered (Demo)</span> <button type="button" class="md-del" data-del="' + esc(p.id) + '" aria-label="Remove ' + esc(p.name) + '">Remove</button>' : '<span class="pill gray">Sample</span>')],
       ['id', 'Player ID', (p) => p.id, (p) => esc(p.id)],
       ['name', 'Player Name', (p) => p.name, (p) => cardLink(p)],
       ['grad', 'Grad Year', (p) => p.grad, (p) => p.grad],
@@ -1221,6 +1269,8 @@
       ['pos', 'Primary Position', (p) => p.pos, (p) => p.pos],
       ['sec', 'Secondary Position', (p) => p.sec, (p) => p.sec || '&mdash;'],
       ['twoWay', 'Two Way', (p) => (p.twoWay ? 1 : 0), (p) => (p.twoWay ? 'Yes' : 'No')],
+      ['pref', 'Role Preference (Athlete)', (p) => prefTxt(p), (p) => esc(prefTxt(p))],
+      ['proj', 'Projected College Role (Coach)', (p) => projTxt(p), (p) => esc(projTxt(p))],
       ['hs', 'High School', (p) => p.hs, (p) => (p.hs ? esc(p.hs) : '&mdash;')],
       ['state', 'State', (p) => p.state, (p) => p.state || '&mdash;'],
       ['gpa', 'GPA', (p) => p.gpa, n2('gpa', 2)],
@@ -1262,6 +1312,7 @@
       '<label>Bats<select name="bats">' + opt(['R', 'L', 'S'], 'Unknown') + '</select></label>' +
       '<label>Throws<select name="throws">' + opt(['R', 'L'], 'Unknown') + '</select></label>' +
       '<label class="md-check"><input name="twoWay" type="checkbox" /> Two Way Player</label>' +
+      '<label>Projected College Role (your evaluation, coach-entered)<select name="projRole">' + opt(PROJ_ROLES, 'Not Provided') + '</select></label>' +
       '<label>High School<input name="hs" type="text" maxlength="80" /></label>' +
       '<label>State (2 letters)<input name="state" type="text" maxlength="2" pattern="[A-Za-z]{2}" /></label>' +
       NUMS.map((n) => '<label>' + n[1] + '<input name="' + n[0] + '" type="text" inputmode="decimal" /></label>').join('') +
@@ -1277,18 +1328,19 @@
       '<label>Position<select id="md-pos">' + opt(POS, 'All') + '</select></label>' +
       '<label>Grad Year<select id="md-grad">' + opt([2026, 2027, 2028, 2029, 2030, 2031], 'All') + '</select></label>' +
       '<label>Current Playing Level<select id="md-level">' + opt(LEVELS, 'All') + '</select></label>' +
-      '<label>Source<select id="md-src"><option value="">All</option><option value="s">Sample</option><option value="a">Coach-Entered (Demo)</option></select></label>' +
+      '<label>Source<select id="md-src"><option value="">All</option><option value="s">Sample</option><option value="a">Coach-Entered (Demo)</option><option value="x">Athlete-Created</option></select></label>' +
+      '<label>Role Preference<select id="md-pref">' + opt(PREF_CATS, 'All') + '</select></label>' +
       '<button type="button" class="button button-secondary" id="md-reset">Reset</button></form>' +
       LVL_LEGEND + '<p class="coach-count" id="md-count" role="status"></p><div class="table-wrap md-wrap"><table id="md-table" class="rd-table md-table"></table></div>' +
       '<p class="coach-note">SAMPLE DATA / FICTIONAL EXAMPLE. Helper columns from the owner workbook are calculated, not stored.</p>' + theRead('This is the single list behind every other tab: ' + players.length + ' players, ' + players.filter((p) => p.entered).length + ' of them added by you. Added prospects show Not Rated and Unknown until the calculation service exists, so they sort last and are never scored 0. The Possible Duplicate column flags the same name and class appearing twice.');
     const tbl = $('#md-table', root);
     function kpis() {
       const k = $('#md-kpis', root);
-      k.innerHTML = kpi('Total Players', players.length) + kpi('Sample Players', players.filter((p) => !p.entered).length) + kpi('Coach-Entered (Demo)', players.filter((p) => p.entered).length) + kpi('Possible Duplicates', players.filter((p) => dupCount[dupKey(p)] > 1).length) + kpi('Missing 60 Time (Position Players)', players.filter((p) => p.pos !== 'P' && p.t60 == null).length);
+      k.innerHTML = kpi('Total Players', players.length) + kpi('Sample Players', players.filter((p) => !p.entered).length) + kpi('Coach-Entered (Demo)', players.filter((p) => p.entered && !p.athleteCreated).length) + kpi('Athlete-Created (Demo)', players.filter((p) => p.athleteCreated).length) + kpi('Possible Duplicates', players.filter((p) => dupCount[dupKey(p)] > 1).length) + kpi('Missing 60 Time (Position Players)', players.filter((p) => p.pos !== 'P' && p.t60 == null).length);
     }
     function draw() {
-      const q = $('#md-q', root).value.trim().toLowerCase(), fp = $('#md-pos', root).value, fg = $('#md-grad', root).value, fs = $('#md-src', root).value, fl = $('#md-level', root).value;
-      let list = players.filter((p) => (!fp || p.pos === fp) && (!fg || String(p.grad) === fg) && (!fl || p.level === fl) && (!fs || (fs === 'a') === !!p.entered) &&
+      const q = $('#md-q', root).value.trim().toLowerCase(), fp = $('#md-pos', root).value, fg = $('#md-grad', root).value, fs = $('#md-src', root).value, fl = $('#md-level', root).value, fr = $('#md-pref', root).value;
+      let list = players.filter((p) => (!fp || p.pos === fp) && (!fg || String(p.grad) === fg) && (!fl || p.level === fl) && (!fr || prefCat(p) === fr) && (!fs || (fs === 'x' ? !!p.athleteCreated : fs === 'a' ? !!p.entered && !p.athleteCreated : !p.entered)) &&
         (!q || [p.name, p.id, p.hs, p.state, p.pos, p.sec, p.notes, p.method].join(' ').toLowerCase().indexOf(q) >= 0));
       const col = COLS.filter((c) => c[0] === state.key)[0];
       list = list.slice().sort((a, b) => {
@@ -1328,7 +1380,7 @@
       rec.elig = null;
       if (v('elig') !== '' && rec.level !== 'High School') { const ev = Number(v('elig')); if (!Number.isInteger(ev) || ev < 0 || ev > 6) errs.push('Years Of Eligibility Left must be a whole number from 0 to 6.'); else rec.elig = ev; }
       if (rec.photo && !/^https?:\/\/\S+$/i.test(rec.photo)) errs.push('Profile Photo URL must start with http:// or https://.');
-      rec.bats = v('bats'); rec.throws = v('throws'); rec.twoWay = f.elements.twoWay.checked;
+      rec.bats = v('bats'); rec.throws = v('throws'); rec.twoWay = f.elements.twoWay.checked; rec.projRole = v('projRole');
       rec.hs = v('hs'); rec.state = v('state').toUpperCase(); rec.eval = v('eval'); rec.method = v('method') || 'Coach Entry (Unverified)'; rec.notes = v('notes');
       if (rec.sec && rec.sec === rec.pos) errs.push('Secondary Position must differ from Primary Position.');
       if (rec.state && !/^[A-Z]{2}$/.test(rec.state)) errs.push('State must be two letters.');
@@ -1691,7 +1743,7 @@
   pages.calendar = (root) => calendarPage(root, 'coach');
   pages.deptcal = (root) => calendarPage(root, 'dept');
   pages.athcal = (root) => calendarPage(root, 'athlete');
-  window.TheReadCoach = { players: players, rankingRowHtml: rankingRowHtml, priTierFrom: priTierFrom, stageFromEntries: stageFromEntries, buildIcs: buildIcs, Board: Board, Act: Act, Cal: Cal, lvlCode: lvlCode, eligTxt: eligTxt };
+  window.TheReadCoach = { players: players, rankingRowHtml: rankingRowHtml, priTierFrom: priTierFrom, stageFromEntries: stageFromEntries, buildIcs: buildIcs, Board: Board, Act: Act, Cal: Cal, lvlCode: lvlCode, eligTxt: eligTxt, prefTxt: prefTxt, prefCat: prefCat };
   document.addEventListener('DOMContentLoaded', () => {
     const root = document.getElementById('coach-app');
     const page = document.body.dataset.coachPage;

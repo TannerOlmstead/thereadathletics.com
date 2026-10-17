@@ -1945,3 +1945,9 @@ body.pc-open { overflow: hidden; }
 @media (max-width: 560px) { .pc-head { flex-direction: column; align-items: flex-start; } .pc-modal { padding: 0; } .pc-dialog { max-height: 100vh; height: 100vh; } }.site-header .container.nav-wrap { flex-wrap: wrap; }
 .nav-actions.ws-actions { order: 9; flex: 1 0 100%; margin-left: 0; justify-content: flex-end; border-top: 1px solid rgba(255,255,255,.35); padding: 6px 0 2px; }
 @media (max-width: 1100px) { .nav-actions.ws-actions { display: none; } }
+.pc-connect-btn { margin-top: .5rem; }
+.pc-connect { margin: 0 0 1rem; border-left: 6px solid #E41E3F; }
+.pc-connect[hidden] { display: none; }
+.pc-connect h4 { margin: .8rem 0 .3rem; color: #14284B; }
+.pc-vers { list-style: none; padding: 0; margin: 0; }
+.pc-ver { display: grid; gap: 2px; padding: .5rem .7rem; margin-bottom: .5rem; background: #f6f8fc; border: 1px solid #d6dcea; }

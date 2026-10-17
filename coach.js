@@ -394,9 +394,51 @@
 
   // Pop-up player card (opens from any player-name link; no page navigation)
   const SIL = '<svg viewBox="0 0 64 64" role="img" aria-label="No profile photo" focusable="false"><rect width="64" height="64" fill="#e9edf6"/><circle cx="32" cy="24" r="11" fill="#9aa6c0"/><path d="M10 62c2-16 12-24 22-24s20 8 22 24z" fill="#9aa6c0"/></svg>';
-  function photoHead(p) {
+  // Connect panel: sample contact and metric-verifier info. Fictional, deterministic by player; athlete shares only what they choose (demo flags).
+  const VERIFIERS = {
+    hs: { name: 'Coach Dana Whitlock (Fictional)', role: 'High School Coach', org: 'Fictional Ridge High School', email: 'dwhitlock@example.com', phone: '' },
+    pi: { name: 'Alex Moreno (Fictional)', role: 'Private Instructor', org: 'Fictional Diamond Performance Lab', email: '', phone: '(555) 010-0142' },
+    ev: { name: 'Sam Rivera (Fictional)', role: 'Showcase/Event Staff', org: 'Fictional Prospect Showcase Series', email: 'events@example.com', phone: '' }
+  };
+  const MET = [['Avg EV', 'avgEV'], ['Max EV', 'maxEV'], ['Avg FBV', 'avgFBV'], ['Max FBV', 'maxFBV'], ['Throwing Velo', 'tv'], ['60 Time', 't60'], ['Pop Time', 'pop']];
+  const VER_BY_METHOD = {
+    'Verified Event Data': [['ev', ['avgEV', 'maxEV', 'avgFBV', 'maxFBV', 't60', 'pop']], ['hs', ['tv']]],
+    'Showcase Data': [['pi', ['avgEV', 'maxEV', 'avgFBV', 'maxFBV']], ['hs', ['t60']]],
+    'Video Review': [['hs', ['t60', 'pop', 'tv']]]
+  };
+  const SCHOOLS_HS = ['Fictional Ridge High School', 'Fictional Lakeview Prep', 'Fictional Harbor High School', 'Fictional Summit Academy'];
+  function connectHtml(p) {
+    const n = Number(String(p.id).replace(/\D/g, '')) || 0, entered = !!p.entered;
+    const first = p.name.split(' ')[0].toLowerCase(), last = p.name.split(' ').slice(-1)[0].toLowerCase();
+    const shared = entered ? [] : [n % 3 === 0 ? ['Email', first + '.' + last + '@example.com'] : null, n % 4 === 0 ? ['Phone', '(555) 010-' + String(100 + n).slice(-4)] : null, n % 5 === 0 ? ['Social', '@' + first + '_' + last + '_fictional'] : null].filter(Boolean);
+    const org = entered ? 'Not provided (board entry)' : p.level === 'JUCO' ? 'Fictional ' + p.state + ' JUCO' : p.level === 'Transfer' ? 'Fictional ' + p.state + ' University (transfer portal)' : SCHOOLS_HS[n % 4];
+    const hasMet = MET.filter((m) => p[m[1]] != null);
+    const vers = entered ? [] : (VER_BY_METHOD[p.method] || []);
+    const done = {};
+    const vHtml = vers.map((v, vi) => {
+      const info = VERIFIERS[v[0]], ms = MET.filter((m) => v[1].indexOf(m[1]) >= 0 && p[m[1]] != null);
+      if (!ms.length) return '';
+      ms.forEach((m) => { done[m[1]] = 1; });
+      const date = '2026-0' + (3 + ((n + vi) % 6)) + '-' + String(10 + ((n * 3 + vi) % 15));
+      return '<li class="pc-ver"><strong>' + esc(info.name) + '</strong><span>' + esc(info.role) + ' \u00b7 ' + esc(info.org) + '</span><span>Verified: ' + ms.map((m) => m[0]).join(', ') + '</span><span>Verified on: ' + date + ' (sample date)</span><span>Contact: ' + (info.email || info.phone ? esc([info.email, info.phone].filter(Boolean).join(' \u00b7 ')) : 'Not shared') + '</span></li>';
+    }).join('');
+    const unv = hasMet.filter((m) => !done[m[1]]).map((m) => m[0]);
+    return '<section class="pc-connect card" id="pc-connect-' + p.id + '" hidden><h3>Connect: ' + esc(p.name) + '</h3>' +
+      '<p class="coach-note">SAMPLE DATA / FICTIONAL EXAMPLE. Contact sharing is controlled by the athlete: only fields the athlete chose to share appear here, and nothing is invented. Contact rules for athletes under 18 are still to be defined.</p>' +
+      '<h4>Athlete Contact</h4><div class="kvs">' + (shared.length ? shared.map((s) => field(s[0], esc(s[1]))).join('') : field('Contact Info', 'Not shared')) + '</div>' +
+      '<h4>Current School / Club / Level</h4><div class="kvs">' + field('School / Club', esc(org)) + field('Level', esc(p.level)) + '</div>' +
+      '<h4>Metric Verifiers</h4>' + (vHtml ? '<ul class="plain-list pc-vers">' + vHtml + '</ul>' : '') +
+      (entered || !vHtml ? '<p class="coach-note"><strong>Unverified / Coach-Entered.</strong> ' + (entered ? 'This prospect came from a college coach\u2019s own board, so no metric has been verified by a third party.' : 'No verifier on file for this player\u2019s metrics.') + '</p>' : '') +
+      (vHtml && unv.length ? '<p class="coach-note"><strong>Unverified / Coach-Entered:</strong> ' + unv.join(', ') + '.</p>' : '') +
+      '<p><a class="button button-outline" href="coach-connect.html">Request Intro (Not Live)</a> <span class="coach-note">Message sending is a placeholder tied to the Connect tab; it needs a backend.</span></p></section>';
+  }
+  document.addEventListener('click', (e) => {
+    const b = e.target.closest && e.target.closest('[data-connect]'); if (!b) return;
+    const panel = document.getElementById(b.getAttribute('aria-controls')); if (!panel) return;
+    const open = panel.hidden; panel.hidden = !open; b.setAttribute('aria-expanded', open ? 'true' : 'false');
+  });  function photoHead(p) {
     const img = p.photo ? '<img src="' + esc(p.photo) + '" alt="Profile photo of ' + esc(p.name) + '" loading="lazy" referrerpolicy="no-referrer">' : SIL;
-    return '<div class="pc-head"><div class="pc-photo">' + img + '</div><div><h2 class="pc-name">' + esc(p.name) + '</h2><p class="pc-sub">' + esc(p.pos) + ' \u00b7 Class of ' + p.grad + ' \u00b7 ' + esc(p.state) + ' \u00b7 ' + esc(LEVEL_SHORT[p.level] || p.level) + '</p><p class="coach-note">' + (p.photo ? 'Photo provided with the profile.' : 'No athlete-provided photo yet. Photos appear here only when the athlete adds one.') + ' Sample Data / Fictional Example.</p></div></div>';
+    return '<div class="pc-head"><div class="pc-photo">' + img + '</div><div><h2 class="pc-name">' + esc(p.name) + '</h2><p class="pc-sub">' + esc(p.pos) + ' \u00b7 Class of ' + p.grad + ' \u00b7 ' + esc(p.state) + ' \u00b7 ' + esc(LEVEL_SHORT[p.level] || p.level) + '</p><p class="coach-note">' + (p.photo ? 'Photo provided with the profile.' : 'No athlete-provided photo yet. Photos appear here only when the athlete adds one.') + ' Sample Data / Fictional Example.</p><button type="button" class="button button-primary pc-connect-btn" data-connect aria-expanded="false" aria-controls="pc-connect-' + p.id + '">Connect</button></div></div>' + connectHtml(p);
   }
   function openCardModal(id, opener) {
     const p = byId[id]; if (!p) return;

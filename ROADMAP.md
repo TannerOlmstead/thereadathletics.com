@@ -133,6 +133,8 @@ This site is plain HTML/CSS/JS with no build step. There is **no backend**: form
 - [x] Connect tab with JUCO / transfer portal section (sample entries only).
 - [x] Current Playing Level field, filters and columns.
 - [x] Workspace header (no Sign In / Get Started).
+- [x] Player Card Connect button (page and pop-up): athlete contact (shared fields only), school/club/level, metric verifiers (HS coach, private instructor, showcase staff) and Unverified / Coach-Entered labels; sample data only.
+- [ ] Define contact-sharing rules for athletes under 18, and how verifiers are confirmed (needs backend, accounts and consent).
 - [ ] Needs a backend: real grading storage per coach account, messaging, athlete photo upload, and whether Staff Score should weight into Priority Score.
 ## Open decisions (from the owner workbook; not built)
 

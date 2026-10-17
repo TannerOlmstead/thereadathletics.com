@@ -1890,3 +1890,23 @@ tbody th, .coach-card tbody th { background: #f1f4fa; color: var(--navy); text-t
   #r-table .c-name { grid-row: 1; background: transparent; }
   #r-table .c-rs { grid-row: 1; }
 }
+/* Master Database */
+.md-note { margin: 0 0 .8rem; }
+.md-msg { padding: 8px 12px; border-left: 4px solid var(--navy); background: #eef1f7; font-weight: 700; }
+.md-add { margin: 0 0 1rem; padding: 12px 16px; }
+.md-add summary { cursor: pointer; font-weight: 800; color: var(--navy); font-size: 1.05rem; }
+.md-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 10px 14px; margin-top: 12px; }
+.md-grid label { display: flex; flex-direction: column; gap: 4px; font-size: .85rem; font-weight: 700; }
+.md-grid input, .md-grid select, .md-grid textarea { font: inherit; padding: 6px 8px; border: 1px solid #9aa6bf; border-radius: 4px; }
+.md-grid .md-check { flex-direction: row; align-items: center; }
+.md-grid .md-wide { grid-column: 1 / -1; }
+.md-errors { color: #a1112b; font-weight: 700; margin: .6rem 0; padding-left: 1.1rem; }
+.md-errors:empty { display: none; }
+.md-actions { display: flex; flex-wrap: wrap; gap: 10px; }
+.md-wrap { max-height: 70vh; overflow: auto; }
+.md-table { font-size: .82rem; min-width: 2600px; }
+.md-table th, .md-table td { white-space: nowrap; }
+.md-table td:nth-child(36) { white-space: normal; min-width: 220px; }
+.md-del { font: inherit; font-size: .75rem; padding: 2px 8px; border: 1px solid var(--scarlet); background: #fff; color: var(--scarlet); cursor: pointer; border-radius: 3px; }
+.md-table th button { background: none; border: 0; color: inherit; font: inherit; font-weight: 800; text-transform: uppercase; cursor: pointer; padding: 0; }
+.md-table thead th { position: sticky; top: 0; z-index: 1; background: var(--navy); color: #fff; }

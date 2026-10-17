@@ -56,6 +56,10 @@ All logic lives in one shared module, `classification.js` (`window.TheReadClassi
 - Tests: open `tests.html` in a browser (runs `classification.tests.js` plus sample-data checks). No Node or build step is needed.
 - Server-side derivation, storage rules, and API validation are documented for a future backend; this static site derives everything in the browser from sample data.
 
+## Master Database
+
+`coach-master-database.html` is the first tab of the coach workspace and the single player data source: Rankings, Player Card, H2H, Dashboard and the other coach pages all read from it (via `coach.js`). It lists every sample player with the input columns from the owner workbook and has search, filters, sorting and an Add Player form. Added players are saved in this browser's localStorage only (a labeled demo); blank values stay blank, never 0, and Recruit Score/Confidence use the spec validation. Real shared storage needs a backend (see ROADMAP.md).
+
 ## Files
 
 - `classification.js` and `classification.tests.js` - shared Tier/Confidence/Recruit Score module and its tests (`tests.html`).

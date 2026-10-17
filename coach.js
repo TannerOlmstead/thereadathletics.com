@@ -98,16 +98,29 @@
   // Values are fictional; Tier and Confidence Level are always derived from these stored numbers.
   [[94.96, 89.96], [95, 90], [97.4, 72.5], [96.1, 54], [91.3, 93], [85, 60], [87.6, 41.5], [84.99, 95], [78.2, 70], [70, 59.99], [69.99, 91], [66.4, 64], [58.7, 47], [null, null], [null, null], [88, null]]
     .forEach((v, k) => { const p = players[k]; p.rs = v[0]; p.conf = v[1]; if (v[0] == null) p.adj = null; });
+  // Master Database: coach-entered demo players live in this browser's localStorage and join the sample players here,
+  // so every page (rankings, player card, H2H, dashboard...) reads the same list. Real storage needs a backend.
+  const STORE_KEY = 'theReadDemoMasterDb';
+  const loadAdded = () => { try { const a = JSON.parse(localStorage.getItem(STORE_KEY) || '[]'); return Array.isArray(a) ? a : []; } catch (e) { return []; } };
+  const saveAdded = (a) => { try { localStorage.setItem(STORE_KEY, JSON.stringify(a)); return true; } catch (e) { return false; } };
+  loadAdded().forEach((a) => {
+    if (!a || !a.id || !a.name || POS.indexOf(a.pos) < 0) return;
+    const p = Object.assign({ sec: '', twoWay: false, state: '', method: 'Coach Entry', notes: '', eval: '', links: {}, ht: null, wt: null, gpa: null,
+      staff: null, fit: null, need: null, adj: null, pri: null, hc: null, pc: null, ac: null, committed: '', coach: '', action: '' }, a, { entered: true });
+    try { if (p.rs != null) TRC.validateRecruitScore(p.rs); } catch (e) { p.rs = null; }
+    try { if (p.conf != null) TRC.validateConfidencePercentage(p.conf); } catch (e) { p.conf = null; }
+    players.push(p);
+  });
   players.forEach((p) => { p.tier = TRC.getPlayerTier(p.rs); p.confLevel = TRC.getConfidenceLevel(p.conf); p.recruitScore = p.rs; p.confidencePercentage = p.conf; });
   players.sort((a, b) => (a.rs == null ? 1 : b.rs == null ? -1 : b.rs - a.rs) || (a.name < b.name ? -1 : 1));
   const rated = players.filter((p) => p.rs != null);
   rated.forEach((p, i) => { p.overall = i + 1; });
   players.filter((p) => p.rs == null).forEach((p) => { p.overall = null; p.classRank = null; });
   [2027, 2028, 2029, 2030].forEach((g) => rated.filter((p) => p.grad === g).forEach((p, i) => { p.classRank = i + 1; }));
-  const bySc = players.slice().sort((a, b) => b.pri - a.pri);
+  const bySc = players.slice().sort((a, b) => (b.pri || 0) - (a.pri || 0));
   let tcount = { 1: 0, 2: 0, 3: 0 };
   bySc.forEach((p) => {
-    if (p.overall != null && p.grad === 2027 && (p.overall % 2 === 0 || p.overall % 5 === 0)) {
+    if (p.overall != null && !p.entered && p.grad === 2027 && (p.overall % 2 === 0 || p.overall % 5 === 0)) {
       p.committed = p.overall % 3 === 0 ? OUR : SCHOOLS[1 + (p.overall % 7)];
       p.commitDate = '2026-' + String(2 + (p.overall % 8)).padStart(2, '0') + '-' + String(3 + ((p.overall * 3) % 24)).padStart(2, '0');
       return;
@@ -469,7 +482,7 @@
   pages.fit = (root) => {
     const pr = [['Pitching Priority', 1], ['Defense Priority', 3], ['Athleticism Priority', 4], ['Speed Priority', 6], ['Power Priority', 5], ['Immediate Impact', 2], ['Long-Term Projection', 7]];
     const posPr = { P: 1, C: 2, SS: 3, OF: 4, '2B': 5, '3B': 6, '1B': 7 };
-    const top = players.filter((p) => !p.committed).sort((a, b) => b.fit - a.fit).slice(0, 10);
+    const top = players.filter((p) => !p.committed).sort((a, b) => (b.fit || 0) - (a.fit || 0)).slice(0, 10);
     root.innerHTML =
       '<div class="coach-grid">' +
       card('Priority Rankings', miniTable(['Priority', 'Rank (1\u20137)'], pr.map((x) => tr(x)), 'Priority rankings')) +
@@ -498,7 +511,7 @@
       theRead('Your private board (fictional): evaluation first, then priority. Players committed elsewhere are removed from the board automatically.');
     function draw() {
       const ft = $('#b-tier', root).value, fp = $('#b-pos', root).value;
-      const list = board.filter((p) => (!ft || String(p.board) === ft) && (!fp || p.pos === fp)).sort((a, b) => a.board - b.board || b.pri - a.pri);
+      const list = board.filter((p) => (!ft || String(p.board) === ft) && (!fp || p.pos === fp)).sort((a, b) => a.board - b.board || (b.pri || 0) - (a.pri || 0));
       $('#b-table', root).innerHTML = '<caption class="visually-hidden">Recruiting board (fictional data)</caption><thead><tr>' + ['Priority Tier', 'Player Name', 'Primary Position', 'Secondary Position', 'Class', 'State', 'Athletic Score', 'Recruit Score', 'Tier', 'Confidence', 'Adjusted Recruit Score', 'Priority Score', 'Evaluation Method', 'Player Notes'].map((h) => '<th scope="col">' + h + '</th>').join('') + '</tr></thead><tbody>' +
         list.map((p) => '<tr><td><span class="pill pill-t' + p.board + '">' + tierName[p.board] + '</span></td><td>' + cardLink(p) + '</td><td>' + p.pos + '</td><td>' + (p.sec || '&mdash;') + '</td><td>' + p.grad + '</td><td>' + p.state + '</td><td>' + num(p.ath) + '</td><td class="rd-num">' + TRC.formatRecruitScore(p.rs) + '</td><td>' + tierBadge(p) + '</td><td>' + confBadge(p) + '</td><td>' + rk(p.adj) + '</td><td>' + p.pri + '</td><td>' + p.method + '</td><td>' + esc(p.notes) + '</td></tr>').join('') + '</tbody>';
     }
@@ -595,13 +608,163 @@
   const deptBanner = (t) => '<aside class="read-note dept-note" aria-label="Sample summary"><strong class="tr">THE READ</strong> <span>' + t + '</span></aside>';
   const coachLink = '<div class="link-banner card"><div><h2>Also Coach? Open The Coach Workspace</h2><p>Athletic directors who coach \u2014 or want visibility into who coaches are recruiting \u2014 can use the coach workspace: rankings, player cards, recruiting board, team needs, and more (fictional sample data).</p></div><a class="button button-primary" href="coach-dashboard.html">Open Coach Workspace</a></div>';
 
+  pages.master = (root) => {
+    const state = { key: 'id', dir: 1 };
+    const NUMS = [
+      ['gpa', 'GPA', 0, 5, 0.01], ['ht', 'Height (inches)', 48, 90, 1], ['wt', 'Weight (lbs)', 80, 350, 1],
+      ['avgEV', 'Avg EV', 40, 130, 0.1], ['maxEV', 'Max EV', 40, 130, 0.1], ['avgFBV', 'Avg FBV', 40, 110, 0.1], ['maxFBV', 'Max FBV', 40, 110, 0.1],
+      ['tv', 'Throwing Velo', 40, 110, 0.1], ['t60', '60 Time (sec)', 5, 12, 0.01], ['pop', 'Pop Time (sec)', 1.5, 4, 0.01],
+      ['opg', 'OPG', 0, 100, 0.1], ['sopg', 'SOPG', 0, 100, 0.1], ['dpg', 'DPG', 0, 100, 0.1], ['sdpg', 'SDPG', 0, 100, 0.1], ['ppg', 'PPG', 0, 100, 0.1],
+      ['ath', 'Athletic Score', 0, 100, 0.1], ['rs', 'Recruit Score (0-100)', 0, 100, 0.01], ['conf', 'Confidence % (0-100)', 0, 100, 0.01]
+    ];
+    const LINKS = [['pbr', 'PBR Link'], ['pg', 'PG Link'], ['ncsa', 'NCSA Link'], ['video', 'Video Link'], ['twitter', 'Twitter/X']];
+    const dupKey = (p) => String(p.name).trim().toLowerCase() + '|' + p.grad;
+    const dupCount = {};
+    players.forEach((p) => { dupCount[dupKey(p)] = (dupCount[dupKey(p)] || 0) + 1; });
+    const link = (p) => LINKS.filter((l) => p.links && p.links[l[0]]).map((l) => '<a href="' + esc(p.links[l[0]]) + '" target="_blank" rel="noopener noreferrer">' + l[1].replace(' Link', '') + '</a>').join(' ') || '&mdash;';
+    const n2 = (k, d) => (p) => num(p[k], d);
+    const COLS = [
+      ['src', 'Source', (p) => (p.entered ? 'Added (Demo)' : 'Sample'), (p) => (p.entered ? '<span class="pill amber">Added (Demo)</span> <button type="button" class="md-del" data-del="' + esc(p.id) + '" aria-label="Remove ' + esc(p.name) + '">Remove</button>' : '<span class="pill gray">Sample</span>')],
+      ['id', 'Player ID', (p) => p.id, (p) => esc(p.id)],
+      ['name', 'Player Name', (p) => p.name, (p) => cardLink(p)],
+      ['grad', 'Grad Year', (p) => p.grad, (p) => p.grad],
+      ['bats', 'Bats', (p) => p.bats, (p) => p.bats || '&mdash;'],
+      ['throws', 'Throws', (p) => p.throws, (p) => p.throws || '&mdash;'],
+      ['pos', 'Primary Position', (p) => p.pos, (p) => p.pos],
+      ['sec', 'Secondary Position', (p) => p.sec, (p) => p.sec || '&mdash;'],
+      ['twoWay', 'Two Way', (p) => (p.twoWay ? 1 : 0), (p) => (p.twoWay ? 'Yes' : 'No')],
+      ['hs', 'High School', (p) => p.hs, (p) => (p.hs ? esc(p.hs) : '&mdash;')],
+      ['state', 'State', (p) => p.state, (p) => p.state || '&mdash;'],
+      ['gpa', 'GPA', (p) => p.gpa, n2('gpa', 2)],
+      ['ht', 'Height', (p) => p.ht, (p) => (p.ht == null ? '&mdash;' : ftin(p.ht))],
+      ['wt', 'Weight', (p) => p.wt, (p) => (p.wt == null ? '&mdash;' : p.wt)],
+      ['avgEV', 'Avg EV', (p) => p.avgEV, n2('avgEV')], ['maxEV', 'Max EV', (p) => p.maxEV, n2('maxEV')],
+      ['avgFBV', 'Avg FBV', (p) => p.avgFBV, n2('avgFBV')], ['maxFBV', 'Max FBV', (p) => p.maxFBV, n2('maxFBV')],
+      ['tv', 'Throwing Velo', (p) => p.tv, n2('tv')],
+      ['t60', '60 Time', (p) => p.t60, n2('t60', 2)], ['pop', 'Pop Time', (p) => p.pop, n2('pop', 2)],
+      ['opg', 'OPG', (p) => p.opg, n2('opg')], ['sopg', 'SOPG', (p) => p.sopg, n2('sopg')], ['dpg', 'DPG', (p) => p.dpg, n2('dpg')], ['sdpg', 'SDPG', (p) => p.sdpg, n2('sdpg')], ['ppg', 'PPG', (p) => p.ppg, n2('ppg')],
+      ['ath', 'Athletic Score', (p) => p.ath, n2('ath')],
+      ['rs', 'Recruit Score', (p) => p.rs, (p) => TRC.formatRecruitScore(p.rs)],
+      ['tier', 'Tier', (p) => (p.rs == null ? null : TRC.PLAYER_TIER_CONFIG[p.tier].sortOrder), (p) => tierBadge(p)],
+      ['conf', 'Confidence', (p) => p.conf, (p) => confBadge(p)],
+      ['classRank', 'Class Rank', (p) => p.classRank, (p) => rk(p.classRank)],
+      ['overall', 'Overall Rank', (p) => p.overall, (p) => rk(p.overall)],
+      ['eval', 'Evaluation Date', (p) => p.eval, (p) => p.eval || '&mdash;'],
+      ['method', 'Evaluation Method', (p) => p.method, (p) => esc(p.method || '')],
+      ['notes', 'Player Notes', (p) => p.notes, (p) => esc(p.notes || '')],
+      ['links', 'Links', (p) => '', link],
+      ['dup', 'Possible Duplicate', (p) => dupCount[dupKey(p)], (p) => (dupCount[dupKey(p)] > 1 ? '<span class="pill red">Check</span>' : 'No')]
+    ];
+    const opt = (arr, blank) => (blank ? '<option value="">' + blank + '</option>' : '') + arr.map((x) => '<option>' + x + '</option>').join('');
+    const msg = sessionStorage.getItem('theReadMdMsg') || '';
+    sessionStorage.removeItem('theReadMdMsg');
+    root.innerHTML =
+      '<div class="kpi-row" id="md-kpis"></div>' +
+      '<p class="coach-note md-note"><strong>Master Database:</strong> the one list every other workspace page reads from. Sample players are fictional. Players you add are saved only in this browser as a demo until a real backend exists, and are not shared with anyone. Blank fields stay blank (never 0).</p>' +
+      (msg ? '<p class="coach-note md-msg" role="status">' + esc(msg) + '</p>' : '') +
+      '<details class="card md-add" id="md-add"' + (msg ? '' : '') + '><summary>Add Player (Demo Entry)</summary><form id="md-form" novalidate>' +
+      '<div class="md-grid">' +
+      '<label>Player Name *<input name="name" type="text" maxlength="80" required /></label>' +
+      '<label>Grad Year *<select name="grad" required>' + opt([2026, 2027, 2028, 2029, 2030, 2031], 'Select') + '</select></label>' +
+      '<label>Primary Position *<select name="pos" required>' + opt(POS, 'Select') + '</select></label>' +
+      '<label>Secondary Position<select name="sec">' + opt(POS, 'None') + '</select></label>' +
+      '<label>Bats<select name="bats">' + opt(['R', 'L', 'S'], 'Unknown') + '</select></label>' +
+      '<label>Throws<select name="throws">' + opt(['R', 'L'], 'Unknown') + '</select></label>' +
+      '<label class="md-check"><input name="twoWay" type="checkbox" /> Two Way Player</label>' +
+      '<label>High School<input name="hs" type="text" maxlength="80" /></label>' +
+      '<label>State (2 letters)<input name="state" type="text" maxlength="2" pattern="[A-Za-z]{2}" /></label>' +
+      NUMS.map((n) => '<label>' + n[1] + '<input name="' + n[0] + '" type="text" inputmode="decimal" /></label>').join('') +
+      '<label>Evaluation Date<input name="eval" type="date" /></label>' +
+      '<label>Evaluation Method<select name="method">' + opt(METHODS.concat(['Coach Entry']), 'Not Set') + '</select></label>' +
+      LINKS.map((l) => '<label>' + l[1] + '<input name="' + l[0] + '" type="url" placeholder="https://" /></label>').join('') +
+      '<label class="md-wide">Player Notes<textarea name="notes" rows="2" maxlength="300"></textarea></label></div>' +
+      '<p class="coach-note">Recruit Score, Confidence %, and the grades are normally calculated by THE READ; leave them blank if not calculated (the player will show Not Rated / Unknown). Out-of-range values are rejected, never changed.</p>' +
+      '<ul class="md-errors" id="md-errors" role="alert"></ul>' +
+      '<div class="md-actions"><button type="submit" class="button button-primary">Add Player</button> <button type="button" class="button button-secondary" id="md-clear">Remove All Added Players</button></div></form></details>' +
+      '<form class="controls" id="md-filters" aria-label="Filter master database" onsubmit="return false">' +
+      '<label>Search<input type="search" id="md-q" placeholder="Name, school, state, notes" /></label>' +
+      '<label>Position<select id="md-pos">' + opt(POS, 'All') + '</select></label>' +
+      '<label>Grad Year<select id="md-grad">' + opt([2026, 2027, 2028, 2029, 2030, 2031], 'All') + '</select></label>' +
+      '<label>Source<select id="md-src"><option value="">All</option><option value="s">Sample</option><option value="a">Added (Demo)</option></select></label>' +
+      '<button type="button" class="button button-secondary" id="md-reset">Reset</button></form>' +
+      '<p class="coach-count" id="md-count" role="status"></p><div class="table-wrap md-wrap"><table id="md-table" class="rd-table md-table"></table></div>' +
+      '<p class="coach-note">SAMPLE DATA / FICTIONAL EXAMPLE. Helper columns from the owner workbook are calculated, not stored.</p>';
+    const tbl = $('#md-table', root);
+    function kpis() {
+      const k = $('#md-kpis', root);
+      k.innerHTML = kpi('Total Players', players.length) + kpi('Sample Players', players.filter((p) => !p.entered).length) + kpi('Added (Demo)', players.filter((p) => p.entered).length) + kpi('Possible Duplicates', players.filter((p) => dupCount[dupKey(p)] > 1).length) + kpi('Missing 60 Time (Position Players)', players.filter((p) => p.pos !== 'P' && p.t60 == null).length);
+    }
+    function draw() {
+      const q = $('#md-q', root).value.trim().toLowerCase(), fp = $('#md-pos', root).value, fg = $('#md-grad', root).value, fs = $('#md-src', root).value;
+      let list = players.filter((p) => (!fp || p.pos === fp) && (!fg || String(p.grad) === fg) && (!fs || (fs === 'a') === !!p.entered) &&
+        (!q || [p.name, p.id, p.hs, p.state, p.pos, p.sec, p.notes, p.method].join(' ').toLowerCase().indexOf(q) >= 0));
+      const col = COLS.filter((c) => c[0] === state.key)[0];
+      list = list.slice().sort((a, b) => {
+        const x = col[2](a), y = col[2](b);
+        if ((x == null || x === '') && (y == null || y === '')) return 0;
+        if (x == null || x === '') return 1;
+        if (y == null || y === '') return -1;
+        return (typeof x === 'string' ? x.localeCompare(y) : x - y) * state.dir;
+      });
+      $('#md-count', root).textContent = 'Showing ' + list.length + ' of ' + players.length + ' players';
+      tbl.innerHTML = '<caption class="visually-hidden">Master database of players (sample data, fictional)</caption><thead><tr>' + COLS.map((c) => '<th scope="col" aria-sort="' + (state.key === c[0] ? (state.dir === 1 ? 'ascending' : 'descending') : 'none') + '"><button type="button" data-k="' + c[0] + '">' + c[1] + (state.key === c[0] ? (state.dir === 1 ? ' \u25B2' : ' \u25BC') : '') + '</button></th>').join('') + '</tr></thead><tbody>' +
+        (list.length ? list.map((p) => '<tr>' + COLS.map((c) => '<td>' + c[3](p) + '</td>').join('') + '</tr>').join('') : '<tr class="rd-empty"><td colspan="' + COLS.length + '">No players match these filters.</td></tr>') + '</tbody>';
+    }
+    kpis(); draw();
+    root.addEventListener('input', (e) => { if (e.target.closest('#md-filters')) draw(); });
+    root.addEventListener('change', (e) => { if (e.target.closest('#md-filters')) draw(); });
+    root.addEventListener('click', (e) => {
+      const b = e.target.closest('button[data-k]');
+      if (b) { const k = b.dataset.k; if (state.key === k) state.dir *= -1; else { state.key = k; state.dir = 1; } draw(); return; }
+      if (e.target.closest('#md-reset')) { $('#md-filters', root).reset(); draw(); return; }
+      const d = e.target.closest('[data-del]');
+      if (d) { saveAdded(loadAdded().filter((a) => a.id !== d.dataset.del)); sessionStorage.setItem('theReadMdMsg', 'Player removed.'); location.reload(); return; }
+      if (e.target.closest('#md-clear')) { if (window.confirm('Remove all players you added in this browser? Sample players stay.')) { saveAdded([]); sessionStorage.setItem('theReadMdMsg', 'All added players removed.'); location.reload(); } }
+    });
+    $('#md-form', root).addEventListener('submit', (e) => {
+      e.preventDefault();
+      const f = e.target, v = (n) => f.elements[n].value.trim(), errs = [], rec = {};
+      rec.name = v('name').replace(/\s+/g, ' ');
+      if (!rec.name) errs.push('Player Name is required.');
+      rec.grad = parseInt(v('grad'), 10);
+      if (!rec.grad) errs.push('Grad Year is required.');
+      rec.pos = v('pos');
+      if (!rec.pos) errs.push('Primary Position is required.');
+      rec.sec = v('sec'); rec.bats = v('bats'); rec.throws = v('throws'); rec.twoWay = f.elements.twoWay.checked;
+      rec.hs = v('hs'); rec.state = v('state').toUpperCase(); rec.eval = v('eval'); rec.method = v('method') || 'Coach Entry'; rec.notes = v('notes');
+      if (rec.sec && rec.sec === rec.pos) errs.push('Secondary Position must differ from Primary Position.');
+      if (rec.state && !/^[A-Z]{2}$/.test(rec.state)) errs.push('State must be two letters.');
+      NUMS.forEach((n) => {
+        const raw = v(n[0]);
+        if (raw === '') { rec[n[0]] = null; return; }
+        const val = Number(raw);
+        if (!isFinite(val)) { errs.push(n[1] + ' must be a number.'); return; }
+        if (n[0] === 'rs') { try { TRC.validateRecruitScore(val); } catch (x) { errs.push(x.message); return; } }
+        if (n[0] === 'conf') { try { TRC.validateConfidencePercentage(val); } catch (x) { errs.push(x.message); return; } }
+        if (val < n[2] || val > n[3]) { errs.push(n[1] + ' must be between ' + n[2] + ' and ' + n[3] + '.'); return; }
+        rec[n[0]] = val;
+      });
+      rec.links = {};
+      LINKS.forEach((l) => { const u = v(l[0]); if (!u) return; if (!/^https?:\/\/\S+$/i.test(u)) errs.push(l[1] + ' must start with http:// or https://.'); else rec.links[l[0]] = u; });
+      const ul = $('#md-errors', root);
+      ul.innerHTML = errs.map((m) => '<li>' + esc(m) + '</li>').join('');
+      if (errs.length) return;
+      const cur = loadAdded();
+      const max = cur.concat(players.filter((p) => p.entered)).reduce((m, a) => Math.max(m, parseInt(String(a.id).replace(/\D/g, ''), 10) || 0), 0);
+      rec.id = 'E' + String(max + 1).padStart(3, '0');
+      cur.push(rec);
+      if (!saveAdded(cur)) { ul.innerHTML = '<li>This browser blocked saving. The player was not added.</li>'; return; }
+      sessionStorage.setItem('theReadMdMsg', rec.name + ' was added as ' + rec.id + ' (demo, saved in this browser only).');
+      location.reload();
+    });
+  };
   pages.department = (root) => {
     const tot = (f) => PROGRAMS.reduce((s, p) => s + f(p), 0);
     root.innerHTML =
       '<div class="kpi-row">' + kpi('Programs (Sample)', PROGRAMS.length) + kpi('Class Spots Targeted', tot((p) => p.target)) + kpi('Committed (Sample)', tot((p) => p.committed)) + kpi('Open Spots', tot((p) => p.target - p.committed)) + kpi('Sample Recruiting Spend', money(tot((p) => p.spend))) + '</div>' +
       '<div class="coach-grid">' +
       card('All Programs At A Glance', miniTable(['Program', 'Coach', 'Target Class', 'Committed', 'Open Spots', 'Top Needs', 'Sample Spend'], PROGRAMS.map((p) => '<tr><th scope="row">' + p.sport + '</th><td>' + esc(p.coach) + '</td><td>' + p.target + '</td><td>' + p.committed + '</td><td>' + (p.target - p.committed) + '</td><td>' + p.needs.join(', ') + '</td><td>' + money(p.spend) + '</td></tr>'), 'All programs at a glance') + '<p class="coach-note">Sample Data / Fictional Example. Every program, coach, and number here is made up.</p>', 'wide') +
-      card('Who Is Recruiting Whom (Baseball Sample)', miniTable(['Player', 'Pos', 'Class', 'Tier', 'Recruiting Coach', 'Next Step'], players.filter((p) => !p.committed && p.board <= 2).sort((a, b) => a.board - b.board || b.pri - a.pri).slice(0, 10).map((p) => '<tr><td>' + cardLink(p) + '</td><td>' + p.pos + '</td><td>' + p.grad + '</td><td><span class="pill pill-t' + p.board + '">Priority ' + p.board + '</span></td><td>' + esc(COACHES.filter((c) => c.id === p.coach)[0].name) + '</td><td>' + p.action + '</td></tr>'), 'Who is recruiting whom'), 'wide') +
+      card('Who Is Recruiting Whom (Baseball Sample)', miniTable(['Player', 'Pos', 'Class', 'Tier', 'Recruiting Coach', 'Next Step'], players.filter((p) => !p.committed && p.board <= 2).sort((a, b) => a.board - b.board || (b.pri || 0) - (a.pri || 0)).slice(0, 10).map((p) => '<tr><td>' + cardLink(p) + '</td><td>' + p.pos + '</td><td>' + p.grad + '</td><td><span class="pill pill-t' + p.board + '">Priority ' + p.board + '</span></td><td>' + esc((COACHES.filter((c) => c.id === p.coach)[0] || { name: 'Unassigned' }).name) + '</td><td>' + (p.action || '&mdash;') + '</td></tr>'), 'Who is recruiting whom'), 'wide') +
       '</div>' + coachLink + deptBanner('Department overview (fictional): one view of every program. Each coach\u2019s private notes stay private.');
   };
 

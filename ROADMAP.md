@@ -107,6 +107,12 @@ This site is plain HTML/CSS/JS with no build step. There is **no backend**: form
 - [x] `tests.html` runs all boundary, validation, color, label, sort, filter, and sample-data tests
 - [ ] Server-side derivation, persistence, and API validation of Tier and Confidence (documented for a future backend)
 
+## Master Database
+
+- [x] Master Database page (first coach tab): all sample players, every input column, search/filter/sort, Add Player demo form saved in localStorage; other coach pages read from it.
+- [ ] Real storage needs a backend (accounts, shared database, per-coach private layers).
+- [ ] Data import (CSV/spreadsheet), duplicate resolution, Event ID and Fieldleve columns.
+
 ## Open decisions (from the owner workbook; not built)
 
 - [ ] Final weights for OPG, SOPG, DPG, SDPG, PPG and whether height is position-adjusted in Athletic Score

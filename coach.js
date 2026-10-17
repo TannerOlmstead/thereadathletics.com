@@ -168,10 +168,10 @@
     const ents = [];
     recs.forEach((r0) => {
       if (!r0 || !r0.id) return;
-      const sl = Array.isArray(r0.sports) && r0.sports.length ? r0.sports : [{ name: r0.sport || 'Baseball', pos: r0.pos, sec: r0.sec, primary: true }];
-      sl.forEach((sx) => {
+      const sl = Array.isArray(r0.sports) && r0.sports.length ? r0.sports : [{ name: r0.sport || 'Baseball', pos: r0.pos, sec: r0.sec }];
+      sl.forEach((sx, si) => {
         const nm = SPORT_NAMES.indexOf(sx.name) < 0 ? 'Baseball' : sx.name, bb = nm === 'Baseball';
-        ents.push(Object.assign({}, r0, { sport: nm, pos: sx.pos, sec: sx.sec || '', metrics: bb ? r0.metrics : {}, rolePref: bb ? r0.rolePref : null, _sx: sl.length > 1 && !sx.primary ? '-' + nm.replace(/[^a-z]/gi, '').slice(0, 5).toUpperCase() : '', _aid: r0.id }));
+        ents.push(Object.assign({}, r0, { sport: nm, pos: sx.pos, sec: sx.sec || '', metrics: bb ? r0.metrics : {}, rolePref: bb ? r0.rolePref : null, _sx: si > 0 ? '-' + nm.replace(/[^a-z]/gi, '').slice(0, 5).toUpperCase() : '', _aid: r0.id }));
       });
     });
     ents.forEach((r) => {

@@ -124,7 +124,16 @@ ul { list-style: none; padding: 0; }
       yes(L.every(function (x) { return x.positions.length > 0; }), 'positions');
       eq(L.filter(function (x) { return x.scoring; }).length, 1);
     });
-    test('Rankings row: Grad Class is the 4th column after Player Name', function () {
+    test('No sport carries a primary flag (all sports equal)', function () {
+  var src = new XMLHttpRequest(); src.open('GET','athlete-signup.js',false); try{src.send();}catch(e){}
+  if (src.responseText) eq(/primary\s*:\s*x\.id|Primary Sport/.test(src.responseText), false, 'no primary sport in signup');
+  window.TheReadSports.list.forEach(function (s) { eq('primary' in s, false, s.name + ' has no primary flag'); });
+});
+test('Athlete profile page exists and is wired', function () {
+  var r = new XMLHttpRequest(); r.open('GET','athlete-profile.html',false); try{r.send();}catch(e){}
+  if (r.responseText) eq(/data-coach-page="athprofile"/.test(r.responseText) && /athlete-profile\.js/.test(r.responseText), true, 'page loads script');
+});
+test('Rankings row: Grad Class is the 4th column after Player Name', function () {
       var t = document.createElement('table'); t.innerHTML = '<tbody>' + D.rankingRowHtml(D.players[0]) + '</tbody>';
       var cells = t.querySelectorAll('tr > *');
       yes(cells[2].classList.contains('c-name') && cells[3].classList.contains('c-grad'), 'order');

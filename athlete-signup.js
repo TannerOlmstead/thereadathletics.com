@@ -68,10 +68,9 @@
     var sel = function (id) { return !!(d.sp && d.sp[id] && d.sp[id].on); };
     var selected = function () { return SP.list.filter(function (x) { return sel(x.id); }); };
     var sportsBlock = function () {
-      var h = '<fieldset class="full sports-pick"><legend>Sports You Play <span class="req" aria-hidden="true">*</span></legend><p class="hint">Pick every sport you play. Then choose positions for each one.</p><div class="check-grid">' +
+      var h = '<fieldset class="full sports-pick"><legend>Sports You Play <span class="req" aria-hidden="true">*</span></legend><p class="hint">Pick every sport you play. All sports count equally. Then choose positions for each one.</p><div class="check-grid">' +
         SP.list.map(function (x) { return '<label class="check"><input type="checkbox" id="f-sp.' + x.id + '.on" data-k="sp.' + x.id + '.on"' + (sel(x.id) ? ' checked' : '') + ' /> ' + esc(x.name) + '</label>'; }).join('') + '</div></fieldset>';
       var cur = selected();
-      if (cur.length > 1) h += '<div class="form-grid">' + fld('primary', 'Primary Sport', { req: 1, type: 'select', opts: cur.map(function (x) { return x.name; }) }) + '</div>';
       cur.forEach(function (x) {
         h += '<fieldset class="full"><legend>' + esc(x.name) + ' Positions</legend><div class="form-grid">' +
           fld('sp.' + x.id + '.pos', 'Primary Position', { req: 1, type: 'select', opts: x.positions }) +
@@ -80,7 +79,7 @@
       });
       return h;
     };
-    var prim = function () { var c = selected(); return c.filter(function (x) { return x.name === d.primary; })[0] || c[0]; };
+    var prim = function () { return selected()[0]; };
     var views = {
       account: function () {
         return '<h2>Account Basics</h2><div class="form-grid">' + fld('name', 'Athlete Full Name', { req: 1, ac: 'name' }) + fld('email', 'Email', { req: 1, type: 'email', ac: 'email' }) +
@@ -132,7 +131,7 @@
           chk('terms', 'I accept the <a href="terms.html">Terms</a> and <a href="privacy.html">Privacy Policy</a>.', 1);
       },
       review: function () {
-        var rows = [['Name', d.name], ['Email', d.email], ['Age Path', d.path === 'adult' ? 'Adult (18+)' : d.path === 'minor' ? 'Minor (13-17), guardian required' : 'Under 13, guardian-created'], ['Sports / Positions', selected().map(function (x) { return x.name + ' / ' + d.sp[x.id].pos + (d.sp[x.id].sec ? ' / ' + d.sp[x.id].sec : '') + (x.id === prim().id && selected().length > 1 ? ' (Primary)' : ''); }).join('; ')],
+        var rows = [['Name', d.name], ['Email', d.email], ['Age Path', d.path === 'adult' ? 'Adult (18+)' : d.path === 'minor' ? 'Minor (13-17), guardian required' : 'Under 13, guardian-created'], ['Sports / Positions', selected().map(function (x) { return x.name + ' / ' + d.sp[x.id].pos + (d.sp[x.id].sec ? ' / ' + d.sp[x.id].sec : ''); }).join('; ')],
           ['College Role Preference', !sel('baseball') ? 'Not applicable' : rolePrefTxt(d.rp)],
           ['Level / Class', d.level + ' ' + d.grad], ['School / State', d.school + ', ' + d.state], ['Eligibility Left', d.level === 'High School' ? 'N/A' : d.elig || 'Not Provided'],
           ['Metrics', METRICS.filter(function (m) { return d.m[m[0]] !== '' && d.m[m[0]] != null; }).map(function (m) { return m[1] + ': ' + d.m[m[0]]; }).join('; ') || 'None entered (Unverified)'],
@@ -159,7 +158,6 @@
         var cs = selected();
         if (!cs.length) bad('sp.' + SP.list[0].id + '.on', 'Choose at least one sport.');
         cs.forEach(function (x) { if (!d.sp[x.id].pos) bad('sp.' + x.id + '.pos', 'Choose a primary ' + x.name + ' position.'); else if (d.sp[x.id].sec && d.sp[x.id].sec === d.sp[x.id].pos) bad('sp.' + x.id + '.sec', 'Secondary position must differ from primary.'); });
-        if (cs.length > 1 && !d.primary) bad('primary', 'Choose your primary sport.');
         if (!d.grad) bad('grad', 'Choose a graduation year.');
         if (sel('baseball')) {
           var rp = d.rp || {};
@@ -210,7 +208,7 @@
       var back = document.getElementById('wiz-back');
       if (back) back.addEventListener('click', function () { collect(); var pv = vs[idx - 1][0]; step = STEPS.map(function (s) { return s[0]; }).indexOf(pv); render(); });
       if (key === 'profile') {
-        ['level', 'primary', 'rp.twoWay', 'rp.role'].concat(SP.list.map(function (x) { return 'sp.' + x.id + '.on'; })).forEach(function (k) { var e = form.querySelector('[data-k="' + k + '"]'); if (e) e.addEventListener('change', function () { collect(); render(); }); });
+        ['level', 'rp.twoWay', 'rp.role'].concat(SP.list.map(function (x) { return 'sp.' + x.id + '.on'; })).forEach(function (k) { var e = form.querySelector('[data-k="' + k + '"]'); if (e) e.addEventListener('change', function () { collect(); render(); }); });
         photo.addEventListener('change', function () {
           var f = photo.files[0]; if (!f) return;
           if (!/^image\//.test(f.type)) { alert('Please choose an image file.'); return; }
@@ -228,7 +226,7 @@
       var g = d.path === 'adult' ? null : { name: d.g.name, rel: d.g.rel, email: d.g.email, phone: d.g.phone, status: 'Pending', sent: Date.now(), share: { contact: false, photo: false, metrics: false }, msgVisible: true, dataConsent: false, log: [{ t: new Date().toISOString(), a: 'Verification code issued (demo, nothing sent)' }] };
       var rec = {
         id: 'ath-' + Date.now().toString(36), created: new Date().toISOString(), submitted: true, name: d.name.trim(), email: d.email, dob: d.dob, age: d.age, path: d.path,
-        sport: prim().name, pos: d.sp[prim().id].pos, sec: d.sp[prim().id].sec || '', sports: selected().map(function (x) { return { id: x.id, name: x.name, pos: d.sp[x.id].pos, sec: d.sp[x.id].sec || '', primary: x.id === prim().id }; }), grad: Number(d.grad), level: d.level, school: d.school.trim(), state: d.state.trim(), elig: d.level === 'High School' || !d.elig ? null : Number(d.elig), photo: d.photo || '',
+        sport: prim().name, pos: d.sp[prim().id].pos, sec: d.sp[prim().id].sec || '', sports: selected().map(function (x) { return { id: x.id, name: x.name, pos: d.sp[x.id].pos, sec: d.sp[x.id].sec || '' }; }), grad: Number(d.grad), level: d.level, school: d.school.trim(), state: d.state.trim(), elig: d.level === 'High School' || !d.elig ? null : Number(d.elig), photo: d.photo || '',
         rolePref: sel('baseball') && d.rp && d.rp.twoWay ? { twoWay: d.rp.twoWay, emphasis: d.rp.twoWay === 'Yes' ? d.rp.emphasis || '' : '', role: d.rp.twoWay === 'No' ? d.rp.role || '' : '', pos: (d.rp.twoWay === 'Yes' || (d.rp.twoWay === 'No' && d.rp.role === 'Position Player')) ? d.rp.pos || '' : '' } : null,
         metrics: {}, guardian: g, verifiers: [], verified: {}, privacy: { list: !!d.privacy.list, contact: !!d.privacy.contact, photo: !!d.privacy.photo, metrics: !!d.privacy.metrics }, terms: true
       };
@@ -244,7 +242,7 @@
         '<dl class="review-list"><dt>Athlete</dt><dd>' + esc(r.name) + ' &middot; ' + esc(r.path === 'adult' ? 'Adult (18+)' : r.path === 'minor' ? 'Minor (13-17)' : 'Under 13, guardian-created') + '</dd>' +
         '<dt>Guardian Verification</dt><dd>' + (gs ? badge(gs) + (gs === 'Pending' ? ' Waiting for ' + esc(r.guardian.name) + '. Demo code: ' + DEMO_CODE : gs === 'Declined' ? ' The guardian declined or revoked access.' : gs === 'Expired' ? ' The code expired. Use the guardian page to resend (demo).' : ' Verified.') : 'Not needed (adult)') + '</dd>' +
         '<dt>Listed To Coaches</dt><dd>' + (lst ? 'Yes &ndash; in the Master Database as <strong>Athlete-Created</strong>' + (r.path !== 'adult' ? ' and <strong>Guardian-Verified</strong>' : '') + '. Recruit Score and Tier show Not Rated until enough data exists.' : 'No' + (r.path !== 'adult' && gs !== 'Verified' ? ' &ndash; minors cannot be contacted or listed until a guardian verifies.' : r.privacy.list ? '.' : ' &ndash; you chose not to be listed.')) + '</dd></dl>' +
-        (r.guardian ? '<p><a class="button button-secondary" href="guardian-verify.html">Open Guardian Page (Demo)</a></p>' : '') +
+        '<p><a class="button button-primary" href="athlete-profile.html">Open My Athlete Profile</a> ' + (r.guardian ? '<a class="button button-secondary" href="guardian-verify.html">Open Guardian Page (Demo)</a>' : '') + '</p>' +
         '<h3>Metric Verification</h3>' + (Object.keys(r.metrics).length ? '<div class="table-wrap"><table><thead><tr><th scope="col">Metric</th><th scope="col">Value</th><th scope="col">Status</th></tr></thead><tbody>' + METRICS.filter(function (m) { return r.metrics[m[0]] != null; }).map(function (m) { var v = (r.verified || {})[m[0]]; return '<tr><th scope="row">' + m[1] + '</th><td>' + r.metrics[m[0]] + '</td><td>' + (v ? 'Verified by ' + esc(v.by) + ' (' + esc(v.role) + ', ' + esc(v.date) + ', demo)' : 'Unverified (Self-Reported)') + '</td></tr>'; }).join('') + '</tbody></table></div>' : '<p>No metrics entered.</p>') +
         (r.verifiers.length ? '<ul class="intro-list">' + r.verifiers.map(function (v, i) { return '<li><strong>' + esc(v.type) + '</strong> ' + esc(v.name) + ': ' + badge(v.status) + (v.status === 'Requested' ? ' <button type="button" class="button button-secondary sim-ver" data-i="' + i + '">Demo: Simulate Verifier Confirmation</button>' : '') + '</li>'; }).join('') + '</ul>' : '<p class="hint">No verifier requested. All metrics stay Unverified.</p>') +
         '<p><button type="button" class="button button-secondary" id="st-new">Start A New Signup</button> <button type="button" class="button button-secondary" id="st-clear">Delete Demo Data</button></p></div>';

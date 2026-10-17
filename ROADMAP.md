@@ -115,6 +115,8 @@ This site is plain HTML/CSS/JS with no build step. There is **no backend**: form
 - [x] Manual Add Prospect auto-adds the player to the program's Recruiting Board (action-log entry, computed Priority/Stage); athlete-signup and existing players still require the (+)
 
 - [x] Multi-sport athletes: shared `sports-config.js` (8 launch sports), per-sport positions, per-sport Master Database entries, Sport filters, Player Card sport switcher
+- [x] Removed the Primary Sport concept (all sports equal; positions stay per sport)
+- [x] Athlete Profile screen (athlete-profile.html) first draft: overview/completeness, per-sport scores, metrics and verification, guardian status, privacy, messages, calendar, interest, academics, media/achievements, account. Owner to keep/cut sections
 - [ ] Coming Soon: scoring tables (Recruit Score / Tier / Confidence) for Softball, Basketball, Football, Soccer and Volleyball; sport-specific measurables
 
 ## Master Database

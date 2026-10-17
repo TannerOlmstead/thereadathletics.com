@@ -14,7 +14,7 @@ Static recruiting-intelligence website for athletes, independent recruiting prof
 ## Sports
 
 - The launch sports live in ONE file, `sports-config.js`: Baseball, Men's Basketball, Women's Basketball, Football, Men's Soccer, Women's Soccer, Softball, Women's Volleyball (same as the home hero tiles, which are built from it). Edit positions or add sports only there.
-- Athletes can pick every sport they play, then choose primary and secondary positions for each, and one primary sport. Baseball-only extras (College Role Preference, measurables) appear only under Baseball.
+- Athletes can pick every sport they play, then choose primary and secondary positions for each. All sports count equally (no primary sport). Baseball-only extras (College Role Preference, measurables) appear only under Baseball.
 - The Master Database stores one entry per athlete per sport. Rankings and Master Database have a Sport filter; the Player Card has a sport switcher.
 - Scoring tables exist for Baseball only. Other sports show Scoring Not Yet Available: Recruit Score Not Rated, Confidence Unknown (never 0 or Bronze).
 
@@ -120,3 +120,7 @@ Open `index.html` in a browser, or run a simple static server from this folder, 
 
 - **Athlete signup (demo):** `player-signup.html` is a 7-step wizard with parent/guardian verification for minors (`guardian-verify.html`, demo code 000000). Logic lives in `athlete-signup.js` and saves to localStorage only; no email is sent, nothing is truly verified and passwords are never stored. Athlete-created players join the Master Database only when allowed (adults who opt in; minors after guardian verification).
 - **Role preference (baseball):** athlete-entered two-way / preferred role and coach-entered Projected College Role are context only and never change scores, Tier or Confidence.
+
+## Athlete Profile (athlete-profile.html)
+
+First draft of the athlete's own screen, built only from the signup record in this browser (no signup = prompt to sign up, never fake data). Extra optional fields (GPA, tests, major, video links, achievements, messaging preference) are stored in `theReadDemoAthleteExtras`. Each section is tagged Required or Optional so it is easy to keep or cut: Overview (header, sport switcher, completeness), Scores (per sport, what would raise Confidence), Metrics (verification status, request verification), Guardian (status, resend, simulated), Privacy, Messages, Calendar, Interest (real logged coach activity only), Academics (never affects Tier), Media (video links, achievements), Account (contact, quick edit, Athlete Basic plan).

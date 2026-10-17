@@ -2004,3 +2004,23 @@ body.pc-open { overflow: hidden; }
 .hero-list { max-width: 60ch; }
 @media (max-width: 560px) { .review-list { grid-template-columns: 1fr; } .wiz-progress li { flex-basis: 100%; } }
 html.hide-sample-labels [data-sample-label] { display: none !important; }
+
+/* Athlete profile */
+.prof-tabs{flex-wrap:wrap}
+.prof-sec{margin-bottom:1rem}
+.prof-purpose{color:#4a5568;margin-top:0}
+.req-tag{display:inline-block;font:700 .7rem/1 Inter,sans-serif;text-transform:uppercase;letter-spacing:.06em;padding:.25rem .5rem;vertical-align:middle;clip-path:polygon(0 0,calc(100% - 6px) 0,100% 6px,100% 100%,6px 100%,0 calc(100% - 6px))}
+.req-tag.req{background:var(--scarlet);color:#fff}
+.req-tag.opt{background:#e8edf6;color:var(--navy)}
+.prof-head{display:flex;gap:1rem;align-items:flex-start;flex-wrap:wrap}
+.prof-photo{width:110px;height:110px;object-fit:cover;border:3px solid var(--navy);border-radius:50%}
+.prof-initial{display:flex;align-items:center;justify-content:center;background:var(--navy);color:#fff;font:800 2.6rem Inter,sans-serif}
+.prof-name{margin:0 0 .25rem}
+.sport-switch{display:flex;flex-wrap:wrap;gap:6px;margin:.5rem 0}
+.sport-switch .chip{min-height:36px;padding:.3rem .8rem;border:2px solid var(--navy);background:#fff;color:var(--navy);font-weight:700;cursor:pointer}
+.sport-switch .chip.on{background:var(--navy);color:#fff}
+.meter{height:14px;background:#e8edf6;margin:.75rem 0 .25rem}
+.meter span{display:block;height:100%;background:var(--scarlet)}
+.check-list{list-style:none;padding:0;columns:2 260px}
+.check-list .done{color:#1f6b3a}
+.link-btn{background:none;border:0;color:var(--scarlet);text-decoration:underline;cursor:pointer;font:inherit;min-height:32px}

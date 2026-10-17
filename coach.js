@@ -177,7 +177,7 @@
 
   pages.rankings = (root) => {
     const COLSR = [
-      ['overall', 'Overall Rank', (p) => p.overall], ['classRank', 'Class Rank', (p) => p.classRank], ['name', 'Player Name', (p) => cardLink(p)],
+      ['overall', 'Overall Rank', (p) => p.overall], ['classRank', 'Class Rank', (p) => p.classRank], ['name', 'Player Name', (p) => cardLink(p)], ['grad', 'Grad Class', (p) => p.grad],
       ['pos', 'Primary Position', (p) => p.pos], ['sec', 'Secondary Position', (p) => p.sec || '&mdash;'], ['opg', 'OPG', (p) => num(p.opg)],
       ['dpg', 'DPG', (p) => num(p.dpg)], ['ppg', 'PPG', (p) => num(p.ppg)], ['rs', 'Recruit Score', (p) => num(p.rs)], ['tier', 'Tier', (p) => p.tier],
       ['conf', 'Confidence Score', (p) => confLabel(p.conf) + ' (' + p.conf + '%)']
@@ -214,7 +214,7 @@
       const b = e.target.closest('button[data-k]');
       if (!b) return;
       const k = b.dataset.k;
-      if (state.key === k) state.dir *= -1; else { state.key = k; state.dir = (k === 'name' || k === 'pos' || k === 'sec' || k === 'tier' || k === 'overall' || k === 'classRank') ? 1 : -1; }
+      if (state.key === k) state.dir *= -1; else { state.key = k; state.dir = (k === 'name' || k === 'grad' || k === 'pos' || k === 'sec' || k === 'tier' || k === 'overall' || k === 'classRank') ? 1 : -1; }
       draw();
       const nb = $('button[data-k="' + k + '"]', root); if (nb) nb.focus();
     });

@@ -259,42 +259,57 @@
   };
 
   pages.h2h = (root) => {
-    root.innerHTML = '<form class="controls" onsubmit="return false"><label>Player A<select id="h-a"></select></label><label>Player B<select id="h-b"></select></label></form><div id="h-out"></div>';
-    const a = $('#h-a', root), b = $('#h-b', root);
-    playerOptions(a, players[0].id);
-    playerOptions(b, players[1].id);
-    const ROWS = {
-      'Player': [['Player Name', 'name'], ['Primary Position', 'pos'], ['Secondary Position', 'sec'], ['Grad Year', 'grad', null, (v) => String(v)], ['Height', 'ht', null, (v) => ftin(v)], ['Weight', 'wt', null, (v) => v + ' lb'], ['GPA', 'gpa', null, (v) => v.toFixed(2)]],
-      'Rankings': [['Overall Rank', 'overall', 'low', (v) => '#' + v], ['Class Rank', 'classRank', 'low', (v) => '#' + v], ['Athletic Score', 'ath', 'high'], ['Recruit Score', 'rs', 'high'], ['Confidence %', 'conf', 'high', (v) => v + '%'], ['Confidence Score', 'conf', null, (v) => confLabel(v)], ['Tier', 'tier']],
-      'Grades': [['OPG', 'opg', 'high'], ['SOPG', 'sopg', 'high'], ['DPG', 'dpg', 'high'], ['SDPG', 'sdpg', 'high'], ['PPG', 'ppg', 'high']],
-      'Measurables': [['Avg EV', 'avgEV', 'high'], ['Max EV', 'maxEV', 'high'], ['Avg FBV', 'avgFBV', 'high'], ['Max FBV', 'maxFBV', 'high'], ['Throwing Velo', 'tv', 'high'], ['60 Time', 't60', 'low', (v) => v.toFixed(2)], ['Pop Time', 'pop', 'low', (v) => v.toFixed(2)]],
-      'Team Evaluation': [['HC Grade', 'hc', 'grade'], ['PC Grade', 'pc', 'grade'], ['AC Grade', 'ac', 'grade'], ['Staff Score', 'staff', 'high'], ['Coach Fit Score', 'fit', 'high'], ['Team Need Score', 'need', 'high'], ['Adjusted Recruit Score', 'adj', 'high'], ['Priority Score', 'pri', 'high']]
-    };
-    const show = (def, p) => { const v = p[def[1]]; if (v == null || v === '') return '&mdash;'; return def[3] ? def[3](v) : (typeof v === 'number' ? num(v) : esc(v)); };
-    function edge(def, pa, pb) {
-      const x = pa[def[1]], y = pb[def[1]];
-      if (!def[2] || x == null || y == null) return '<span class="adv-even">&mdash;</span>';
-      let cmp;
-      if (def[2] === 'grade') cmp = GRADES.indexOf(x) - GRADES.indexOf(y);
-      else cmp = def[2] === 'low' ? y - x : x - y;
+    root.innerHTML = '<div id="h-out"></div>';
+    const SIDES = ['a', 'b'];
+    let ids = { a: players[0].id, b: players[1].id };
+    const T = { rank: [['Overall Rank', 'overall', 'low', (v) => '#' + v], ['Class Rank', 'classRank', 'low', (v) => '#' + v], ['Athletic Score', 'ath', 'high'], ['Recruit Score', 'rs', 'high'], ['Confidence %', 'conf', 'high', (v) => v + '%'], ['Confidence Score', 'conf', null, (v) => confLabel(v)], ['Tier', 'tier']],
+      info: [['Player Name', 'name'], ['Primary Position', 'pos'], ['Secondary Position', 'sec'], ['Grad Year', 'grad', null, (v) => String(v)], ['Height', 'ht', null, (v) => ftin(v)], ['Weight', 'wt', null, (v) => v + ' lb'], ['GPA', 'gpa', null, (v) => v.toFixed(2)]],
+      grades: [['OPG', 'opg', 'high'], ['SOPG', 'sopg', 'high'], ['DPG', 'dpg', 'high'], ['SDPG', 'sdpg', 'high'], ['PPG', 'ppg', 'high']],
+      meas: [['Avg EV', 'avgEV', 'high'], ['Max EV', 'maxEV', 'high'], ['Avg FBV', 'avgFBV', 'high'], ['Max FBV', 'maxFBV', 'high'], ['Throwing Velo', 'tv', 'high'], ['60 Time', 't60', 'low', (v) => v.toFixed(2)], ['Pop Time', 'pop', 'low', (v) => v.toFixed(2)]],
+      team: [['HC Grade', 'hc', 'grade'], ['PC Grade', 'pc', 'grade'], ['AC Grade', 'ac', 'grade'], ['Staff Score', 'staff', 'high'], ['Coach Fit Score', 'fit', 'high'], ['Team Need Score', 'need', 'high'], ['Adjusted Recruit Score', 'adj', 'high'], ['Priority Score', 'pri', 'high']] };
+    const show = (d, p) => { const v = p[d[1]]; if (v == null || v === '') return '&mdash;'; return d[3] ? d[3](v) : (typeof v === 'number' ? num(v) : esc(v)); };
+    function edge(d, pa, pb) {
+      const x = pa[d[1]], y = pb[d[1]];
+      if (!d[2] || x == null || y == null) return '';
+      const cmp = d[2] === 'grade' ? GRADES.indexOf(x) - GRADES.indexOf(y) : d[2] === 'low' ? y - x : x - y;
       if (Math.abs(cmp) < 1e-9) return '<span class="adv-even">Even</span>';
-      return cmp > 0 ? '<span class="adv-a">\u25C0 A</span>' : '<span class="adv-b">B \u25B6</span>';
+      return cmp > 0 ? '<span class="adv-a"><span aria-hidden="true">\u25C0</span> Player A</span>' : '<span class="adv-b">Player B <span aria-hidden="true">\u25B6</span></span>';
     }
+    const row = (d, pa, pb, withEdge) => '<div class="h2h-row"><span class="h2h-l">' + d[0] + '</span><span class="h2h-a">' + show(d, pa) + '</span><span class="h2h-c">' + (withEdge ? edge(d, pa, pb) : '') + '</span><span class="h2h-b">' + show(d, pb) + '</span><span class="h2h-r" aria-hidden="true">' + d[0] + '</span></div>';
+    const sec = (name, center) => '<div class="h2h-sec"><span class="h2h-l">' + name + '</span><span class="h2h-c">' + (center || '') + '</span><span class="h2h-r" aria-hidden="true">' + name + '</span></div>';
+    const bench = (k, p, low) => { const a = avgOf(k, players); if (p[k] == null || a == null) return '&mdash;'; const df = p[k] - a; const good = low ? df < 0 : df > 0; const d = low ? 2 : 1; return '<span class="' + (Math.abs(df) < 0.05 ? '' : good ? 'adv-good' : 'adv-bad') + '">' + (df > 0 ? '+' : '') + df.toFixed(d) + ' vs ' + a.toFixed(d) + '</span>'; };
+    const stand = (p) => (p.overall <= 5 ? 'Top 5 Overall' : p.overall <= 15 ? 'Top 15 Overall' : 'Rank ' + p.overall + ' Of ' + players.length);
     function draw() {
-      const pa = byId[a.value], pb = byId[b.value];
-      let html = '<div class="h2h-head"><div class="h2h-p">Player A<strong>' + esc(pa.name) + '</strong></div><div class="h2h-mid">H2H</div><div class="h2h-p">Player B<strong>' + esc(pb.name) + '</strong></div></div>';
-      Object.keys(ROWS).forEach((sec) => {
-        html += '<div class="table-wrap"><table class="h2h-table"><caption>' + sec + '</caption><thead><tr><th scope="col">Player A</th><th scope="col">Measure</th><th scope="col">Advantage</th><th scope="col">Player B</th></tr></thead><tbody>' +
-          ROWS[sec].map((d) => '<tr><td>' + show(d, pa) + '</td><th scope="row">' + d[0] + '</th><td class="adv-cell">' + edge(d, pa, pb) + '</td><td>' + show(d, pb) + '</td></tr>').join('') + '</tbody></table></div>';
-      });
-      const ba = (k, low) => { const x = pa[k], y = pb[k]; if (x == null || y == null) return 'n/a'; const d = x - y; return (d > 0 ? '+' : '') + d.toFixed(low ? 2 : 1); };
-      html += theRead('Sample comparison (fictional): Recruit Score difference A\u2212B is ' + ba('rs') + '; Priority Score difference is ' + (pa.pri - pb.pri > 0 ? '+' : '') + (pa.pri - pb.pri) + '. Team Edge uses the team-specific rows above.');
+      const pa = byId[ids.a], pb = byId[ids.b];
+      const pick = (s, label) => '<label class="h2h-pick"><span>' + label + '</span><select id="h-' + s + '" aria-label="' + label + '"></select></label>';
+      const benchRows = [['Avg EV vs Avg', 'avgEV'], ['Max EV vs Avg', 'maxEV'], ['Avg FBV vs Avg', 'avgFBV'], ['60 Time vs Avg', 't60', true]];
+      const ba = pa.rs - pb.rs, bp = pa.pri - pb.pri;
+      const readTxt = 'Sample comparison (fictional). Recruit Score difference A\u2212B: ' + (ba > 0 ? '+' : '') + ba.toFixed(1) + '. Priority Score difference A\u2212B: ' + (bp > 0 ? '+' : '') + bp + '. ' + (pa === pb ? 'Same player selected on both sides.' : esc(pa.name) + ' is ' + pa.tier + ' tier and ' + esc(pb.name) + ' is ' + pb.tier + ' tier.');
+      let html = '<section class="h2h-sheet" aria-label="H2H Player Comparison">' +
+        '<h2 class="h2h-title">H2H Player Comparison</h2>' +
+        '<div class="h2h-top"><div class="h2h-pa">' + pick('a', 'Player A') + '</div><div class="h2h-mid">H2H</div><div class="h2h-pb">' + pick('b', 'Player B') + '</div></div>' +
+        '<div class="h2h-block">' + T.info.map((d) => row(d, pa, pb, false)).join('') + '</div>' +
+        '<div class="h2h-block">' + sec('Rankings', 'Advantage') + T.rank.map((d) => row(d, pa, pb, true)).join('') + '</div>' +
+        '<div class="h2h-block">' + sec('Grades', 'Advantage') + T.grades.map((d) => row(d, pa, pb, true)).join('') + '</div>' +
+        '<div class="h2h-block">' + sec('Measurables', 'Advantage') + T.meas.map((d) => row(d, pa, pb, true)).join('') + '</div>' +
+        '<div class="h2h-block h2h-bench">' + sec('Database Benchmarks') +
+        '<aside class="h2h-read" aria-label="Sample summary"><strong class="tr">THE READ</strong><span>' + readTxt + '</span></aside>' +
+        benchRows.map((r) => '<div class="h2h-row"><span class="h2h-l">' + r[0] + '</span><span class="h2h-a">' + bench(r[1], pa, r[2]) + '</span><span class="h2h-b">' + bench(r[1], pb, r[2]) + '</span><span class="h2h-r" aria-hidden="true">' + r[0] + '</span></div>').join('') +
+        '<div class="h2h-row"><span class="h2h-l">Overall Standing</span><span class="h2h-a">' + stand(pa) + '</span><span class="h2h-b">' + stand(pb) + '</span><span class="h2h-r" aria-hidden="true">Overall Standing</span></div></div>' +
+        '<div class="h2h-block">' + sec('Team Evaluation', 'Team Edge') + T.team.map((d) => row(d, pa, pb, true)).join('') + '</div>' +
+        '</section>';
       $('#h-out', root).innerHTML = html;
+      SIDES.forEach((s) => { const el = $('#h-' + s, root); playerOptions(el, ids[s]); });
     }
-    root.addEventListener('change', draw);
+    root.addEventListener('change', (e) => {
+      const t = e.target;
+      if (!t || (t.id !== 'h-a' && t.id !== 'h-b')) return;
+      ids[t.id === 'h-a' ? 'a' : 'b'] = t.value;
+      draw();
+      const f = $('#' + t.id, root); if (f) f.focus();
+    });
     draw();
   };
-
   pages.needs = (root) => {
     const needs = { P: 1, C: 2, SS: 3, OF: 4, '2B': 5, '3B': 6, '1B': 7 };
     const skills = [['Pitching', 1], ['Defense', 2], ['Athleticism', 3], ['Speed', 4], ['Power', 5]];

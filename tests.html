@@ -134,6 +134,14 @@ test('Athlete profile page exists and is wired', function () {
   var r = new XMLHttpRequest(); r.open('GET','athlete-profile.html',false); try{r.send();}catch(e){}
   if (r.responseText) eq(/data-coach-page="athprofile"/.test(r.responseText) && /athlete-profile\.js/.test(r.responseText), true, 'page loads script');
 });
+  test('Max FBV grade table band edges', function () {
+    var g = function (v) { return TheReadScore.maxFbvGrade(v); };
+    var cases = [[67.9,'F'],[67.95,'F'],[68,'D'],[70.9,'D'],[71,'C-'],[73.9,'C-'],[74,'C'],[76.9,'C'],[77,'C+'],[79.9,'C+'],[80,'B-'],[82.9,'B-'],[83,'B'],[85.9,'B'],[86,'B+'],[88.9,'B+'],[89,'A-'],[91.9,'A-'],[92,'A'],[94.9,'A'],[94.95,'A'],[95,'A+'],[101,'A+'],[0,'F']];
+    cases.forEach(function (c) { eq(g(c[0]).grade, c[1], 'Max FBV ' + c[0]); });
+    eq(g(95).score, 10, 'A+ value'); eq(g(70).score, 3, 'D value'); eq(g(60).score, 1, 'F value');
+    eq(!!g(-1).error, true, 'negative rejected'); eq(!!g('abc').error, true, 'text rejected');
+    eq(!!g('').none && !g('').grade, true, 'missing has no grade'); eq(!!g(null).none, true, 'null has no grade');
+  });
 test('Recruit Score calculator: frame grade, reweighting, Not Rated, confidence', function () {
   var S = window.TheReadScore; var bench = []; for (var i = 0; i < 6; i++) bench.push({ pos: 'SS', avgEV: 80 + i, maxEV: 90 + i, t60: 7 + i / 10 });
   eq(S.frame('SS', 72, 185).grade, 'B-', 'SS 72in 185lb = B-');

@@ -119,6 +119,8 @@ This site is plain HTML/CSS/JS with no build step. There is **no backend**: form
 - [x] Athlete Profile screen (athlete-profile.html) first draft: overview/completeness, per-sport scores, metrics and verification, guardian status, privacy, messages, calendar, interest, academics, media/achievements, account. Owner to keep/cut sections
 - [x] Recruit Score calculator for athlete-created baseball entries (workbook weights, Grade Table Frame Score, step-by-step panel, Confidence from metric credit)
 - [ ] Owner to confirm: metric-to-0-100 scoring method (currently percentile vs Master Database), expected-metric list for Confidence, self-reported credit of 0.5, pop time / two-way handling
+- [x] Max FBV grade table (owner-supplied) added to the shared scoring module with band-edge tests
+- [ ] Owner to provide the matching Avg FBV grade table (not scored until then)
 - [ ] Coming Soon: scoring tables (Recruit Score / Tier / Confidence) for Softball, Basketball, Football, Soccer and Volleyball; sport-specific measurables
 
 ## Master Database

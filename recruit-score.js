@@ -6,6 +6,8 @@
   /* Grade Tables copied from The READ Formulas For Website Reference.xlsx (Grade Tables sheet). Rows: [grade, minH, maxH, minW, maxW]. */
   var FRAME_TABLES = {"Pitcher":[["F",0,71,0,999],["D",72,73,150,180],["C-",72,74,170,195],["C",73,75,180,210],["C+",74,76,190,220],["B-",74,77,200,230],["B",75,78,210,240],["B+",75,79,220,250],["A-",76,80,225,260],["A",76,81,235,270],["A+",77,83,245,280]],"Catcher":[["F",0,69,0,999],["D",70,71,170,190],["C-",70,72,180,200],["C",71,73,190,210],["C+",71,74,195,215],["B-",72,75,200,220],["B",72,76,205,225],["B+",72,76,210,230],["A-",73,76,215,235],["A",73,76,220,240],["A+",74,76,225,245]],"1B":[["F",0,71,0,999],["D",72,73,180,205],["C-",72,74,190,215],["C",73,75,200,225],["C+",73,76,210,235],["B-",74,77,215,240],["B",74,78,220,245],["B+",74,78,225,250],["A-",75,78,230,255],["A",75,79,235,260],["A+",74,80,240,265]],"2B":[["F",0,67,0,999],["D",68,69,150,170],["C-",69,70,160,175],["C",69,71,170,185],["C+",70,72,175,190],["B-",70,73,180,195],["B",71,74,185,200],["B+",71,74,190,205],["A-",72,74,195,210],["A",72,74,200,215],["A+",71,74,205,220]],"3B":[["F",0,70,0,999],["D",71,72,170,190],["C-",71,73,180,200],["C",72,74,190,210],["C+",72,75,200,220],["B-",73,76,205,225],["B",73,77,210,230],["B+",73,77,215,235],["A-",74,77,220,240],["A",74,78,225,245],["A+",73,78,230,250]],"SS":[["F",0,68,0,999],["D",69,70,155,170],["C-",69,71,165,180],["C",70,72,175,190],["C+",70,73,180,195],["B-",71,74,185,200],["B",71,74,190,205],["B+",71,75,195,210],["A-",72,75,200,215],["A",72,75,205,220],["A+",71,75,210,225]],"OF":[["F",0,70,0,999],["D",71,72,165,185],["C-",71,73,175,195],["C",72,74,185,205],["C+",72,75,190,210],["B-",73,76,195,220],["B",73,77,205,225],["B+",73,78,210,230],["A-",74,78,215,235],["A",74,79,220,240],["A+",74,80,225,245]]};
   var FRAME_SCORE = {"F":1,"D":3,"C-":5,"C":6,"C+":7,"B-":7.5,"B":8,"B+":8.5,"A-":9,"A":9.5,"A+":10};
+  /* Max FBV grade table supplied by the owner (not in the workbook). Rows: [min mph, letter, grade value], highest first. A band is >= its min and < the next band's min, tested on the unrounded mph. */
+  var MAX_FBV_BANDS = [[95,'A+',10],[92,'A',9.5],[89,'A-',9],[86,'B+',8.5],[83,'B',8],[80,'B-',7.5],[77,'C+',7],[74,'C',6],[71,'C-',5],[68,'D',3],[0,'F',1]];
   var MIN_BENCH = 5;
   var ASSUMPTIONS = [
     'Weights come from the workbook: position players use Avg EV 45%, Max EV 30%, Position-Adjusted Speed 15%, Frame Score 10%. Pitchers use Avg FBV 40%, Max FBV 30%, Frame Score 30%. Speed does not apply to pitchers.',
@@ -14,10 +16,18 @@
     'Velocity policy from the workbook: if only Avg exists it is used for Avg and Max; if only Max exists it is used for both.',
     'Missing components are left out and the remaining weights are re-scaled to 100% (workbook rule: reweight when data is missing). At least one exit velocity (hitters) or one fastball velocity (pitchers) is required, otherwise the result is Not Rated.',
     'The workbook leaves "how many metrics are expected" open. Confidence % = metric credit / expected metrics. Hitters expect Avg EV, Max EV, 60 Time, Height, Weight. Pitchers expect Avg FBV, Max FBV, Height, Weight. A verified metric counts 1, a self-reported metric counts 0.5. Confidence never changes the Recruit Score.',
+    'Max FBV is graded with the owner-supplied Max FBV table (A+ at 95.0 mph and up down to F below 68.0), using the unrounded mph; the grade value times 10 is the component score. No Avg FBV table has been provided, so Avg FBV is not scored and the Avg FBV weight is re-scaled away; it still counts toward Confidence only as an entered metric.',
     'GPA and every other non-baseball input are never used.'
   ];
   var round1 = function (n) { return Math.round(n * 10) / 10; };
   var num = function (v) { return v == null || v === '' || isNaN(Number(v)) ? null : Number(v); };
+
+  var maxFbvGrade = function (mph) {
+    if (mph == null || mph === '') return { none: true, why: 'Max FBV not entered' };
+    var v = typeof mph === 'number' ? mph : (/^\s*-?\d+(\.\d+)?\s*$/.test(String(mph)) ? Number(mph) : NaN);
+    if (!isFinite(v) || v < 0) return { error: 'Max FBV must be a number of 0 or more' };
+    for (var i = 0; i < MAX_FBV_BANDS.length; i++) if (v >= MAX_FBV_BANDS[i][0]) return { grade: MAX_FBV_BANDS[i][1], score: MAX_FBV_BANDS[i][2], pts: MAX_FBV_BANDS[i][2] * 10 };
+  };
 
   var frame = function (pos, ht, wt) {
     var tab = FRAME_TABLES[pos === 'P' ? 'Pitcher' : pos === 'C' ? 'Catcher' : pos], h = num(ht), w = num(wt);
@@ -58,8 +68,8 @@
     var add = function (label, weight, r, detail) { out.comps.push({ label: label, weight: weight, pts: r.pts == null ? null : r.pts, detail: r.pts == null ? r.why : detail + (r.n ? (r.wide ? ' (fewer than ' + MIN_BENCH + ' same-position players, so all ' + r.n + ' non-pitcher players were used)' : ' (' + r.n + ' players)') : '') }); };
     var b = bench || [];
     if (isP) {
-      add('Avg Fastball Velocity', 40, avgFB == null ? { why: 'Not entered' } : pct(b, pos, 'avgFBV', avgFB), avgFB + ' mph vs ' + pos + ' benchmarks');
-      add('Max Fastball Velocity', 30, maxFB == null ? { why: 'Not entered' } : pct(b, pos, 'maxFBV', maxFB), maxFB + ' mph vs ' + pos + ' benchmarks');
+      add('Avg Fastball Velocity', 40, { why: 'Avg FBV grade table not provided yet, so it is not scored' }, '');
+      var mg = maxFbvGrade(get('maxFBV')); add('Max Fastball Velocity', 30, mg.grade ? mg : { why: mg.error || mg.why }, mg.grade ? get('maxFBV') + ' mph = grade ' + mg.grade + ', grade value ' + mg.score + ' of 10 (Max FBV table)' : '');
       var fp = frame(pos, m.ht, m.wt); add('Frame Score', 30, fp, fp.grade ? 'Grade ' + fp.grade + ', Frame Score ' + fp.score + ' of 10' : fp.why);
     } else {
       add('Avg Exit Velocity', 45, avgEV == null ? { why: 'Not entered' } : pct(b, pos, 'avgEV', avgEV, false, true), avgEV + ' mph vs ' + pos + ' benchmarks');
@@ -67,7 +77,7 @@
       var t = get('t60'); add('Position-Adjusted Speed (60 Time)', 15, t == null ? { why: 'Not entered' } : pct(b, pos, 't60', t, true), t + ' sec vs ' + pos + ' benchmarks (lower is better)');
       var fh = frame(pos, m.ht, m.wt); add('Frame Score', 10, fh, fh.grade ? 'Grade ' + fh.grade + ', Frame Score ' + fh.score + ' of 10' : fh.why);
     }
-    var core = out.comps.slice(0, isP ? 2 : 2).some(function (c) { return c.pts != null; });
+    var core = out.comps.slice(isP ? 1 : 0, 2).some(function (c) { return c.pts != null; });
     var used = out.comps.filter(function (c) { return c.pts != null; }), wsum = used.reduce(function (a, c) { return a + c.weight; }, 0);
     out.comps.forEach(function (c) { c.used = c.pts != null; c.scaled = c.used ? c.weight / wsum * 100 : null; c.contrib = c.used ? c.pts * c.weight / wsum : null; });
     if (core) {
@@ -75,7 +85,7 @@
       out.rsShown = round1(out.rs);
     } else {
       out.needed = out.needed.filter(function (n) { return true; });
-      out.reason = isP ? 'Needs Avg or Max Fastball Velocity, and enough ' + pos + ' benchmark players.' : 'Needs Avg or Max Exit Velocity, and enough ' + pos + ' benchmark players.';
+      out.reason = isP ? 'Needs Max Fastball Velocity (the Avg FBV grade table is not provided yet).' : 'Needs Avg or Max Exit Velocity, and enough ' + pos + ' benchmark players.';
     }
     return out;
   };
@@ -98,5 +108,5 @@
     return h;
   };
 
-  window.TheReadScore = { compute: compute, panel: panel, frame: frame, ASSUMPTIONS: ASSUMPTIONS, MIN_BENCH: MIN_BENCH };
+  window.TheReadScore = { compute: compute, panel: panel, frame: frame, maxFbvGrade: maxFbvGrade, MAX_FBV_BANDS: MAX_FBV_BANDS, ASSUMPTIONS: ASSUMPTIONS, MIN_BENCH: MIN_BENCH };
 })();

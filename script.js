@@ -2,7 +2,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const year = new Date().getFullYear();
 
   const currentYear = document.createElement('span');
-  currentYear.textContent = `© ${year} THE READ`;
+  currentYear.textContent = `\u00A9 ${year} THE READ`;
   currentYear.style.display = 'block';
   currentYear.style.marginTop = '0.75rem';
   currentYear.style.fontSize = '0.83rem';

@@ -2,6 +2,8 @@
 
 Static recruiting-intelligence website for athletes, independent recruiting professionals, and athletic departments. Plain HTML, CSS, and JavaScript — no build step, no frameworks. See [ROADMAP.md](ROADMAP.md) for progress and what is still a placeholder.
 
+**Rule: No unverified claims or fake data; add popularity/social-proof labels only when backed by real data.** All demo data is labeled "Sample Data / Fictional Example".
+
 ## Pages
 
 | Page | Purpose |

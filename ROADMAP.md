@@ -4,6 +4,8 @@ Legend: `[x]` done · `[ ]` not done · *(placeholder)* means a page or section 
 
 This site is plain HTML/CSS/JS with no build step. There is **no backend**: forms prepare an email to hello@thereadathletics.com, and the product preview uses **fictional data only**.
 
+**Rule: No unverified claims or fake data; add popularity/social-proof labels only when backed by real data.** (The "Most Popular" pricing badge was removed for this reason.)
+
 ## Phase 1 — Front door
 
 - [x] Three audience paths in the `index.html` hero (athlete, coach/program, institution), each linking to its own page

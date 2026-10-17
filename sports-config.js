@@ -32,3 +32,13 @@ window.TheReadSports = (function () {
   };
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', go); else go();
 })();
+
+/* Schools athletes can mark as interested in. Edit here only. Only programs with a coach workspace on THE READ (onRead: true) receive in-app notifications. */
+window.TheReadSchools = (function () {
+  var list = [
+    { name: 'Sample State University', onRead: true }, { name: 'Northern Plains University', onRead: false }, { name: 'Gulf Coast College', onRead: false },
+    { name: 'Cascade Tech', onRead: false }, { name: 'Redwood State', onRead: false }, { name: 'Appalachian Valley', onRead: false },
+    { name: 'Midwest Metro', onRead: false }, { name: 'Sunbelt University', onRead: false }
+  ];
+  return { list: list, names: list.map(function (s) { return s.name; }), ours: list[0].name, find: function (n) { return list.filter(function (s) { return s.name.toLowerCase() === String(n).trim().toLowerCase(); })[0] || null; } };
+})();

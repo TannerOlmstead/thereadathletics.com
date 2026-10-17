@@ -134,3 +134,9 @@ Athlete-created baseball entries get a computed Recruit Score, Tier and Confiden
 The Max FBV lookup is `TheReadScore.getMaxFBVGrade(maxFBV)`, a port of the owner's reference: missing/non-finite returns `{letterGrade:null, gradeValue:null, status:'Missing'}`, negative throws `RangeError('Max FBV cannot be negative.')`, otherwise `{letterGrade, gradeValue, status:'Graded'}`.
 
 **Avg FBV grade table (owner-supplied):** `TheReadScore.getAvgFBVGrade` (same shape as Max FBV; negative throws `RangeError('Avg FBV cannot be negative.')`). Bands: 92+ A+ 10, 89 A 9.5, 86 A- 9, 83 B+ 8.5, 80 B 8, 77 B- 7.5, 74 C+ 7, 71 C 6, 68 C- 5, 65 D 3, below 65 F 1. Pitching Potential Grade = Avg FBV 40% + Max FBV 30% + Frame Score 30%; missing parts are re-scaled, never zeroed. This replaces the earlier note that Avg FBV was not scored.
+
+## Per-Metric Verification, Interests And Notifications
+
+- Each Recruit Score input is verified **individually** (`verifier-verify.html`: Confirm/Decline per row with a method, no verify-all). Status per metric: Unverified / Pending / Verified / Declined, with verifier, date and method.
+- Confidence = weighted share of verified inputs (hitters Avg EV 45, Max EV 30, 60 Time 15, Height 5, Weight 5; pitchers Avg FBV 40, Max FBV 30, Height 15, Weight 15). Self-reported earns 25% of an input weight (`SELF_CREDIT` in `recruit-score.js`); missing earns 0. The athlete profile shows a What Would Raise My Confidence list.
+- Athlete profile > Interest tab: add schools (list in `sports-config.js` `TheReadSchools`, free text allowed; not-on-THE-READ schools are saved but not notified). Programs on THE READ get a Notifications bell and an Interested Athletes page (`coach-interested.html`), a Dashboard card and a Department rollup. Minors show only after guardian verification and listing consent. Everything is saved in this browser only; no email or push is sent.

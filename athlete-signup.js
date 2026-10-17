@@ -42,7 +42,35 @@
   };
   var anyVerified = function (r) { var v = r.verified || {}; return Object.keys(v).length > 0; };
 
-  window.TheReadAthlete = { load: load, current: current, upsert: upsert, gStatus: gStatus, listed: listed, shares: shares, anyVerified: anyVerified, ageOf: ageOf, POS: POS, METRICS: METRICS };
+  /* Per-metric verification: every input is confirmed individually by a verifier. */
+  var metricStatus = function (r, key) {
+    var v = (r.verified || {})[key], d = (r.vdecl || {})[key];
+    if (v) return { status: 'Verified', by: v.by, role: v.role, date: v.date, method: v.method || '' };
+    if (d) return { status: 'Declined', by: d.by, role: d.role, date: d.date, method: d.method || '' };
+    var rq = (r.verifiers || []).filter(function (q) { return q.status !== 'Closed' && (!q.keys || q.keys.indexOf(key) >= 0); })[0];
+    if (rq) return { status: 'Pending', by: rq.name || '', role: rq.type, date: rq.date, method: '' };
+    return { status: 'Unverified', by: '', role: '', date: '', method: '' };
+  };
+  var verifyMetric = function (r, key, ok, who, method) {
+    r.verified = r.verified || {}; r.vdecl = r.vdecl || {};
+    var rec = { by: who.by, role: who.role, date: new Date().toISOString().slice(0, 10), method: method || '' };
+    delete r.verified[key]; delete r.vdecl[key];
+    if (ok) r.verified[key] = rec; else r.vdecl[key] = rec;
+    return r;
+  };
+  /* Interest in programs (localStorage demo; no email or push is sent). */
+  var IKEY = 'theReadDemoInterests';
+  var loadI = function () { try { var a = JSON.parse(localStorage.getItem(IKEY) || '[]'); return Array.isArray(a) ? a : []; } catch (e) { return []; } };
+  var saveI = function (a) { try { localStorage.setItem(IKEY, JSON.stringify(a)); return true; } catch (e) { return false; } };
+  var addInterest = function (aid, school, sport, note, onRead) {
+    var a = loadI(); school = String(school || '').trim(); if (!aid || !school) return null;
+    if (a.filter(function (i) { return i.aid === aid && i.school.toLowerCase() === school.toLowerCase() && i.sport === sport; })[0]) return null;
+    var it = { id: 'int-' + Date.now().toString(36) + Math.floor(Math.random() * 1e4).toString(36), aid: aid, school: school, sport: sport || '', note: String(note || '').slice(0, 300), ts: new Date().toISOString(), onRead: !!onRead, seen: null };
+    a.push(it); saveI(a); return it;
+  };
+  var removeInterest = function (id) { saveI(loadI().filter(function (i) { return i.id !== id; })); };
+  var markSeen = function (id, by) { var a = loadI(); a.forEach(function (i) { if (i.id === id && !i.seen) i.seen = { by: by, ts: new Date().toISOString() }; }); saveI(a); };
+  window.TheReadAthlete = { load: load, current: current, upsert: upsert, gStatus: gStatus, listed: listed, shares: shares, anyVerified: anyVerified, metricStatus: metricStatus, verifyMetric: verifyMetric, interests: loadI, addInterest: addInterest, removeInterest: removeInterest, markSeen: markSeen, ageOf: ageOf, POS: POS, METRICS: METRICS };
 
   var getPath = function (o, p) { return p.split('.').reduce(function (a, k) { return a == null ? '' : a[k]; }, o); };
   var setPath = function (o, p, v) { var ks = p.split('.'), c = o; ks.slice(0, -1).forEach(function (k) { if (typeof c[k] !== 'object' || c[k] == null) c[k] = {}; c = c[k]; }); c[ks[ks.length - 1]] = v; };

@@ -2024,3 +2024,7 @@ html.hide-sample-labels [data-sample-label] { display: none !important; }
 .check-list{list-style:none;padding:0;columns:2 260px}
 .check-list .done{color:#1f6b3a}
 .link-btn{background:none;border:0;color:var(--scarlet);text-decoration:underline;cursor:pointer;font:inherit;min-height:32px}
+.st-declined { background: #f8d7dd; color: #8a1029; }
+.notif-bell { display: inline-block; margin-right: 10px; font-weight: 700; color: #fff; text-decoration: none; }
+.notif-count { background: #fff; color: #E41E3F; }
+.int-list li { margin: 8px 0; }

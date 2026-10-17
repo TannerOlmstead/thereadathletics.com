@@ -33,7 +33,7 @@
   const POSCYC = ['P', 'P', 'SS', 'OF', 'C', 'P', '2B', 'OF', '3B', 'P', '1B', 'OF', 'SS', 'P', 'C', '2B', 'OF', 'P', '3B', 'OF', 'P', 'SS', '1B', 'OF', 'C', 'P', '2B', 'OF', 'P', '3B', 'SS', 'OF', 'P', 'C', '2B', 'OF', '1B', 'P', '3B', 'OF'];
   const SEC = ['OF', '3B', '1B', 'SS', '2B'];
   const STATES = ['TX', 'FL', 'CA', 'GA', 'AZ', 'NC', 'TN', 'OH', 'IL', 'LA'];
-  const SCHOOLS = ['Sample State University', 'Northern Plains University', 'Gulf Coast College', 'Cascade Tech', 'Redwood State', 'Appalachian Valley', 'Midwest Metro', 'Sunbelt University'];
+  const SCHOOLS = (window.TheReadSchools && window.TheReadSchools.names) || ['Sample State University'];
   const OUR = SCHOOLS[0];
   const BASE = { P: [72, 78, 175, 240], C: [68, 74, 180, 225], '1B': [72, 78, 195, 245], '2B': [67, 73, 155, 195], '3B': [70, 76, 175, 225], SS: [68, 74, 160, 200], OF: [69, 76, 165, 225] };
   const METHODS = ['Live Evaluation', 'Showcase Data', 'Video Review', 'Verified Event Data'];
@@ -593,8 +593,38 @@
     return m;
   }
 
+  // ---------- Interested athletes: athlete-added interest in OUR program (localStorage demo, no real notifications) ----------
+  const Interest = (() => {
+    const AT = () => window.TheReadAthlete;
+    const key = (aid) => 'ATH-' + String(aid).replace(/[^a-z0-9]/gi, '').slice(-6).toUpperCase();
+    const all = () => (AT() && AT().interests ? AT().interests().filter((i) => i.school === OUR) : []);
+    // Only athletes who are listed (adults, or minors with guardian verification and listing consent) are shown to coaches.
+    const rows = () => all().map((i) => { const p = players.filter((q) => q.athKey === key(i.aid) && q.sport === i.sport)[0]; return p ? { i, p } : null; }).filter(Boolean).sort((a, b) => (a.i.ts < b.i.ts ? 1 : -1));
+    const hidden = () => all().length - rows().length;
+    const unseen = () => rows().filter((r) => !r.i.seen).length;
+    const byProgram = (sp) => rows().filter((r) => String(r.i.sport).replace(/[\u2019']/g, '') === String(sp).replace(/[\u2019']/g, ''));
+    const seen = (id) => { if (AT()) AT().markSeen(id, ME().name); };
+    return { rows, hidden, unseen, byProgram, seen, has: (p) => rows().some((r) => r.p.id === p.id) };
+  })();
+  const interestTable = (rs, actions) => miniTable(['Athlete', 'Sport', 'Pos', 'Level / Class', 'Eligibility Left', 'Recruit Score', 'Tier', 'Confidence', 'Guardian', 'Interested On', 'Status'].concat(actions ? ['Board', 'Message', 'Seen'] : []), rs.map((r) => {
+    const p = r.p, i = r.i;
+    return '<tr><td>' + cardLink(p) + (i.note ? '<br /><span class="muted">' + esc(i.note) + '</span>' : '') + '</td><td>' + esc(p.sport) + '</td><td>' + esc(p.pos) + '</td><td>' + lvlCell(p) + '</td><td>' + esc(eligTxt(p)) + '</td><td class="rd-num">' + TRC.formatRecruitScore(p.rs) + '</td><td>' + tierBadge(p) + '</td><td>' + confBadge(p) + '</td><td>' + (p.guardianVerified ? 'Guardian Verified' : 'Adult') + '</td><td>' + esc(i.ts.slice(0, 10)) + '</td><td>' + (i.seen ? 'Seen By ' + esc(i.seen.by) : 'New') + '</td>' +
+      (actions ? '<td>' + boardBtn(p) + '</td><td><a class="button button-secondary" href="coach-connect.html?to=' + encodeURIComponent('pl:' + p.id) + '">Message</a></td><td>' + (i.seen ? '&#10003;' : '<button type="button" class="button button-secondary" data-seen="' + esc(i.id) + '">Mark Seen</button>') + '</td>' : '') + '</tr>';
+  }), 'Interested athletes');
+
   // ---------- Pages ----------
   const pages = {};
+  pages.interested = (root) => {
+    const draw = () => {
+      const rs = Interest.rows(), hid = Interest.hidden();
+      root.innerHTML = bl(['<strong>Interested Athletes</strong> are players who added <strong>' + esc(OUR) + '</strong> to their own Interest list.', '<strong>Notifications</strong> are saved in this browser for the demo; no email or push message is sent.', '<strong>Minors</strong> appear only after a guardian verifies and the athlete allows listing.', '<strong>Add To Board</strong> (+) and <strong>Message</strong> work like everywhere else. Seen status is shown to the athlete.']) +
+        '<div class="kpi-row">' + kpi('Interested Athletes', rs.length) + kpi('New (Not Seen)', Interest.unseen()) + '</div>' +
+        (hid ? '<p class="coach-note">' + hid + ' more interest ' + (hid === 1 ? 'entry is' : 'entries are') + ' not shown because listing or guardian consent is not complete.</p>' : '') +
+        (rs.length ? card('Interested Athletes', interestTable(rs, true), 'wide') : '<p class="coach-note">No athletes have added your program yet. Athletes do this from their profile, Interest tab.</p>') + LVL_LEGEND;
+    };
+    draw();
+    root.addEventListener('click', (e) => { const b = e.target.closest && e.target.closest('[data-seen]'); if (b) { Interest.seen(b.getAttribute('data-seen')); draw(); refreshBell(); } });
+  };
 
   pages.dashboard = (root) => {
     const tierCount = (t) => players.filter((p) => p.tier === t).length;
@@ -609,6 +639,7 @@
     root.innerHTML =
       '<div class="kpi-row">' + kpi('Total Players', db.total) + kpi('On Your Recruiting Board', Board.list().length) + kpi('Avg Recruit Score', num(db.avgRS)) + kpi('Avg Confidence %', num(db.avgConf) + '%') + kpi('Avg Athletic Score', num(db.avgAth)) + '</div>' +
       '<div class="coach-grid">' +
+      card('Interested Athletes (' + Interest.rows().length + ')', Interest.rows().length ? interestTable(Interest.rows().slice(0, 5), false) + '<p><a href="coach-interested.html">Open Interested Athletes</a></p>' : '<p class="coach-note">No athletes have added your program yet.</p>', 'wide') +
       card('Database Health', miniTable(['Player Tier', 'Players'], TRC.TIER_NAMES.map((t) => tr([TRC.renderTierBadge(t === 'Not Rated' ? null : TRC.PLAYER_TIER_CONFIG[t].minimumScore, { showTooltip: false }) + ' <span class="rd-range">' + TRC.PLAYER_TIER_CONFIG[t].rangeLabel + '</span>', tierCount(t)])), 'Database health by Player Tier') + '<p class="coach-note">' + TRC.TEXT.cardTier + ' Tier is derived only from Recruit Score.</p>') +
       card('Top Recruits', miniTable(['Category', 'Player', 'Value'], [
         '<tr><th scope="row">#1 Overall</th><td>' + cardLink(top) + '</td><td>' + num(top.rs) + '</td></tr>',
@@ -775,7 +806,7 @@
     const load = () => { try { const s = JSON.parse(localStorage.getItem(KEY) || 'null'); if (Array.isArray(s)) return s; } catch (e) { /* use seed */ } return seed(); };
     let state = load();
     const save = () => { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) { /* demo only */ } };
-    const athletes = () => players.filter((p) => !p.entered).map((p) => { const n = Number(String(p.id).replace(/\D/g, '')) || 0; return { id: 'pl:' + p.id, name: p.name, role: 'Player', org: schoolOf(p), state: p.state, info: lvlCode(p) + ' \u00b7 Eligibility Left: ' + eligTxt(p), accepting: n % 7 !== 0 }; });
+    const athletes = () => players.filter((p) => !p.entered || Interest.has(p)).map((p) => { const n = Number(String(p.id).replace(/\D/g, '')) || 0; return { id: 'pl:' + p.id, name: p.name, role: 'Player', org: schoolOf(p), state: p.state, info: lvlCode(p) + ' \u00b7 Eligibility Left: ' + eligTxt(p), accepting: p.entered ? true : n % 7 !== 0 }; });
     const contacts = () => DIR.map((c) => Object.assign({ accepting: true }, c)).concat(athletes());
     const contact = (id) => contacts().filter((c) => c.id === id)[0] || null;
     const view = (th) => { const c = contact(th.cid) || { name: 'Unknown', role: '', org: '' }; return Object.assign({}, th, { name: c.name, role: c.role, org: c.org, info: c.info || '' }); };
@@ -1581,6 +1612,8 @@
       theRead('A message thread is where a recruiting conversation actually happens, so keep it short and specific: who you are, what you saw, and what you need next. For JUCO and transfer players, ask about remaining eligibility and academic status early. This inbox is a demo: real messaging needs accounts, a server, encryption and contact-rule enforcement (see the roadmap).');
     const toSel = root.querySelector('#cn-new [name=to]');
     toSel.innerHTML = '<option value="">Choose a recipient</option>' + MS.contacts().map((c) => '<option value="' + esc(c.id) + '"' + (c.accepting ? '' : ' disabled') + '>' + esc(c.name) + ' \u2014 ' + esc(c.role) + (c.accepting ? '' : ' (not accepting messages)') + '</option>').join('');
+    const toParam = new URLSearchParams(location.search).get('to');
+    if (toParam && MS.contact(toParam)) toSel.value = toParam;
     function drawList() {
       const role = $('#cn-role', root).value, q = $('#cn-q', root).value.trim().toLowerCase(), uo = $('#cn-show', root).value === 'u';
       const all = MS.listThreads();
@@ -1635,7 +1668,7 @@
     root.innerHTML =
       '<div class="kpi-row">' + kpi('Programs (Sample)', PROGRAMS.length) + kpi('Class Spots Targeted', tot((p) => p.target)) + kpi('Committed (Sample)', tot((p) => p.committed)) + kpi('Open Spots', tot((p) => p.target - p.committed)) + kpi('Sample Recruiting Spend', money(tot((p) => p.spend))) + '</div>' +
       '<div class="coach-grid">' +
-      card('All Programs At A Glance', miniTable(['Program', 'Coach', 'Target Class', 'Committed', 'Open Spots', 'Top Needs', 'Sample Spend'], PROGRAMS.map((p) => '<tr><th scope="row">' + p.sport + '</th><td>' + esc(p.coach) + '</td><td>' + p.target + '</td><td>' + p.committed + '</td><td>' + (p.target - p.committed) + '</td><td>' + p.needs.join(', ') + '</td><td>' + money(p.spend) + '</td></tr>'), 'All programs at a glance') + '<p class="coach-note">Sample Data / Fictional Example. Every program, coach, and number here is made up.</p>', 'wide') +
+      card('Interested Athletes Across Programs', miniTable(['Program', 'Interested Athletes', 'New (Not Seen)'], PROGRAMS.map((p) => { const r = Interest.byProgram(p.sport); return '<tr><th scope="row">' + esc(p.sport) + '</th><td>' + r.length + '</td><td>' + r.filter((x) => !x.i.seen).length + '</td></tr>'; }), 'Interested athletes by program') + '<p class="coach-note">Athletes add ' + esc(OUR) + ' from their own profile. Minors count only after guardian verification and listing consent. <a href="coach-interested.html">Open the full list</a>.</p>') + card('All Programs At A Glance', miniTable(['Program', 'Coach', 'Target Class', 'Committed', 'Open Spots', 'Top Needs', 'Sample Spend'], PROGRAMS.map((p) => '<tr><th scope="row">' + p.sport + '</th><td>' + esc(p.coach) + '</td><td>' + p.target + '</td><td>' + p.committed + '</td><td>' + (p.target - p.committed) + '</td><td>' + p.needs.join(', ') + '</td><td>' + money(p.spend) + '</td></tr>'), 'All programs at a glance') + '<p class="coach-note">Sample Data / Fictional Example. Every program, coach, and number here is made up.</p>', 'wide') +
       card('Who Is Recruiting Whom (Baseball Sample)', miniTable(['Player', 'Pos', 'Level / Class', 'Eligibility Left', 'Priority', 'Recruiting Coach', 'Next Step'], players.filter((p) => !p.committed && Board.has(p.id) && priTier(p) && priTier(p) <= 2).sort((a, b) => priTier(a) - priTier(b) || (b.pri || 0) - (a.pri || 0)).slice(0, 10).map((p) => '<tr><td>' + cardLink(p) + '</td><td>' + p.pos + '</td><td>' + lvlCell(p) + '</td><td>' + esc(eligTxt(p)) + '</td><td>' + priPill(p) + '</td><td>' + esc((COACHES.filter((c) => c.id === p.coach)[0] || { name: 'Unassigned' }).name) + '</td><td>' + (p.action || '&mdash;') + '</td></tr>'), 'Who is recruiting whom'), 'wide') +
       '</div>' + coachLink + deptBanner('Department overview (fictional): one view of every program. Each coach\u2019s private notes stay private. Open Spots is the target class size minus current commitments, so a program with several open spots and few listed needs is the one to check first. Spend and budget figures are invented samples.');
   };
@@ -1779,8 +1812,21 @@
   pages.calendar = (root) => calendarPage(root, 'coach');
   pages.deptcal = (root) => calendarPage(root, 'dept');
   pages.athcal = (root) => calendarPage(root, 'athlete');
-  window.TheReadCoach = { players: players, rankingRowHtml: rankingRowHtml, priTierFrom: priTierFrom, stageFromEntries: stageFromEntries, buildIcs: buildIcs, Board: Board, Act: Act, Cal: Cal, lvlCode: lvlCode, eligTxt: eligTxt, prefTxt: prefTxt, prefCat: prefCat };
+  window.TheReadCoach = { Interest: Interest, players: players, rankingRowHtml: rankingRowHtml, priTierFrom: priTierFrom, stageFromEntries: stageFromEntries, buildIcs: buildIcs, Board: Board, Act: Act, Cal: Cal, lvlCode: lvlCode, eligTxt: eligTxt, prefTxt: prefTxt, prefCat: prefCat };
+  const refreshBell = () => {
+    const b = document.getElementById('notif-bell'); if (!b) return;
+    const n = Interest.unseen();
+    b.setAttribute('aria-label', 'Notifications: ' + n + ' new interested athlete' + (n === 1 ? '' : 's'));
+    b.innerHTML = 'Notifications' + (n ? ' <span class="pill notif-count">' + n + '</span>' : '');
+  };
   document.addEventListener('DOMContentLoaded', () => {
+    const cls = document.body.className || '';
+    if (/ws-coach|ws-dept/.test(cls)) {
+      const sub = document.querySelector('.coach-subnav');
+      if (sub && !sub.querySelector('a[href="coach-interested.html"]')) { const a = document.createElement('a'); a.href = 'coach-interested.html'; a.textContent = 'Interested'; if (document.body.dataset.coachPage === 'interested') a.setAttribute('aria-current', 'page'); sub.appendChild(a); }
+      const acts = document.querySelector('.ws-actions');
+      if (acts && !document.getElementById('notif-bell')) { const b = document.createElement('a'); b.id = 'notif-bell'; b.className = 'notif-bell'; b.href = 'coach-interested.html'; acts.insertBefore(b, acts.firstChild); refreshBell(); }
+    }
     const root = document.getElementById('coach-app');
     const page = document.body.dataset.coachPage;
     if (root && pages[page]) {

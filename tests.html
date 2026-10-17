@@ -170,10 +170,29 @@ test('Recruit Score calculator: frame grade, reweighting, Not Rated, confidence'
   var r = S.compute({ pos: 'SS', metrics: { avgEV: 85, maxEV: 95, t60: 6.9, ht: 72, wt: 185 }, verified: {} }, bench);
   eq(r.comps.filter(function (c) { return c.used; }).length, 4, 'all components used');
   eq(Math.round(r.comps.reduce(function (a, c) { return a + (c.scaled || 0); }, 0)), 100, 'weights rescale to 100');
-  eq(r.conf, 50, 'five self-reported metrics = 50% confidence');
+  eq(r.conf, 25, 'five self-reported metrics = 25% confidence (25% credit each)');
+  var pv = S.compute({ pos: 'SS', metrics: { avgEV: 85, maxEV: 95, t60: 6.9, ht: 72, wt: 185 }, verified: { avgEV: { by: 'x' } } }, bench);
+  eq(pv.conf, 58.8, 'only Avg EV verified: 45 + 0.25 x 55 = 58.75');
+  var pp = S.compute({ pos: 'P', metrics: { avgFBV: 86, maxFBV: 92, ht: 77, wt: 245 }, verified: { avgFBV: {}, maxFBV: {} } }, bench);
+  eq(pp.conf, 70 + 0.25 * 30, 'pitcher: Avg+Max FBV verified');
   var n = S.compute({ pos: 'SS', metrics: { ht: 72, wt: 185 }, verified: {} }, bench);
   eq(n.rs, null, 'no velocity = Not Rated, not zero');
   var p = S.compute({ pos: 'P', metrics: {}, verified: {} }, bench); eq(p.rs, null, 'empty pitcher Not Rated'); eq(p.conf, null, 'no metrics = Unknown confidence');
+});
+test('Per-metric verification and interests API', function () {
+  var A = window.TheReadAthlete, r = { id: 'ath-t1', metrics: { avgEV: 85, maxEV: 95 }, verified: {}, verifiers: [{ type: 'High School Coach', name: 'C', status: 'Requested', keys: ['avgEV'] }] };
+  eq(A.metricStatus(r, 'avgEV').status, 'Pending', 'requested metric pending');
+  eq(A.metricStatus(r, 'maxEV').status, 'Unverified', 'metric not in request stays unverified');
+  A.verifyMetric(r, 'avgEV', true, { by: 'C', role: 'High School Coach' }, 'radar');
+  eq(A.metricStatus(r, 'avgEV').status, 'Verified', 'confirmed'); eq(A.metricStatus(r, 'avgEV').method, 'radar', 'method kept'); eq(A.metricStatus(r, 'maxEV').status, 'Unverified', 'no bypass of other metrics');
+  A.verifyMetric(r, 'avgEV', false, { by: 'C', role: 'High School Coach' }, 'bad reading');
+  eq(A.metricStatus(r, 'avgEV').status, 'Declined', 'declined'); eq(!!r.verified.avgEV, false, 'declined is not verified');
+  var saved = localStorage.getItem('theReadDemoInterests'); localStorage.removeItem('theReadDemoInterests');
+  var a = A.addInterest('ath-t1', 'Sample State University', 'Baseball', 'close to home', true);
+  eq(!!a, true, 'added'); eq(A.addInterest('ath-t1', 'sample state university', 'Baseball', '', true), null, 'duplicate blocked');
+  eq(A.interests().length, 1, 'one interest'); A.markSeen(a.id, 'Coach X'); eq(A.interests()[0].seen.by, 'Coach X', 'seen recorded');
+  A.removeInterest(a.id); eq(A.interests().length, 0, 'removed');
+  if (saved == null) localStorage.removeItem('theReadDemoInterests'); else localStorage.setItem('theReadDemoInterests', saved);
 });
 test('Rankings row: Grad Class is the 4th column after Player Name', function () {
       var t = document.createElement('table'); t.innerHTML = '<tbody>' + D.rankingRowHtml(D.players[0]) + '</tbody>';

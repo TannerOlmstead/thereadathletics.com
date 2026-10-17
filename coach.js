@@ -414,6 +414,7 @@
   function refreshAct(pid) {
     document.querySelectorAll('[data-stage-for="' + pid + '"]').forEach((x) => { x.textContent = stageOf(pid); });
     document.querySelectorAll('[data-pcact="' + pid + '"]').forEach((x) => { x.innerHTML = actBlock(pid); });
+    const br = document.getElementById('b-read'); if (br && window.__boardRead) br.innerHTML = window.__boardRead();
   }
 
   // One event dialog for the calendar page and the Schedule Visit button.
@@ -1031,6 +1032,38 @@
   pages.board = (root) => {
     const board = Board.list();
     const ours = players.filter((p) => p.committed === OUR);
+    // Deterministic breakdown computed live from this program's board membership only (never the whole Master Database).
+    const boardRead = () => {
+      const b = Board.list();
+      const head = '<aside class="read-note" aria-label="Preview of THE READ AI, generated from sample data"><strong class="read-label"><span class="tr">THE READ</span> AI Preview &mdash; Generated From Sample Data</strong>';
+      if (!b.length) return head + '<p>Your board is empty, so there is nothing to break down yet. Go to the <a href="coach-master-database.html">Master Database</a> and add prospects with the green + button; this summary will build itself from the players you choose.</p></aside>';
+      const cnt = (f) => { const m = {}; b.forEach((p) => { const k = f(p); m[k] = (m[k] || 0) + 1; }); return m; };
+      const fmt = (m, order) => (order || Object.keys(m)).filter((k) => m[k]).map((k) => esc(k) + ' ' + m[k]).join(', ');
+      const byPos = cnt((p) => p.pos), needPos = Object.keys(POS_NEED).filter((k) => POS_NEED[k] <= 3);
+      const gaps = needPos.filter((k) => !byPos[k]);
+      const covered = needPos.filter((k) => byPos[k]);
+      const lv = cnt((p) => lvlCode(p).split(' ')[0]);
+      const elig = b.filter((p) => p.level !== 'High School');
+      const eligKnown = elig.filter((p) => p.elig != null && p.elig !== '');
+      const tiers = cnt((p) => (priTier(p) ? 'Priority ' + priTier(p) : 'Not Enough Data'));
+      const stages = cnt((p) => Act.stage(p.id));
+      const tr2 = cnt((p) => (p.rs == null ? 'Not Rated' : p.tier));
+      const cf = cnt((p) => p.confLevel || 'Unknown');
+      const today = new Date().toISOString().slice(0, 10), ids = {}; b.forEach((p) => { ids[p.id] = p; });
+      const visits = Cal.visible('coach').filter((e) => e.type === 'Visit' && e.pid && ids[e.pid] && e.date >= today && e.status !== 'completed').sort(evSort);
+      const li = [
+        '<strong>Board size:</strong> ' + b.length + ' prospect' + (b.length === 1 ? '' : 's') + ' (' + fmt(byPos) + ' by position).',
+        '<strong>Needs check:</strong> ' + (covered.length ? 'you have prospects at ' + covered.map(esc).join(', ') + ' (top-need positions). ' : '') + (gaps.length ? 'No prospects yet at ' + gaps.map(esc).join(', ') + ', which your Team Needs rank as top needs.' : 'Every top-need position has at least one prospect.'),
+        '<strong>Level / Class:</strong> ' + fmt(lv) + '. ' + (elig.length ? eligKnown.length + ' of ' + elig.length + ' JUCO/transfer prospects have eligibility entered; the rest show Not Provided (not assumed).' : 'No JUCO or transfer prospects on the board.'),
+        '<strong>Priority mix:</strong> ' + fmt(tiers, ['Priority 1', 'Priority 2', 'Priority 3', 'Not Enough Data']) + '. Priority comes from Coach Fit and Team Need only.',
+        '<strong>Pipeline:</strong> ' + fmt(stages, STAGE_ORDER.concat(['Declined'])) + ', from your logged actions.',
+        '<strong>Tier / Confidence:</strong> ' + fmt(tr2, ['Platinum', 'Gold', 'Silver', 'Bronze', 'Not Rated']) + ' tiers; ' + fmt(cf, ['High', 'Medium', 'Low', 'Unknown']) + ' confidence. Low or Unknown Confidence means less verified data, not weaker play.',
+        '<strong>Upcoming visits:</strong> ' + (visits.length ? visits.slice(0, 3).map((e) => esc(ids[e.pid].name) + ' (' + esc(e.date) + ')').join(', ') + (visits.length > 3 ? ' and ' + (visits.length - 3) + ' more' : '') + '.' : 'none scheduled on the calendar.')
+      ];
+      return head + '<ul>' + li.map((x) => '<li>' + x + '</li>').join('') + '</ul><p class="coach-note">Context only: this summary never changes a score, Player Tier or Confidence.</p></aside>';
+    };
+    window.__boardRead = boardRead;
+
     const tierOf = (p) => priTier(p);
     const t = (n) => board.filter((p) => tierOf(p) === n);
     const tierName = { 1: 'Priority 1', 2: 'Priority 2', 3: 'Priority 3' };
@@ -1049,7 +1082,7 @@
       '<label>Playing Level<select id="b-level"><option value="">All</option>' + LEVELS.map((x) => '<option>' + x + '</option>').join('') + '</select></label><label>Position<select id="b-pos"><option value="">All</option>' + POS.map((x) => '<option>' + x + '</option>').join('') + '</select></label></form>' +
       LVL_LEGEND + '<div class="table-wrap"><table id="b-table"></table></div>' +
       '<div class="coach-grid">' + snap + '</div>' + boardFormula() +
-      theRead('Your private board (fictional): you decide who is on it, so it reflects your program rather than the whole database. Priority 1 targets are the players your staff would pursue first. Players who commit elsewhere drop off the board automatically. Adjusted Recruit Score is the Recruit Score nudged by fit, need and staff grades, within a small documented limit. Playing Level separates high school recruits from JUCO and transfer-portal players. Rankings and the Master Database still show every player.');
+      '<div id="b-read">' + boardRead() + '</div>';
     function draw() {
       const fs = $('#b-stage', root).value, ft = $('#b-tier', root).value, fp = $('#b-pos', root).value, fl = $('#b-level', root).value;
       const list = board.filter((p) => (!ft || String(tierOf(p) || 0) === ft) && (!fs || Act.stage(p.id) === fs) && (!fp || p.pos === fp) && (!fl || p.level === fl)).sort((a, b) => (tierOf(a) || 9) - (tierOf(b) || 9) || (b.pri || 0) - (a.pri || 0));

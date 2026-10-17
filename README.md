@@ -97,3 +97,5 @@ Open `index.html` in a browser, or run a simple static server from this folder, 
 
 - **Level / Class and Eligibility Left:** player lists show a compact code (`HS 2027`, `JUCO 2028`, `Tr 2029`; Tr = 4-year college transfer portal) plus Years Of Eligibility Left. Eligibility is an Add Prospect input, not calculated (rules vary): high school shows N/A, unknown shows Not Provided, never 0. Rankings keeps its separate Grad Class column. Sample values are fictional.
 - **Bulleted descriptions:** tab and page intros use short bullet lists with a bold key term instead of long paragraphs.
+
+- **Board breakdown (THE READ AI preview):** the Recruiting Board panel summarizes only the prospects on your board (by position vs top needs, Level/Class and eligibility, Priority mix, pipeline stage, Tier/Confidence, upcoming visits). It updates when you add/remove players or log actions, and never changes scores.

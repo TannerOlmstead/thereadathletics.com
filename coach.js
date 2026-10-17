@@ -268,14 +268,45 @@
       meas: [['Avg EV', 'avgEV', 'high'], ['Max EV', 'maxEV', 'high'], ['Avg FBV', 'avgFBV', 'high'], ['Max FBV', 'maxFBV', 'high'], ['Throwing Velo', 'tv', 'high'], ['60 Time', 't60', 'low', (v) => v.toFixed(2)], ['Pop Time', 'pop', 'low', (v) => v.toFixed(2)]],
       team: [['HC Grade', 'hc', 'grade'], ['PC Grade', 'pc', 'grade'], ['AC Grade', 'ac', 'grade'], ['Staff Score', 'staff', 'high'], ['Coach Fit Score', 'fit', 'high'], ['Team Need Score', 'need', 'high'], ['Adjusted Recruit Score', 'adj', 'high'], ['Priority Score', 'pri', 'high']] };
     const show = (d, p) => { const v = p[d[1]]; if (v == null || v === '') return '&mdash;'; return d[3] ? d[3](v) : (typeof v === 'number' ? num(v) : esc(v)); };
-    function edge(d, pa, pb) {
+    function cmpOf(d, pa, pb) {
       const x = pa[d[1]], y = pb[d[1]];
-      if (!d[2] || x == null || y == null) return '';
-      const cmp = d[2] === 'grade' ? GRADES.indexOf(x) - GRADES.indexOf(y) : d[2] === 'low' ? y - x : x - y;
-      if (Math.abs(cmp) < 1e-9) return '<span class="adv-even">Even</span>';
-      return cmp > 0 ? '<span class="adv-a"><span aria-hidden="true">\u25C0</span> Player A</span>' : '<span class="adv-b">Player B <span aria-hidden="true">\u25B6</span></span>';
+      if (!d[2] || x == null || y == null) return null;
+      const c = d[2] === 'grade' ? GRADES.indexOf(x) - GRADES.indexOf(y) : d[2] === 'low' ? y - x : x - y;
+      return Math.abs(c) < 1e-9 ? 0 : c;
     }
-    const row = (d, pa, pb, withEdge) => '<div class="h2h-row"><span class="h2h-l">' + d[0] + '</span><span class="h2h-a">' + show(d, pa) + '</span><span class="h2h-c">' + (withEdge ? edge(d, pa, pb) : '') + '</span><span class="h2h-b">' + show(d, pb) + '</span><span class="h2h-r" aria-hidden="true">' + d[0] + '</span></div>';
+    function edge(d, pa, pb) {
+      const c = cmpOf(d, pa, pb);
+      if (c === null) return '';
+      if (c === 0) return '<span class="adv-even">Tie</span>';
+      return c > 0 ? '<span class="adv-a"><span aria-hidden="true">\u25C0</span> ' + esc(pa.name) + '</span>' : '<span class="adv-b">' + esc(pb.name) + ' <span aria-hidden="true">\u25B6</span></span>';
+    }
+    function breakdown(pa, pb) {
+      const groups = [['Rankings', T.rank], ['Grades', T.grades], ['Measurables', T.meas], ['Team Evaluation', T.team]];
+      const tot = { a: 0, b: 0, t: 0 }, per = [], wonA = [], wonB = [], diffs = [];
+      groups.forEach((g) => {
+        const c = { a: 0, b: 0, t: 0 };
+        g[1].forEach((d) => {
+          const r = cmpOf(d, pa, pb);
+          if (r === null) return;
+          if (r === 0) c.t++; else if (r > 0) { c.a++; wonA.push(d[0]); } else { c.b++; wonB.push(d[0]); }
+          const x = pa[d[1]], y = pb[d[1]];
+          if (d[2] !== 'grade' && typeof x === 'number' && r !== 0) diffs.push([d[0], Math.abs(x - y) / ((Math.abs(x) + Math.abs(y)) / 2 || 1), r > 0 ? pa.name : pb.name]);
+        });
+        per.push([g[0], c]); tot.a += c.a; tot.b += c.b; tot.t += c.t;
+      });
+      const team = per[3][1];
+      const lead = tot.a === tot.b ? 'The comparison is even overall.' : (tot.a > tot.b ? esc(pa.name) : esc(pb.name)) + ' wins more categories overall.';
+      diffs.sort((x, y) => y[1] - x[1]);
+      const list = (a) => (a.length ? a.join(', ') : 'none');
+      const teamLine = team.a === team.b ? 'Team Edge is even (' + team.a + '\u2013' + team.b + ').' : 'Team Edge goes to ' + esc(team.a > team.b ? pa.name : pb.name) + ' (' + Math.max(team.a, team.b) + '\u2013' + Math.min(team.a, team.b) + (team.t ? ', ' + team.t + ' tied' : '') + '), with Priority Score ' + (pa.pri === pb.pri ? 'tied' : 'favoring ' + esc(pa.pri > pb.pri ? pa.name : pb.name)) + '.';
+      return '<section class="h2h-ai" aria-label="The READ AI preview"><h3><span class="tr">THE READ</span> AI</h3><p class="h2h-ai-tag">Preview Of THE READ AI &mdash; Generated From Sample Data</p>' +
+        '<p class="h2h-ai-note">Rule-based text built in your browser from the selected sample players. It is not a live AI.</p>' +
+        '<div class="h2h-ai-grid"><div><h4>Category Wins</h4><ul>' + per.map((p) => '<li><strong>' + p[0] + ':</strong> ' + esc(pa.name) + ' ' + p[1].a + ' \u2013 ' + p[1].b + ' ' + esc(pb.name) + (p[1].t ? ' (' + p[1].t + ' tied)' : '') + '</li>').join('') + '<li><strong>Total:</strong> ' + tot.a + ' \u2013 ' + tot.b + (tot.t ? ' (' + tot.t + ' tied)' : '') + '. ' + lead + '</li></ul></div>' +
+        '<div><h4>Strengths</h4><ul><li><strong>' + esc(pa.name) + ':</strong> ' + list(wonA) + '</li><li><strong>' + esc(pb.name) + ':</strong> ' + list(wonB) + '</li></ul></div>' +
+        '<div><h4>Biggest Differences</h4><ul>' + (diffs.length ? diffs.slice(0, 3).map((x) => '<li>' + x[0] + ' &mdash; edge to ' + esc(x[2]) + '</li>').join('') : '<li>No comparable differences.</li>') + '</ul></div>' +
+        '<div><h4>Team Edge Summary</h4><p>' + teamLine + '</p></div></div>' +
+        '<p class="h2h-ai-note">Rows with a blank value are skipped, so counts only include categories both players have.</p></section>';
+    }    const row = (d, pa, pb, withEdge) => '<div class="h2h-row"><span class="h2h-l">' + d[0] + '</span><span class="h2h-a">' + show(d, pa) + '</span><span class="h2h-c">' + (withEdge ? edge(d, pa, pb) : '') + '</span><span class="h2h-b">' + show(d, pb) + '</span><span class="h2h-r" aria-hidden="true">' + d[0] + '</span></div>';
     const sec = (name, center) => '<div class="h2h-sec"><span class="h2h-l">' + name + '</span><span class="h2h-c">' + (center || '') + '</span><span class="h2h-r" aria-hidden="true">' + name + '</span></div>';
     const bench = (k, p, low) => { const a = avgOf(k, players); if (p[k] == null || a == null) return '&mdash;'; const df = p[k] - a; const good = low ? df < 0 : df > 0; const d = low ? 2 : 1; return '<span class="' + (Math.abs(df) < 0.05 ? '' : good ? 'adv-good' : 'adv-bad') + '">' + (df > 0 ? '+' : '') + df.toFixed(d) + ' vs ' + a.toFixed(d) + '</span>'; };
     const stand = (p) => (p.overall <= 5 ? 'Top 5 Overall' : p.overall <= 15 ? 'Top 15 Overall' : 'Rank ' + p.overall + ' Of ' + players.length);
@@ -296,7 +327,7 @@
         '<aside class="h2h-read" aria-label="Sample summary"><strong class="tr">THE READ</strong><span>' + readTxt + '</span></aside>' +
         benchRows.map((r) => '<div class="h2h-row"><span class="h2h-l">' + r[0] + '</span><span class="h2h-a">' + bench(r[1], pa, r[2]) + '</span><span class="h2h-b">' + bench(r[1], pb, r[2]) + '</span><span class="h2h-r" aria-hidden="true">' + r[0] + '</span></div>').join('') +
         '<div class="h2h-row"><span class="h2h-l">Overall Standing</span><span class="h2h-a">' + stand(pa) + '</span><span class="h2h-b">' + stand(pb) + '</span><span class="h2h-r" aria-hidden="true">Overall Standing</span></div></div>' +
-        '<div class="h2h-block">' + sec('Team Evaluation', 'Team Edge') + T.team.map((d) => row(d, pa, pb, true)).join('') + '</div>' +
+        '<div class="h2h-block">' + sec('Team Evaluation', 'Team Edge') + T.team.map((d) => row(d, pa, pb, true)).join('') + '</div>' + breakdown(pa, pb) +
         '</section>';
       $('#h-out', root).innerHTML = html;
       SIDES.forEach((s) => { const el = $('#h-' + s, root); playerOptions(el, ids[s]); });

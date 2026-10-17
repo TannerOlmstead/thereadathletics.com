@@ -1829,3 +1829,16 @@ tbody th, .coach-card tbody th { background: #f1f4fa; color: var(--navy); text-t
   .h2h-sec .h2h-r { display: none; }
   .h2h-read { display: block; border-bottom: 0; }
 }
+.h2h-block { grid-template-columns: 1.2fr .9fr 1.3fr .9fr 1.2fr; }
+.h2h-c .adv-a, .h2h-c .adv-b, .h2h-c .adv-even { font-size: .9rem; }
+.h2h-ai { background: var(--navy); color: #fff; border-top: 6px solid var(--scarlet); padding: 1.2rem; }
+.h2h-ai h3 { color: #fff; margin: 0; font-size: 1.6rem; }
+.h2h-ai .tr { color: #ff4d6a; }
+.h2h-ai h4 { color: #fff; border-bottom: 2px solid var(--scarlet); padding-bottom: .3rem; margin: 0 0 .5rem; text-transform: uppercase; letter-spacing: .06em; font-size: .85rem; }
+.h2h-ai-tag { background: var(--scarlet); color: #fff; display: inline-block; padding: .3rem .6rem; font-weight: 800; margin: .5rem 0; }
+.h2h-ai-note { color: #d5dcec; font-size: .85rem; margin: .3rem 0; }
+.h2h-ai-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1.2rem; margin: 1rem 0; }
+.h2h-ai ul { margin: 0; padding-left: 1.1rem; }
+.h2h-ai li { margin-bottom: .35rem; }
+.h2h-ai p { margin: 0; }
+@media (max-width: 760px) { .h2h-block { display: block; } .h2h-row .h2h-c { min-width: 7.5rem; } }

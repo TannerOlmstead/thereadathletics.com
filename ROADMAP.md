@@ -109,7 +109,7 @@ This site is plain HTML/CSS/JS with no build step. There is **no backend**: form
 
 ## Master Database
 
-- [x] Master Database page (first coach tab): all sample players, every input column, search/filter/sort, Add Prospect From Your Recruiting Board demo form (college coaches only; private, coach-entered, unverified entries, separate from athlete signup) saved in localStorage; other coach pages read from it.
+- [x] Master Database page (first coach tab): all sample players, every input column, search/filter/sort, Add Prospect demo form (college coaches only; private, coach-entered, unverified entries, separate from athlete signup) saved in localStorage; other coach pages read from it.
 - [ ] Auto-calculate projection grades, Athletic Score, Recruit Score, Tier and Confidence for added players from raw inputs (owner Grade Tables and Build Notes formulas) server-side, so the owner-only formulas are not published in public JS. Add Player form already excludes these fields.
 - [ ] Bulk import of a college coach's offline recruiting board (CSV/spreadsheet), kept private to that coach and marked unverified until the athlete verifies.
 - [ ] Real storage needs a backend (accounts, shared database, per-coach private layers).

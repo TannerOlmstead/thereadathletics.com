@@ -659,7 +659,7 @@
       '<div class="kpi-row" id="md-kpis"></div>' +
       '<p class="coach-note md-note"><strong>Master Database:</strong> the one list every other workspace page reads from. Sample players are fictional. This is for college coaches adding prospects from their offline recruiting board. Prospects you add are your private, coach-entered, unverified board entries (not athlete-verified), saved only in this browser as a demo until a real backend exists, and not shared with anyone. It is not for high school coaches or private instructors creating athlete accounts; that is a separate athlete signup flow. Blank fields stay blank (never 0).</p>' +
       (msg ? '<p class="coach-note md-msg" role="status">' + esc(msg) + '</p>' : '') +
-      '<details class="card md-add" id="md-add"' + (msg ? '' : '') + '><summary>Add Prospect From Your Recruiting Board (Demo Entry)</summary><form id="md-form" novalidate>' +
+      '<details class="card md-add" id="md-add"' + (msg ? '' : '') + '><summary>Add Prospect</summary><form id="md-form" novalidate>' +
       '<div class="md-grid">' +
       '<label>Player Name *<input name="name" type="text" maxlength="80" required /></label>' +
       '<label>Grad Year *<select name="grad" required>' + opt([2026, 2027, 2028, 2029, 2030, 2031], 'Select') + '</select></label>' +

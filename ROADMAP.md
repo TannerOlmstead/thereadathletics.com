@@ -77,6 +77,9 @@ This site is plain HTML/CSS/JS with no build step. There is **no backend**: form
 
 - [x] Coach workspace preview (fictional baseball data, shared sub-navigation): dashboard, rankings (sortable/filterable), player card, H2H, team needs, coach fit, recruiting board, commitments, analytics, and regional insights
 - [x] Department Overview page for athletic directors (who is recruiting whom, recruiting schedule, program needs) with links to the coach workspace from the institution signup page, header, and footer
+- [x] Athletic Department Workspace: separate navy-band tabs (Overview, Programs, Finances, Schedule) with fictional sample data; coach workspace tabs restyled as notched buttons on a scarlet band that turn navy when selected
+- [ ] Department finances: real budget entry, saving, and import (currently a sample-data calculator only)
+- [ ] Department schedule: editable recruiting calendar and compliance-period reminders from verified sources
 - [x] Owner-only page (`owner.html`): unlinked, noindex, encrypted content behind an owner passphrase; internal reference material is kept off all public pages
 - [x] "For Coaches" header link added to every page
 

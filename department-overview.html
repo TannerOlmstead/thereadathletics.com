@@ -3,15 +3,15 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="description" content="Athletic department view: which coaches are recruiting whom, the recruiting schedule, and program needs (fictional sample data)." />
-    <title>Department Overview | THE READ Athletics</title>
+    <meta name="description" content="Athletic Department workspace: All programs at a glance: who each program needs, commitments, open spots, and which coaches are recruiting whom. (fictional sample data)." />
+    <title>Department Overview | Athletic Department | THE READ Athletics</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,600;0,700;1,700;1,800;1,900&family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="styles.css" />
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 120'%3E%3Crect width='120' height='120' rx='28' fill='%23E41E3F'/%3E%3Ctext x='50%25' y='52%25' dominant-baseline='middle' text-anchor='middle' font-size='54' font-family='Arial, sans-serif' fill='white'%3ER%3C/text%3E%3C/svg%3E" />
   </head>
-  <body data-coach-page="department">
+  <body data-coach-page="department" class="ws-dept">
     <a class="skip-link" href="#main">Skip to main content</a>
     
     <header class="site-header">
@@ -25,7 +25,7 @@
           <a class="role-link" href="player-signup.html">Athlete</a>
           <a class="role-link" href="individual-signup.html">Coach</a>
           <a class="role-link" href="institution-signup.html">Athletic Department</a>
-          <a class="role-link" href="coach-dashboard.html">For Coaches</a>
+          <a class="role-link" href="coach-dashboard.html">For Coaches</a><a class="role-link" href="department-overview.html">Dept. Workspace</a>
           <a href="features.html">Features</a>
           <a href="scoring.html">Scoring</a>
           <a href="sport-guide.html">Sports</a>
@@ -59,13 +59,12 @@
       <section class="page-hero">
         <div class="container">
           <div class="eyebrow">Athletic Department &middot; Preview</div>
-          <h1>Department Overview</h1>
-          <p>For athletic directors: see which coaches are recruiting whom, the recruiting schedule, and program needs across your department.</p>
+          <h1>Department Overview</h1><p>All programs at a glance: who each program needs, commitments, open spots, and which coaches are recruiting whom.</p>
         </div>
       </section>
       <section class="section section-tight coach-section">
         <div class="container">
-          <div class="preview-banner" role="note">SAMPLE DATA / FICTIONAL EXAMPLE &mdash; every player, school, coach, score, and note in this coach workspace preview is made up for demonstration. No real accounts or records exist, and nothing is saved.</div>
+          <nav class="dept-subnav" aria-label="Athletic Department workspace"><span class="ws-label">Athletic Department Workspace</span><a href="department-overview.html" aria-current="page">Overview</a><a href="department-programs.html">Programs</a><a href="department-finances.html">Finances</a><a href="department-schedule.html">Schedule</a><a class="ws-out" href="coach-dashboard.html">Coach Workspace &rarr;</a></nav><div class="preview-banner" role="note">SAMPLE DATA / FICTIONAL EXAMPLE &mdash; every player, school, coach, score, and note in this coach workspace preview is made up for demonstration. No real accounts or records exist, and nothing is saved.</div>
           <div id="coach-app"><noscript><p>This preview needs JavaScript turned on to show its sample data.</p></noscript></div>
         </div>
       </section>

@@ -425,37 +425,81 @@
   };
 
 
+  // ---------- Athletic Department workspace (all numbers are fictional samples) ----------
+  const money = (n) => '$' + Math.round(n).toLocaleString('en-US');
+  const PROGRAMS = [
+    { sport: 'Baseball', coach: 'Head Coach A. Reyes', target: 14, needs: ['Pitcher', 'Catcher', 'Middle Infield'], classes: '2027: 6 \u00b7 2028: 5 \u00b7 2029: 3', sch: [11.7, 9.5], travel: [42000, 28600], camp: 6400, visits: 9100 },
+    { sport: 'Softball', coach: 'Head Coach L. Moreau', target: 12, needs: ['Middle Infield', 'Power Bat'], classes: '2027: 5 \u00b7 2028: 4 \u00b7 2029: 3', sch: [12, 10], travel: [30000, 21400], camp: 4800, visits: 6200 },
+    { sport: 'Men\u2019s Basketball', coach: 'Head Coach R. Daniels', target: 5, needs: ['Guard Depth', 'Rim Protector'], classes: '2027: 2 \u00b7 2028: 2 \u00b7 2029: 1', sch: [13, 11], travel: [55000, 40300], camp: 7500, visits: 8800 },
+    { sport: 'Women\u2019s Basketball', coach: 'Head Coach T. Okoro', target: 5, needs: ['Point Guard', 'Wing'], classes: '2027: 2 \u00b7 2028: 2 \u00b7 2029: 1', sch: [15, 12.5], travel: [48000, 33900], camp: 6900, visits: 8100 },
+    { sport: 'Football', coach: 'Head Coach B. Whitfield', target: 22, needs: ['Offensive Line', 'Defensive Back', 'Quarterback'], classes: '2027: 9 \u00b7 2028: 8 \u00b7 2029: 5', sch: [85, 71], travel: [120000, 88700], camp: 15200, visits: 21400 },
+    { sport: 'Men\u2019s Soccer', coach: 'Head Coach P. Silva', target: 9, needs: ['Center Back', 'Striker'], classes: '2027: 4 \u00b7 2028: 3 \u00b7 2029: 2', sch: [9.9, 8], travel: [28000, 19200], camp: 3900, visits: 4700 },
+    { sport: 'Women\u2019s Soccer', coach: 'Head Coach J. Hartmann', target: 9, needs: ['Goalkeeper', 'Midfield'], classes: '2027: 4 \u00b7 2028: 3 \u00b7 2029: 2', sch: [14, 11.5], travel: [29000, 20100], camp: 4100, visits: 4900 },
+    { sport: 'Women\u2019s Volleyball', coach: 'Head Coach C. Alvarez', target: 6, needs: ['Setter', 'Outside Hitter'], classes: '2027: 3 \u00b7 2028: 2 \u00b7 2029: 1', sch: [12, 10.5], travel: [26000, 18800], camp: 3500, visits: 4300 }
+  ];
+  const COMMITTED = [6, 5, 2, 3, 11, 4, 5, 3];
+  PROGRAMS.forEach((p, i) => { p.committed = COMMITTED[i]; p.spend = p.travel[1] + p.camp + p.visits; });
+  const deptBanner = (t) => '<aside class="read-note dept-note" aria-label="Sample summary"><strong class="tr">THE READ</strong> <span>' + t + '</span></aside>';
+  const coachLink = '<div class="link-banner card"><div><h2>Also Coach? Open The Coach Workspace</h2><p>Athletic directors who coach \u2014 or want visibility into who coaches are recruiting \u2014 can use the coach workspace: rankings, player cards, recruiting board, team needs, and more (fictional sample data).</p></div><a class="button button-primary" href="coach-dashboard.html">Open Coach Workspace</a></div>';
+
   pages.department = (root) => {
-    const board = players.filter((p) => !p.committed);
-    const rows = COACHES.map((c) => {
-      const mine = board.filter((p) => p.coach === c.id);
-      const topP = mine.slice().sort((a, b) => b.pri - a.pri)[0];
-      return '<tr><th scope="row">' + esc(c.name) + '</th><td>' + c.role + '</td><td>Baseball</td><td>' + mine.filter((p) => p.board === 1).length + '</td><td>' + mine.filter((p) => p.board === 2).length + '</td><td>' + mine.filter((p) => p.board === 3).length + '</td><td>' + (topP ? cardLink(topP) : '&mdash;') + '</td></tr>';
-    });
-    const targets = board.filter((p) => p.board <= 2).sort((a, b) => a.board - b.board || b.pri - a.pri).slice(0, 16);
-    const events = [
-      ['2026-11-07', 'Fictional Fall Showcase', 'A', 'Evaluate Priority 1 pitchers', 'Home'],
-      ['2026-11-21', 'Fictional Regional Tournament', 'B', 'Verify metrics on infield targets', 'Away'],
-      ['2026-12-05', 'Fictional Winter Camp', 'C', 'Pitching bullpens', 'Home'],
-      ['2027-01-16', 'Fictional Indoor Showcase', 'D', 'Check Priority 2 follow-ups', 'Away'],
-      ['2027-02-13', 'Campus Visit Day', 'A', 'Official visits for Priority 1 targets', 'Home'],
-      ['2027-03-06', 'Fictional Spring Classic', 'B', 'Live looks at outfield targets', 'Away']
-    ];
-    const needsRows = [
-      ['Baseball', 14, players.filter((p) => p.committed === OUR).length, 'Pitcher, Catcher, Defense'],
-      ['Softball (Sample)', 12, 5, 'Middle Infield, Power'],
-      ['Men\u2019s Basketball (Sample)', 5, 2, 'Guard Depth']
-    ];
+    const tot = (f) => PROGRAMS.reduce((s, p) => s + f(p), 0);
     root.innerHTML =
-      '<div class="link-banner card"><div><h2>Also Coach? Open The Coach Workspace</h2><p>Athletic directors who coach \u2014 or want visibility into recruiting \u2014 can use the same fictional coach workspace: rankings, player cards, recruiting board, team needs, and more.</p></div><a class="button button-primary" href="coach-dashboard.html">Open Coach Workspace</a></div>' +
+      '<div class="kpi-row">' + kpi('Programs (Sample)', PROGRAMS.length) + kpi('Class Spots Targeted', tot((p) => p.target)) + kpi('Committed (Sample)', tot((p) => p.committed)) + kpi('Open Spots', tot((p) => p.target - p.committed)) + kpi('Sample Recruiting Spend', money(tot((p) => p.spend))) + '</div>' +
       '<div class="coach-grid">' +
-      card('Coaches And Their Recruiting', miniTable(['Coach', 'Role', 'Sport', 'Priority 1', 'Priority 2', 'Priority 3', 'Top Target'], rows, 'Coaches and recruiting'), 'wide') +
-      card('Who Is Recruiting Whom', miniTable(['Player', 'Pos', 'Class', 'Tier', 'Recruiting Coach', 'Next Step'], targets.map((p) => '<tr><td>' + cardLink(p) + '</td><td>' + p.pos + '</td><td>' + p.grad + '</td><td><span class="pill pill-t' + p.board + '">Priority ' + p.board + '</span></td><td>' + esc(COACHES.filter((c) => c.id === p.coach)[0].name) + '</td><td>' + p.action + '</td></tr>'), 'Who is recruiting whom'), 'wide') +
-      card('Recruiting Schedule', miniTable(['Date', 'Event', 'Coach', 'Focus', 'Home/Away'], events.map((e) => '<tr><td>' + e[0] + '</td><td>' + e[1] + '</td><td>' + esc(COACHES.filter((c) => c.id === e[2])[0].name) + '</td><td>' + e[3] + '</td><td>' + e[4] + '</td></tr>'), 'Recruiting schedule') + '<p class="coach-note">Sample dates only. Always confirm contact and dead periods against the official NCAA/NAIA calendar.</p>', 'wide') +
-      card('Program Needs By Sport', miniTable(['Sport', 'Target Class Size', 'Committed', 'Open Spots', 'Top Needs'], needsRows.map((n) => '<tr><th scope="row">' + n[0] + '</th><td>' + n[1] + '</td><td>' + n[2] + '</td><td>' + (n[1] - n[2]) + '</td><td>' + n[3] + '</td></tr>'), 'Program needs by sport'), 'wide') +
-      '</div>' + theRead('Department view (fictional): the athletic department sees which coaches are recruiting whom, the recruiting schedule, and program needs. Each coach\u2019s private notes stay private.');
+      card('All Programs At A Glance', miniTable(['Program', 'Coach', 'Target Class', 'Committed', 'Open Spots', 'Top Needs', 'Sample Spend'], PROGRAMS.map((p) => '<tr><th scope="row">' + p.sport + '</th><td>' + esc(p.coach) + '</td><td>' + p.target + '</td><td>' + p.committed + '</td><td>' + (p.target - p.committed) + '</td><td>' + p.needs.join(', ') + '</td><td>' + money(p.spend) + '</td></tr>'), 'All programs at a glance') + '<p class="coach-note">Sample Data / Fictional Example. Every program, coach, and number here is made up.</p>', 'wide') +
+      card('Who Is Recruiting Whom (Baseball Sample)', miniTable(['Player', 'Pos', 'Class', 'Tier', 'Recruiting Coach', 'Next Step'], players.filter((p) => !p.committed && p.board <= 2).sort((a, b) => a.board - b.board || b.pri - a.pri).slice(0, 10).map((p) => '<tr><td>' + cardLink(p) + '</td><td>' + p.pos + '</td><td>' + p.grad + '</td><td><span class="pill pill-t' + p.board + '">Priority ' + p.board + '</span></td><td>' + esc(COACHES.filter((c) => c.id === p.coach)[0].name) + '</td><td>' + p.action + '</td></tr>'), 'Who is recruiting whom'), 'wide') +
+      '</div>' + coachLink + deptBanner('Department overview (fictional): one view of every program. Each coach\u2019s private notes stay private.');
   };
 
+  pages.programs = (root) => {
+    root.innerHTML =
+      '<div class="dept-programs">' + PROGRAMS.map((p) =>
+        '<section class="card dept-card"><h2>' + p.sport + '</h2><p class="dept-coach">Coach Assigned: ' + esc(p.coach) + '</p>' +
+        '<dl class="dept-dl"><div><dt>Target Class</dt><dd>' + p.target + '</dd></div><div><dt>Committed</dt><dd>' + p.committed + '</dd></div><div><dt>Open Spots</dt><dd>' + (p.target - p.committed) + '</dd></div></dl>' +
+        '<p><strong>Needs:</strong> ' + p.needs.join(', ') + '</p><p><strong>Targets By Class:</strong> ' + p.classes + '</p>' +
+        '<p class="coach-note">Sample Data / Fictional Example</p></section>').join('') +
+      '</div>' + coachLink + deptBanner('Program needs (fictional): by position and class, with commitments and open spots for each program.');
+  };
+
+  pages.finances = (root) => {
+    const tot = (f) => PROGRAMS.reduce((s, p) => s + f(p), 0);
+    const sa = tot((p) => p.sch[0]), su = tot((p) => p.sch[1]), tb = tot((p) => p.travel[0]), ts = tot((p) => p.spend), tc = tot((p) => p.committed);
+    root.innerHTML =
+      '<div class="kpi-row">' + kpi('Scholarship Equivalencies Available (Sample)', sa.toFixed(1)) + kpi('Used (Sample)', su.toFixed(1)) + kpi('Recruiting Travel Budget (Sample)', money(tb)) + kpi('Sample Spend', money(ts)) + kpi('Cost Per Commitment (Sample)', money(ts / tc)) + '</div>' +
+      '<div class="coach-grid">' +
+      card('Budget Vs Spend By Program', miniTable(['Program', 'Scholarship Equiv. Available', 'Used', 'Travel Budget', 'Travel Spent', 'Camp Costs', 'Visit Costs', 'Total Spend', 'Cost Per Commitment'], PROGRAMS.map((p) => '<tr><th scope="row">' + p.sport + '</th><td>' + p.sch[0] + '</td><td>' + p.sch[1] + '</td><td>' + money(p.travel[0]) + '</td><td>' + money(p.travel[1]) + '</td><td>' + money(p.camp) + '</td><td>' + money(p.visits) + '</td><td>' + money(p.spend) + '</td><td>' + money(p.spend / p.committed) + '</td></tr>'), 'Budget versus spend by program') + '<p class="coach-note">Sample Data / Fictional Example. These are not real budgets, rules, or limits. Scholarship limits vary by sport and governing body; confirm with your compliance office.</p>', 'wide') +
+      card('Try Your Own Numbers', '<form class="calc" id="fin-form" onsubmit="return false"><div class="form-grid">' +
+        '<div class="field"><label for="f-av">Scholarship Equivalencies Available</label><input id="f-av" type="number" min="0" step="0.1" value="0"></div>' +
+        '<div class="field"><label for="f-us">Scholarship Equivalencies Used</label><input id="f-us" type="number" min="0" step="0.1" value="0"></div>' +
+        '<div class="field"><label for="f-tb">Recruiting Travel Budget ($)</label><input id="f-tb" type="number" min="0" step="100" value="0"></div>' +
+        '<div class="field"><label for="f-sp">Recruiting Spend So Far ($)</label><input id="f-sp" type="number" min="0" step="100" value="0"></div>' +
+        '<div class="field"><label for="f-cm">Commitments</label><input id="f-cm" type="number" min="0" step="1" value="0"></div></div>' +
+        '<div id="f-out" class="callout" role="status" aria-live="polite"></div><p class="coach-note">Nothing is saved or sent. Enter your own figures; the empty template starts at zero.</p></form>') +
+      '</div>' + deptBanner('Finances (fictional): scholarship equivalencies, recruiting travel, camp and visit costs, and cost per commitment, shown with sample numbers only.');
+    const g = (id) => Math.max(0, parseFloat($('#' + id, root).value) || 0);
+    const upd = () => {
+      const av = g('f-av'), us = g('f-us'), tb = g('f-tb'), sp = g('f-sp'), cm = g('f-cm');
+      $('#f-out', root).innerHTML = '<strong>Scholarship Equivalencies Remaining:</strong> ' + (av - us).toFixed(1) + '<br><strong>Travel Budget Remaining:</strong> ' + money(tb - sp) + '<br><strong>Cost Per Commitment:</strong> ' + (cm ? money(sp / cm) : '&mdash;');
+    };
+    root.querySelectorAll('#fin-form input').forEach((i) => i.addEventListener('input', upd)); upd();
+  };
+
+  pages.schedule = (root) => {
+    const events = [
+      ['2026-11-07', 'Baseball', 'Fictional Fall Showcase', 'Evaluate Priority 1 pitchers', 'Home'],
+      ['2026-11-14', 'Softball', 'Fictional Fall Classic', 'Infield looks', 'Away'],
+      ['2026-11-21', 'Baseball', 'Fictional Regional Tournament', 'Verify metrics on infield targets', 'Away'],
+      ['2026-12-05', 'Baseball', 'Fictional Winter Camp', 'Pitching bullpens', 'Home'],
+      ['2027-01-16', 'Men\u2019s Basketball', 'Fictional Winter Showcase', 'Guard evaluations', 'Away'],
+      ['2027-02-13', 'All Programs', 'Campus Visit Day', 'Visits for Priority 1 targets', 'Home'],
+      ['2027-03-06', 'Women\u2019s Volleyball', 'Fictional Spring Tournament', 'Setter evaluations', 'Away']
+    ];
+    root.innerHTML = '<div class="coach-grid">' +
+      card('Recruiting Calendar', miniTable(['Date', 'Program', 'Event', 'Focus', 'Home/Away'], events.map((e) => '<tr><td>' + e[0] + '</td><th scope="row">' + e[1] + '</th><td>' + e[2] + '</td><td>' + e[3] + '</td><td>' + e[4] + '</td></tr>'), 'Recruiting calendar') + '<p class="coach-note">Sample Data / Fictional Example. Dates and events are made up.</p>', 'wide') +
+      card('Contact And Dead Period Reminders', '<ul class="dept-list"><li>Contact, evaluation, quiet, and dead periods differ by sport and governing body.</li><li>Check your official calendar before scheduling any visit or contact.</li><li>Add your own dates to this calendar once real scheduling is built (roadmap).</li></ul><p class="coach-note">These are reminders, not rules. THE READ does not provide compliance advice.</p>') +
+      '</div>' + coachLink + deptBanner('Schedule (fictional): one calendar across programs, with reminders to confirm contact and dead periods.');
+  };
   document.addEventListener('DOMContentLoaded', () => {
     const root = document.getElementById('coach-app');
     const page = document.body.dataset.coachPage;

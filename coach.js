@@ -749,7 +749,7 @@
     root.innerHTML =
       '<div class="coach-grid">' +
       card('Positional Needs', miniTable(['Position', 'Need Rank (1 = Biggest)'], POS.map((x) => tr([x, needs[x]])), 'Positional needs') + '<p class="coach-note">Secondary-position eligibility may partially satisfy a need.</p>') +
-      card('Board Coverage (Your Board)', miniTable(['Position', 'Need Rank', 'Prospects On Board'], POS.map((x) => tr([x, needs[x], Board.list().filter((p) => p.pos === x).length])), 'Board coverage by position') + '<p class="coach-note">Counts only prospects you added to your recruiting board. Add more from the Recruiting Board tab.</p>') +
+      card('Board Coverage (Your Board)', miniTable(['Position', 'Need Rank', 'Prospects On Board'], POS.map((x) => tr([x, needs[x], Board.list().filter((p) => p.pos === x).length])), 'Board coverage by position') + '<p class="coach-note">Counts only prospects you added to your recruiting board. Add more from the Master Database tab.</p>') +
       card('Skill Needs', miniTable(['Skill', 'Need Rank (1\u20135)'], skills.map((s) => tr([s[0], s[1]])), 'Skill needs')) +
       card('Program Priorities', miniTable(['Priority', 'Importance (1\u20135)'], [tr(['Immediate Impact', 2]), tr(['Long-Term Projection', 1]), tr(['Academic Fit', 3])], 'Program priorities')) +
       card('Commitment Goals', miniTable(['Goal', 'Target', 'Committed', 'Open'], [tr(['Target Class Size', goals.size, ours.length, goals.size - ours.length]), tr(['Pitchers Needed', goals.pitchers, commitP, goals.pitchers - commitP]), tr(['Position Players Needed', goals.posPlayers, ours.length - commitP, goals.posPlayers - (ours.length - commitP)])], 'Commitment goals')) +
@@ -794,32 +794,15 @@
       '<tr><th scope="row">Highest Adjusted Recruit Score</th><td>' + (best('adj', board) ? cardLink(best('adj', board)) + '</td><td>' + num(best('adj', board).adj) : '&mdash;</td><td>&mdash;') + '</td></tr>',
       '<tr><th scope="row">Average Priority Score</th><td>&mdash;</td><td>' + num(avgOf('pri', board)) + '</td></tr>'], 'Board snapshot')) : '';
     root.innerHTML =
-      '<p class="coach-note md-note"><strong>Your Recruiting Board</strong> is your program\u2019s own list. It is not filled in from the Master Database: you choose which prospects to add. The board stores only a reference to each player plus your private fields (priority tier, stage, notes), so player data stays in the shared Master Database. Saved only in this browser as a demo; a real version needs a backend. The first few entries are demo seeds you can remove.</p>' +
+      '<p class="coach-note md-note"><strong>Your Recruiting Board</strong> is your program\u2019s own list. It is not an extension of the Master Database and you cannot add players here: go to the <a href="coach-master-database.html">Master Database</a> (or use &ldquo;Add To Board&rdquo; on Rankings or a Player Card) to add prospects. Here you only manage who is already on your board. The board stores only a reference to each player plus your private fields (priority tier, stage, notes), so player data stays in the shared Master Database. Saved only in this browser as a demo; a real version needs a backend. The first few entries are demo seeds you can remove.</p>' +
       (bmsg ? '<p class="coach-note md-msg" role="status">' + esc(bmsg) + '</p>' : '') +
       '<div class="kpi-row">' + kpi('On Your Board', board.length) + kpi('Priority 1 Targets', t(1).length) + kpi('Priority 2 Targets', t(2).length) + kpi('Priority 3 Targets', t(3).length) + kpi('Committed Players', ours.length) + kpi('Open Spots', 14 - ours.length) + '</div>' +
-      '<section class="card" id="b-add"><h2>Add From Master Database</h2><form class="controls" id="ba-form" onsubmit="return false"><label>Search<input type="search" id="ba-q" placeholder="Player name" /></label>' +
-      '<label>Position<select id="ba-pos"><option value="">All</option>' + POS.map((x) => '<option>' + x + '</option>').join('') + '</select></label>' +
-      '<label>Class<select id="ba-class"><option value="">All</option>' + [2027, 2028, 2029, 2030].map((g) => '<option>' + g + '</option>').join('') + '</select></label>' +
-      '<label>State<select id="ba-state"><option value="">All</option>' + STATES.slice().sort().map((x) => '<option>' + x + '</option>').join('') + '</select></label>' +
-      '<label>Playing Level<select id="ba-level"><option value="">All</option>' + LEVELS.map((x) => '<option>' + x + '</option>').join('') + '</select></label></form>' +
-      '<p class="coach-count" id="ba-count" role="status"></p><div class="table-wrap ba-wrap"><table id="ba-table" class="rd-table"></table></div>' +
-      '<div class="md-actions"><button type="button" class="button button-primary" id="ba-go">Add Selected To Board</button></div></section>' +
       '<h2 class="coach-h2">Your Board</h2>' +
       '<form class="controls" onsubmit="return false"><label>Priority Tier<select id="b-tier"><option value="">All</option><option value="1">Priority 1</option><option value="2">Priority 2</option><option value="3">Priority 3</option></select></label>' +
       '<label>Playing Level<select id="b-level"><option value="">All</option>' + LEVELS.map((x) => '<option>' + x + '</option>').join('') + '</select></label><label>Position<select id="b-pos"><option value="">All</option>' + POS.map((x) => '<option>' + x + '</option>').join('') + '</select></label></form>' +
       '<div class="table-wrap"><table id="b-table"></table></div>' +
       '<div class="coach-grid">' + snap + '</div>' +
       theRead('Your private board (fictional): you decide who is on it, so it reflects your program rather than the whole database. Priority 1 targets are the players your staff would pursue first. Players who commit elsewhere drop off the board automatically. Adjusted Recruit Score is the Recruit Score nudged by fit, need and staff grades, within a small documented limit. Playing Level separates high school recruits from JUCO and transfer-portal players. Rankings and the Master Database still show every player.');
-    function drawAdd() {
-      const q = $('#ba-q', root).value.trim().toLowerCase(), fp = $('#ba-pos', root).value, fc = $('#ba-class', root).value, fs = $('#ba-state', root).value, fl = $('#ba-level', root).value;
-      const list = players.filter((p) => (!q || p.name.toLowerCase().indexOf(q) >= 0) && (!fp || p.pos === fp) && (!fc || String(p.grad) === fc) && (!fs || p.state === fs) && (!fl || p.level === fl));
-      $('#ba-count', root).textContent = 'Showing ' + list.length + ' of ' + players.length + ' players in the Master Database';
-      $('#ba-table', root).innerHTML = '<caption class="visually-hidden">Master Database players you can add to your board (sample data, fictional)</caption><thead><tr><th scope="col">Select</th><th scope="col">Player Name</th><th scope="col">Position</th><th scope="col">Class</th><th scope="col">State</th><th scope="col">Playing Level</th><th scope="col">Recruit Score</th></tr></thead><tbody>' +
-        (list.length ? list.map((p) => {
-          const dis = p.committed || Board.has(p.id);
-          return '<tr><td data-label="Select"><input type="checkbox" class="ba-pick" value="' + p.id + '"' + (dis ? ' disabled' : '') + ' aria-label="Select ' + esc(p.name) + '" />' + (p.committed ? ' <small>Committed</small>' : Board.has(p.id) ? ' <small>On Board</small>' : '') + '</td><th scope="row">' + cardLink(p) + '</th><td data-label="Position">' + p.pos + '</td><td data-label="Class">' + p.grad + '</td><td data-label="State">' + p.state + '</td><td data-label="Playing Level">' + esc(LEVEL_SHORT[p.level] || p.level) + '</td><td data-label="Recruit Score" class="rd-num">' + TRC.formatRecruitScore(p.rs) + '</td></tr>';
-        }).join('') : '<tr class="rd-empty"><td colspan="7">No players match these filters.</td></tr>') + '</tbody>';
-    }
     function draw() {
       const ft = $('#b-tier', root).value, fp = $('#b-pos', root).value, fl = $('#b-level', root).value;
       const list = board.filter((p) => (!ft || String(tierOf(p)) === ft) && (!fp || p.pos === fp) && (!fl || p.level === fl)).sort((a, b) => tierOf(a) - tierOf(b) || (b.pri || 0) - (a.pri || 0));
@@ -828,28 +811,19 @@
         (list.length ? list.map((p) => {
           const e = Board.get(p.id);
           return '<tr><td>' + sel(p.id, 'tier', [[1, 'Priority 1'], [2, 'Priority 2'], [3, 'Priority 3']], e.tier) + '</td><td>' + sel(p.id, 'stage', STAGES.map((s) => [s, s]), e.stage) + '</td><td>' + cardLink(p) + '</td><td>' + p.pos + '</td><td>' + (p.sec || '&mdash;') + '</td><td>' + p.grad + '</td><td>' + esc(LEVEL_SHORT[p.level] || p.level) + '</td><td>' + p.state + '</td><td>' + num(p.ath) + '</td><td class="rd-num">' + TRC.formatRecruitScore(p.rs) + '</td><td>' + tierBadge(p) + '</td><td>' + confBadge(p) + '</td><td>' + num(p.adj) + '</td><td>' + nv(p.pri) + '</td><td>' + p.method + '</td><td><input type="text" class="b-edit" data-id="' + p.id + '" data-k="notes" maxlength="200" value="' + esc(e.notes || '') + '" aria-label="Notes for ' + esc(p.name) + '" /></td><td><input type="text" class="b-edit" data-id="' + p.id + '" data-k="staffNotes" maxlength="200" value="' + esc(e.staffNotes || '') + '" aria-label="Staff notes for ' + esc(p.name) + '" /></td><td><button type="button" class="md-del" data-rm="' + p.id + '" aria-label="Remove ' + esc(p.name) + ' from board">Remove From Board</button></td></tr>';
-        }).join('') : '<tr class="rd-empty"><td colspan="18">' + (board.length ? 'No prospects match these filters.' : 'Your board is empty. Use &ldquo;Add From Master Database&rdquo; above, or the &ldquo;Add To Board&rdquo; button on a player card, to start building your board.') + '</td></tr>') + '</tbody>';
+        }).join('') : '<tr class="rd-empty"><td colspan="18">' + (board.length ? 'No prospects match these filters.' : 'Your board is empty. Go to the <a href="coach-master-database.html">Master Database</a> and use &ldquo;Add To Board&rdquo; to add prospects here.') + '</td></tr>') + '</tbody>';
     }
-    root.addEventListener('input', (e) => { if (e.target.closest('#ba-form')) drawAdd(); });
     root.addEventListener('change', (e) => {
-      if (e.target.closest('#ba-form')) { drawAdd(); return; }
       const ed = e.target.closest('.b-edit');
       if (ed) { Board.update(ed.dataset.id, { [ed.dataset.k]: ed.dataset.k === 'tier' ? Number(ed.value) : ed.value.slice(0, 200) }); if (ed.dataset.k === 'tier') location.reload(); return; }
       draw();
     });
     root.addEventListener('click', (e) => {
       const rm = e.target.closest('[data-rm]');
-      if (rm) { Board.remove(rm.dataset.rm); sessionStorage.setItem('theReadBoardMsg', byId[rm.dataset.rm].name + ' was removed from your board. They are still in the Master Database.'); location.reload(); return; }
-      if (e.target.id === 'ba-go') {
-        const ids = $$('.ba-pick:checked', root).map((i) => i.value);
-        if (!ids.length) { $('#ba-count', root).textContent = 'Select at least one player first.'; return; }
-        ids.forEach((id) => Board.add(id));
-        sessionStorage.setItem('theReadBoardMsg', ids.length + ' prospect' + (ids.length === 1 ? '' : 's') + ' added to your board (demo, saved in this browser only).'); location.reload();
-      }
-    });
-    drawAdd();
-    draw();
-  };
+      if (rm) { Board.remove(rm.dataset.rm); sessionStorage.setItem('theReadBoardMsg', byId[rm.dataset.rm].name + ' was removed from your board. They are still in the Master Database.');       location.reload(); return; }
+          });
+          draw();
+        };
 
 
   function schoolStats() {
@@ -954,7 +928,9 @@
     players.forEach((p) => { dupCount[dupKey(p)] = (dupCount[dupKey(p)] || 0) + 1; });
     const link = (p) => LINKS.filter((l) => p.links && p.links[l[0]]).map((l) => '<a href="' + esc(p.links[l[0]]) + '" target="_blank" rel="noopener noreferrer">' + l[1].replace(' Link', '') + '</a>').join(' ') || '&mdash;';
     const n2 = (k, d) => (p) => num(p[k], d);
+    const picked = new Set();
     const COLS = [
+      ['board', 'Recruiting Board', (p) => (Board.has(p.id) ? 1 : 0), (p) => (p.committed || Board.has(p.id) ? '' : '<input type="checkbox" class="md-pick" value="' + esc(p.id) + '"' + (picked.has(p.id) ? ' checked' : '') + ' aria-label="Select ' + esc(p.name) + ' to add to board" /> ') + boardBtn(p)],
       ['src', 'Source', (p) => (p.entered ? 'Coach-Entered (Demo)' : 'Sample'), (p) => (p.entered ? '<span class="pill amber">Coach-Entered (Demo)</span> <button type="button" class="md-del" data-del="' + esc(p.id) + '" aria-label="Remove ' + esc(p.name) + '">Remove</button>' : '<span class="pill gray">Sample</span>')],
       ['id', 'Player ID', (p) => p.id, (p) => esc(p.id)],
       ['name', 'Player Name', (p) => p.name, (p) => cardLink(p)],
@@ -1022,7 +998,7 @@
       '<label>Current Playing Level<select id="md-level">' + opt(LEVELS, 'All') + '</select></label>' +
       '<label>Source<select id="md-src"><option value="">All</option><option value="s">Sample</option><option value="a">Coach-Entered (Demo)</option></select></label>' +
       '<button type="button" class="button button-secondary" id="md-reset">Reset</button></form>' +
-      '<p class="coach-count" id="md-count" role="status"></p><div class="table-wrap md-wrap"><table id="md-table" class="rd-table md-table"></table></div>' +
+      '<p class="coach-count" id="md-count" role="status"></p><div class="md-actions"><button type="button" class="button button-primary" id="md-bulk">Add Selected To Board</button> <span id="md-bulk-msg" role="status" class="coach-note"></span></div><div class="table-wrap md-wrap"><table id="md-table" class="rd-table md-table"></table></div>' +
       '<p class="coach-note">SAMPLE DATA / FICTIONAL EXAMPLE. Helper columns from the owner workbook are calculated, not stored.</p>' + theRead('This is the single list behind every other tab: ' + players.length + ' players, ' + players.filter((p) => p.entered).length + ' of them added by you. Added prospects show Not Rated and Unknown until the calculation service exists, so they sort last and are never scored 0. The Possible Duplicate column flags the same name and class appearing twice.');
     const tbl = $('#md-table', root);
     function kpis() {
@@ -1047,8 +1023,20 @@
     }
     kpis(); draw();
     root.addEventListener('input', (e) => { if (e.target.closest('#md-filters')) draw(); });
-    root.addEventListener('change', (e) => { if (e.target.closest('#md-filters')) draw(); });
+    root.addEventListener('change', (e) => {
+      if (e.target.closest('#md-filters')) draw();
+      const pk = e.target.closest('.md-pick');
+      if (pk) { if (pk.checked) picked.add(pk.value); else picked.delete(pk.value); }
+    });
     root.addEventListener('click', (e) => {
+      if (e.target.id === 'md-bulk') {
+        const ids = Array.from(picked);
+        if (!ids.length) { $('#md-bulk-msg', root).textContent = 'Select at least one player first.'; return; }
+        ids.forEach((id) => Board.add(id));
+        picked.clear(); draw();
+        $('#md-bulk-msg', root).textContent = ids.length + ' prospect' + (ids.length === 1 ? '' : 's') + ' added to your recruiting board (demo, saved in this browser only).';
+        return;
+      }
       const b = e.target.closest('button[data-k]');
       if (b) { const k = b.dataset.k; if (state.key === k) state.dir *= -1; else { state.key = k; state.dir = 1; } draw(); return; }
       if (e.target.closest('#md-reset')) { $('#md-filters', root).reset(); draw(); return; }

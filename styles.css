@@ -1644,3 +1644,21 @@ main > .section.section-alt:nth-child(4n+2), main > .section.section-alt:nth-chi
 #pricing { background: var(--white) !important; }
 main > .section:not(:nth-child(4n+3)):not(:nth-child(4n+1)):not(.section-dark) .section-header h2 { color: var(--navy); }
 main > .section :is(.card, .feature-card, .score-card, .price-card, .audience-card):nth-child(odd) { border-top-color: var(--scarlet); }main > .page-hero + .section:last-child { background: #E9EDF6; }
+/* ---------- Navy home hero ---------- */
+.hero { background: radial-gradient(ellipse at 80% 20%, #1d3a6b 0%, transparent 55%), linear-gradient(135deg, var(--navy-dark) 0%, var(--navy) 100%); border-bottom: 5px solid var(--scarlet); }
+.hero .tagline { color: var(--white); }
+.hero-title .t-the, .hero-title .t-the::first-letter { color: var(--white); }
+.hero-copy h1.hero-title .t-read { color: #FF3B5C; }
+.hero-subtitle { color: var(--white); border-left-color: var(--scarlet); }
+.hero-headline { color: var(--white); }
+.hero-text { color: rgba(255, 255, 255, 0.92); }
+.hero .hero-text .tr { color: #FF5A78; }
+.hero-points { color: var(--white); }
+.hero-points li::before { background: var(--scarlet); }
+.hero .button-secondary { background: transparent; color: var(--white); border-color: var(--white); }
+.hero .button-secondary:hover { background: var(--white); color: var(--navy); }
+.hero .button-primary { background: linear-gradient(135deg, #F0314F 0%, var(--cardinal-red) 100%); color: var(--white); }
+.hero :focus-visible { outline-color: var(--white); }
+.hero .audience-card:focus-visible { outline-color: var(--scarlet); }
+.sport-strip { border-top: 0; }.sport-strip { background: var(--white); }
+.sport-tile-soon { background: var(--navy); }

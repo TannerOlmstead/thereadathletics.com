@@ -261,12 +261,31 @@
   pages.h2h = (root) => {
     root.innerHTML = '<div id="h-out"></div>';
     const SIDES = ['a', 'b'];
-    let ids = { a: players[0].id, b: players[1].id };
     const T = { rank: [['Overall Rank', 'overall', 'low', (v) => '#' + v], ['Class Rank', 'classRank', 'low', (v) => '#' + v], ['Athletic Score', 'ath', 'high'], ['Recruit Score', 'rs', 'high'], ['Confidence %', 'conf', 'high', (v) => v + '%'], ['Confidence Score', 'conf', null, (v) => confLabel(v)], ['Tier', 'tier']],
       info: [['Player Name', 'name'], ['Primary Position', 'pos'], ['Secondary Position', 'sec'], ['Grad Year', 'grad', null, (v) => String(v)], ['Height', 'ht', null, (v) => ftin(v)], ['Weight', 'wt', null, (v) => v + ' lb'], ['GPA', 'gpa', null, (v) => v.toFixed(2)]],
       grades: [['OPG', 'opg', 'high'], ['SOPG', 'sopg', 'high'], ['DPG', 'dpg', 'high'], ['SDPG', 'sdpg', 'high'], ['PPG', 'ppg', 'high']],
       meas: [['Avg EV', 'avgEV', 'high'], ['Max EV', 'maxEV', 'high'], ['Avg FBV', 'avgFBV', 'high'], ['Max FBV', 'maxFBV', 'high'], ['Throwing Velo', 'tv', 'high'], ['60 Time', 't60', 'low', (v) => v.toFixed(2)], ['Pop Time', 'pop', 'low', (v) => v.toFixed(2)]],
       team: [['HC Grade', 'hc', 'grade'], ['PC Grade', 'pc', 'grade'], ['AC Grade', 'ac', 'grade'], ['Staff Score', 'staff', 'high'], ['Coach Fit Score', 'fit', 'high'], ['Team Need Score', 'need', 'high'], ['Adjusted Recruit Score', 'adj', 'high'], ['Priority Score', 'pri', 'high']] };
+
+    // Database Benchmarks: [label, key, lowerIsBetter, unit, decimals]
+    const B = [['Avg EV vs Avg', 'avgEV', false, ' mph', 1], ['Max EV vs Avg', 'maxEV', false, ' mph', 1], ['Avg FBV vs Avg', 'avgFBV', false, ' mph', 1], ['Max FBV vs Avg', 'maxFBV', false, ' mph', 1], ['60 Time vs Avg', 't60', true, ' s', 2], ['Pop Time vs Avg', 'pop', true, ' s', 2]];
+    const dbAvg = {}, dbN = {};
+    B.forEach((b) => { const vals = players.map((p) => p[b[1]]).filter((v) => v != null); dbN[b[1]] = vals.length; dbAvg[b[1]] = vals.length ? vals.reduce((s, v) => s + v, 0) / vals.length : null; });
+    const diffOf = (b, p) => (p[b[1]] == null || dbAvg[b[1]] == null ? null : p[b[1]] - dbAvg[b[1]]);
+    const goodDiff = (b, df) => (b[2] ? df < 0 : df > 0);
+    // Positive result favors A, negative favors B, 0 tie, null not comparable. Lower is better for 60 Time / Pop Time.
+    const benchCmp = (b, pa, pb) => { const x = diffOf(b, pa), y = diffOf(b, pb); if (x == null || y == null) return null; const c = b[2] ? y - x : x - y; return Math.abs(c) < 1e-9 ? 0 : c; };
+    const benchText = (b, p) => {
+      const df = diffOf(b, p);
+      if (df == null) return '&mdash;';
+      const dd = b[4];
+      const cls = Math.abs(df) < Math.pow(10, -dd) / 2 ? '' : goodDiff(b, df) ? 'adv-good' : 'adv-bad';
+      return '<span class="' + cls + '">' + (df > 0 ? '+' : df < 0 ? '\u2212' : '') + Math.abs(df).toFixed(dd) + b[3] + '</span><small class="h2h-sub">' + p[b[1]].toFixed(dd) + b[3] + ' vs avg ' + dbAvg[b[1]].toFixed(dd) + '</small>';
+    };
+    const standOf = (p) => { let n = 0, m = 0; B.forEach((b) => { const df = diffOf(b, p); if (df == null) return; m++; if (goodDiff(b, df)) n++; }); return { n: n, m: m, r: m ? n / m : null }; };
+    const standText = (p) => { const s = standOf(p); if (!s.m) return '&mdash;'; return s.n + ' Of ' + s.m + ' Above Avg<small class="h2h-sub">' + (s.r >= 0.75 ? 'Strong' : s.r >= 0.5 ? 'Above Average' : s.r >= 0.25 ? 'Below Average' : 'Well Below Average') + '</small>'; };
+    const standCmp = (pa, pb) => { const x = standOf(pa).r, y = standOf(pb).r; if (x == null || y == null) return null; return Math.abs(x - y) < 1e-9 ? 0 : x - y; };
+
     const show = (d, p) => { const v = p[d[1]]; if (v == null || v === '') return '&mdash;'; return d[3] ? d[3](v) : (typeof v === 'number' ? num(v) : esc(v)); };
     function cmpOf(d, pa, pb) {
       const x = pa[d[1]], y = pb[d[1]];
@@ -274,27 +293,54 @@
       const c = d[2] === 'grade' ? GRADES.indexOf(x) - GRADES.indexOf(y) : d[2] === 'low' ? y - x : x - y;
       return Math.abs(c) < 1e-9 ? 0 : c;
     }
-    function edge(d, pa, pb) {
-      const c = cmpOf(d, pa, pb);
+    const edgeHtml = (c, pa, pb) => {
       if (c === null) return '';
       if (c === 0) return '<span class="adv-even">Tie</span>';
       return c > 0 ? '<span class="adv-a"><span aria-hidden="true">\u25C0</span> ' + esc(pa.name) + '</span>' : '<span class="adv-b">' + esc(pb.name) + ' <span aria-hidden="true">\u25B6</span></span>';
+    };
+    const edge = (d, pa, pb) => edgeHtml(cmpOf(d, pa, pb), pa, pb);
+
+    // Self-check: lower 60 Time / Pop Time must win, higher Avg EV must win, benchmarks must agree.
+    function selfCheck() {
+      const fast = { t60: 6.8, pop: 1.9, avgEV: 90 }, slow = { t60: 7.4, pop: 2.1, avgEV: 85 };
+      const d60 = T.meas.filter((d) => d[1] === 't60')[0], dpop = T.meas.filter((d) => d[1] === 'pop')[0], dev = T.meas.filter((d) => d[1] === 'avgEV')[0];
+      const b60 = B.filter((b) => b[1] === 't60')[0], bpop = B.filter((b) => b[1] === 'pop')[0];
+      const tests = [cmpOf(d60, fast, slow) > 0, cmpOf(d60, slow, fast) < 0, cmpOf(dpop, fast, slow) > 0, cmpOf(dpop, slow, fast) < 0, cmpOf(dev, fast, slow) > 0, cmpOf(dev, slow, fast) < 0, cmpOf(d60, fast, fast) === 0];
+      const bt = [fast, slow].map((p) => ({ t60: p.t60, pop: p.pop }));
+      const bGood = dbAvg.t60 != null && dbAvg.pop != null && benchCmp(b60, bt[0], bt[1]) > 0 && benchCmp(b60, bt[1], bt[0]) < 0 && benchCmp(bpop, bt[0], bt[1]) > 0 && benchCmp(bpop, bt[1], bt[0]) < 0;
+      const ok = tests.every(Boolean) && bGood;
+      if (typeof console !== 'undefined') console[ok ? 'info' : 'error']('H2H self-check ' + (ok ? 'passed' : 'FAILED') + ': lower 60 Time and Pop Time win; higher exit velocity wins.');
+      return ok;
     }
+    const checkOk = selfCheck();
+
+    const withData = players.filter((p) => p.t60 != null);
+    let ids = { a: withData[0].id, b: withData[1].id };
+
+    const row = (d, pa, pb, withEdge) => '<div class="h2h-row"><span class="h2h-l">' + d[0] + '</span><span class="h2h-a">' + show(d, pa) + '</span><span class="h2h-c">' + (withEdge ? edge(d, pa, pb) : '') + '</span><span class="h2h-b">' + show(d, pb) + '</span><span class="h2h-r" aria-hidden="true">' + d[0] + '</span></div>';
+    const sec = (name, center) => '<div class="h2h-sec"><span class="h2h-l">' + name + '</span><span class="h2h-c">' + (center || '') + '</span><span class="h2h-r" aria-hidden="true">' + name + '</span></div>';
+    const brow = (label, ta, tb, c, pa, pb) => '<div class="h2h-row"><span class="h2h-l">' + label + '</span><span class="h2h-a">' + ta + '</span><span class="h2h-c">' + edgeHtml(c, pa, pb) + '</span><span class="h2h-b">' + tb + '</span><span class="h2h-r" aria-hidden="true">' + label + '</span></div>';
+
     function breakdown(pa, pb) {
-      const groups = [['Rankings', T.rank], ['Grades', T.grades], ['Measurables', T.meas], ['Team Evaluation', T.team]];
+      const benchRows = B.map((b) => ({ name: b[0].replace(' vs Avg', ''), c: benchCmp(b, pa, pb), x: diffOf(b, pa), y: diffOf(b, pb) }));
+      const groups = [
+        ['Rankings', T.rank.map((d) => ({ name: d[0], c: cmpOf(d, pa, pb), x: pa[d[1]], y: pb[d[1]], num: d[2] !== 'grade' }))],
+        ['Grades', T.grades.map((d) => ({ name: d[0], c: cmpOf(d, pa, pb), x: pa[d[1]], y: pb[d[1]], num: true }))],
+        ['Measurables', T.meas.map((d) => ({ name: d[0], c: cmpOf(d, pa, pb), x: pa[d[1]], y: pb[d[1]], num: true }))],
+        ['Database Benchmarks', benchRows.map((o) => ({ name: o.name + ' vs Avg', c: o.c, x: null, y: null, num: false })).concat([{ name: 'Overall Standing', c: standCmp(pa, pb), x: null, y: null, num: false }])],
+        ['Team Evaluation', T.team.map((d) => ({ name: d[0], c: cmpOf(d, pa, pb), x: pa[d[1]], y: pb[d[1]], num: d[2] !== 'grade' }))]
+      ];
       const tot = { a: 0, b: 0, t: 0 }, per = [], wonA = [], wonB = [], diffs = [];
       groups.forEach((g) => {
         const c = { a: 0, b: 0, t: 0 };
-        g[1].forEach((d) => {
-          const r = cmpOf(d, pa, pb);
-          if (r === null) return;
-          if (r === 0) c.t++; else if (r > 0) { c.a++; wonA.push(d[0]); } else { c.b++; wonB.push(d[0]); }
-          const x = pa[d[1]], y = pb[d[1]];
-          if (d[2] !== 'grade' && typeof x === 'number' && r !== 0) diffs.push([d[0], Math.abs(x - y) / ((Math.abs(x) + Math.abs(y)) / 2 || 1), r > 0 ? pa.name : pb.name]);
+        g[1].forEach((o) => {
+          if (o.c === null) return;
+          if (o.c === 0) c.t++; else if (o.c > 0) { c.a++; wonA.push(o.name); } else { c.b++; wonB.push(o.name); }
+          if (o.num && typeof o.x === 'number' && typeof o.y === 'number' && o.c !== 0) diffs.push([o.name, Math.abs(o.x - o.y) / ((Math.abs(o.x) + Math.abs(o.y)) / 2 || 1), o.c > 0 ? pa.name : pb.name]);
         });
         per.push([g[0], c]); tot.a += c.a; tot.b += c.b; tot.t += c.t;
       });
-      const team = per[3][1];
+      const team = per[4][1];
       const lead = tot.a === tot.b ? 'The comparison is even overall.' : (tot.a > tot.b ? esc(pa.name) : esc(pb.name)) + ' wins more categories overall.';
       diffs.sort((x, y) => y[1] - x[1]);
       const list = (a) => (a.length ? a.join(', ') : 'none');
@@ -305,28 +351,31 @@
         '<div><h4>Strengths</h4><ul><li><strong>' + esc(pa.name) + ':</strong> ' + list(wonA) + '</li><li><strong>' + esc(pb.name) + ':</strong> ' + list(wonB) + '</li></ul></div>' +
         '<div><h4>Biggest Differences</h4><ul>' + (diffs.length ? diffs.slice(0, 3).map((x) => '<li>' + x[0] + ' &mdash; edge to ' + esc(x[2]) + '</li>').join('') : '<li>No comparable differences.</li>') + '</ul></div>' +
         '<div><h4>Team Edge Summary</h4><p>' + teamLine + '</p></div></div>' +
-        '<p class="h2h-ai-note">Rows with a blank value are skipped, so counts only include categories both players have.</p></section>';
-    }    const row = (d, pa, pb, withEdge) => '<div class="h2h-row"><span class="h2h-l">' + d[0] + '</span><span class="h2h-a">' + show(d, pa) + '</span><span class="h2h-c">' + (withEdge ? edge(d, pa, pb) : '') + '</span><span class="h2h-b">' + show(d, pb) + '</span><span class="h2h-r" aria-hidden="true">' + d[0] + '</span></div>';
-    const sec = (name, center) => '<div class="h2h-sec"><span class="h2h-l">' + name + '</span><span class="h2h-c">' + (center || '') + '</span><span class="h2h-r" aria-hidden="true">' + name + '</span></div>';
-    const bench = (k, p, low) => { const a = avgOf(k, players); if (p[k] == null || a == null) return '&mdash;'; const df = p[k] - a; const good = low ? df < 0 : df > 0; const d = low ? 2 : 1; return '<span class="' + (Math.abs(df) < 0.05 ? '' : good ? 'adv-good' : 'adv-bad') + '">' + (df > 0 ? '+' : '') + df.toFixed(d) + ' vs ' + a.toFixed(d) + '</span>'; };
-    const stand = (p) => (p.overall <= 5 ? 'Top 5 Overall' : p.overall <= 15 ? 'Top 15 Overall' : 'Rank ' + p.overall + ' Of ' + players.length);
+        '<p class="h2h-ai-note">Rows with a blank value are skipped. Database Benchmarks use the sample database averages shown above. For 60 Time and Pop Time the lower value wins.</p></section>';
+    }
+
+    function avgTable() {
+      return '<section class="h2h-avgs" aria-label="Sample database averages"><h3>Sample Database Averages</h3><p class="h2h-ai-tag">Sample Data / Fictional Example</p>' +
+        miniTable(['Metric', 'Database Average', 'Players Counted', 'Better Direction'], B.map((b) => '<tr><th scope="row">' + b[0].replace(' vs Avg', '') + '</th><td>' + dbAvg[b[1]].toFixed(b[4]) + b[3] + '</td><td>' + dbN[b[1]] + ' of ' + players.length + '</td><td>' + (b[2] ? 'Lower' : 'Higher') + '</td></tr>'), 'Sample database averages') +
+        '<p class="coach-note">Averages use only sample players who have the metric (blank values are ignored): Pop Time uses catchers, FBV uses pitchers and two-way players. &ldquo;vs Avg&rdquo; is the player&rsquo;s value minus the average; for 60 Time and Pop Time a negative difference is good. Self-check (lower 60 Time and Pop Time win): <strong>' + (checkOk ? 'Passed' : 'Failed') + '</strong>.</p></section>';
+    }
+
     function draw() {
       const pa = byId[ids.a], pb = byId[ids.b];
       const pick = (s, label) => '<label class="h2h-pick"><span>' + label + '</span><select id="h-' + s + '" aria-label="' + label + '"></select></label>';
-      const benchRows = [['Avg EV vs Avg', 'avgEV'], ['Max EV vs Avg', 'maxEV'], ['Avg FBV vs Avg', 'avgFBV'], ['60 Time vs Avg', 't60', true]];
-      const ba = pa.rs - pb.rs, bp = pa.pri - pb.pri;
-      const readTxt = 'Sample comparison (fictional). Recruit Score difference A\u2212B: ' + (ba > 0 ? '+' : '') + ba.toFixed(1) + '. Priority Score difference A\u2212B: ' + (bp > 0 ? '+' : '') + bp + '. ' + (pa === pb ? 'Same player selected on both sides.' : esc(pa.name) + ' is ' + pa.tier + ' tier and ' + esc(pb.name) + ' is ' + pb.tier + ' tier.');
-      let html = '<section class="h2h-sheet" aria-label="H2H Player Comparison">' +
+      const readTxt = 'Sample comparison (fictional). Recruit Score difference A\u2212B: ' + ((pa.rs - pb.rs) > 0 ? '+' : '') + (pa.rs - pb.rs).toFixed(1) + '. Benchmarks are measured against the sample database averages below.';
+      const html = '<section class="h2h-sheet" aria-label="H2H Player Comparison">' +
         '<h2 class="h2h-title">H2H Player Comparison</h2>' +
         '<div class="h2h-top"><div class="h2h-pa">' + pick('a', 'Player A') + '</div><div class="h2h-mid">H2H</div><div class="h2h-pb">' + pick('b', 'Player B') + '</div></div>' +
         '<div class="h2h-block">' + T.info.map((d) => row(d, pa, pb, false)).join('') + '</div>' +
         '<div class="h2h-block">' + sec('Rankings', 'Advantage') + T.rank.map((d) => row(d, pa, pb, true)).join('') + '</div>' +
         '<div class="h2h-block">' + sec('Grades', 'Advantage') + T.grades.map((d) => row(d, pa, pb, true)).join('') + '</div>' +
         '<div class="h2h-block">' + sec('Measurables', 'Advantage') + T.meas.map((d) => row(d, pa, pb, true)).join('') + '</div>' +
-        '<div class="h2h-block h2h-bench">' + sec('Database Benchmarks') +
+        '<div class="h2h-block h2h-bench">' + sec('Database Benchmarks', 'Advantage') +
+        B.map((b) => brow(b[0], benchText(b, pa), benchText(b, pb), benchCmp(b, pa, pb), pa, pb)).join('') +
+        brow('Overall Standing', standText(pa), standText(pb), standCmp(pa, pb), pa, pb) + '</div>' +
         '<aside class="h2h-read" aria-label="Sample summary"><strong class="tr">THE READ</strong><span>' + readTxt + '</span></aside>' +
-        benchRows.map((r) => '<div class="h2h-row"><span class="h2h-l">' + r[0] + '</span><span class="h2h-a">' + bench(r[1], pa, r[2]) + '</span><span class="h2h-b">' + bench(r[1], pb, r[2]) + '</span><span class="h2h-r" aria-hidden="true">' + r[0] + '</span></div>').join('') +
-        '<div class="h2h-row"><span class="h2h-l">Overall Standing</span><span class="h2h-a">' + stand(pa) + '</span><span class="h2h-b">' + stand(pb) + '</span><span class="h2h-r" aria-hidden="true">Overall Standing</span></div></div>' +
+        avgTable() +
         '<div class="h2h-block">' + sec('Team Evaluation', 'Team Edge') + T.team.map((d) => row(d, pa, pb, true)).join('') + '</div>' + breakdown(pa, pb) +
         '</section>';
       $('#h-out', root).innerHTML = html;
@@ -341,6 +390,7 @@
     });
     draw();
   };
+
   pages.needs = (root) => {
     const needs = { P: 1, C: 2, SS: 3, OF: 4, '2B': 5, '3B': 6, '1B': 7 };
     const skills = [['Pitching', 1], ['Defense', 2], ['Athleticism', 3], ['Speed', 4], ['Power', 5]];

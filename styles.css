@@ -1843,3 +1843,8 @@ tbody th, .coach-card tbody th { background: #f1f4fa; color: var(--navy); text-t
 .h2h-ai li { margin-bottom: .35rem; }
 .h2h-ai p { margin: 0; }
 @media (max-width: 760px) { .h2h-block { display: block; } .h2h-row .h2h-c { min-width: 7.5rem; } }
+.h2h-read { grid-column: auto; grid-row: auto; margin-bottom: 1rem; border-bottom: 0; }
+.h2h-sub { display: block; font-size: .72rem; color: #4a5675; font-weight: 400; }
+.h2h-avgs { border: 1px solid #cfd6e6; border-top: 4px solid var(--navy); padding: 1rem; margin-bottom: 1rem; background: #fff; }
+.h2h-avgs h3 { margin: 0 0 .4rem; color: var(--navy); }
+.h2h-avgs .h2h-ai-tag { margin: 0 0 .6rem; }

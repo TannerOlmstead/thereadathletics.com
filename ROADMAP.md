@@ -1,5 +1,9 @@
 # THE READ Athletics Roadmap
 
+## PRE-LAUNCH CHECKLIST (do not skip)
+
+- [ ] **Re-enable sample-data labels or replace all sample data with real data before publishing. No fake players or stats may appear publicly.** Labels are hidden by one switch: `SHOW_SAMPLE_LABELS` in `site-config.js` (set it to `true` to show every Demo / Sample / Fictional / Preview label again).
+
 Legend: `[x]` done · `[ ]` not done · *(placeholder)* means a page or section exists but its content is a placeholder or a demonstration only.
 
 This site is plain HTML/CSS/JS with no build step. There is **no backend**: forms prepare an email to hello@thereadathletics.com, and the product preview uses **fictional data only**.

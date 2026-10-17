@@ -2003,3 +2003,4 @@ body.pc-open { overflow: hidden; }
 .st-declined, .st-expired { background: #fde0e4; color: #9b1030; }
 .hero-list { max-width: 60ch; }
 @media (max-width: 560px) { .review-list { grid-template-columns: 1fr; } .wiz-progress li { flex-basis: 100%; } }
+html.hide-sample-labels [data-sample-label] { display: none !important; }

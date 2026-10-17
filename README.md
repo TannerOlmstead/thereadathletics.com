@@ -4,6 +4,13 @@ Static recruiting-intelligence website for athletes, independent recruiting prof
 
 **Rule: No unverified claims or fake data; add popularity/social-proof labels only when backed by real data.** All demo data is labeled "Sample Data / Fictional Example".
 
+## Sample Labels Switch
+
+- The site is private, so Demo / Sample Data / Fictional / Preview labels are **hidden** by default.
+- One switch controls them: `SHOW_SAMPLE_LABELS` in `site-config.js` (loaded in the head of every page). `false` adds `hide-sample-labels` to `<html>`, hides disclaimer notes (tagged `data-sample-label=hidden`) and trims label wording; `true` shows everything as written.
+- Honesty items stay true: no claim that messages are encrypted, emails are sent or identity is verified.
+- **Before launch:** turn labels back on or replace all sample data with real data (see the ROADMAP pre-launch checklist).
+
 ## Pages
 
 | Page | Purpose |

@@ -105,7 +105,7 @@
   const saveAdded = (a) => { try { localStorage.setItem(STORE_KEY, JSON.stringify(a)); return true; } catch (e) { return false; } };
   loadAdded().forEach((a) => {
     if (!a || !a.id || !a.name || POS.indexOf(a.pos) < 0) return;
-    const p = Object.assign({ sec: '', twoWay: false, state: '', method: 'Coach Entry', notes: '', eval: '', links: {}, ht: null, wt: null, gpa: null,
+    const p = Object.assign({ sec: '', twoWay: false, state: '', method: 'Coach Entry (Unverified)', notes: '', eval: '', links: {}, ht: null, wt: null, gpa: null,
       staff: null, fit: null, need: null, adj: null, pri: null, hc: null, pc: null, ac: null, committed: '', coach: '', action: '' }, a, { entered: true });
     ['opg', 'sopg', 'dpg', 'sdpg', 'ppg', 'ath', 'rs', 'conf'].forEach((k) => { p[k] = null; });
     players.push(p);
@@ -621,7 +621,7 @@
     const link = (p) => LINKS.filter((l) => p.links && p.links[l[0]]).map((l) => '<a href="' + esc(p.links[l[0]]) + '" target="_blank" rel="noopener noreferrer">' + l[1].replace(' Link', '') + '</a>').join(' ') || '&mdash;';
     const n2 = (k, d) => (p) => num(p[k], d);
     const COLS = [
-      ['src', 'Source', (p) => (p.entered ? 'Added (Demo)' : 'Sample'), (p) => (p.entered ? '<span class="pill amber">Added (Demo)</span> <button type="button" class="md-del" data-del="' + esc(p.id) + '" aria-label="Remove ' + esc(p.name) + '">Remove</button>' : '<span class="pill gray">Sample</span>')],
+      ['src', 'Source', (p) => (p.entered ? 'Coach-Entered (Demo)' : 'Sample'), (p) => (p.entered ? '<span class="pill amber">Coach-Entered (Demo)</span> <button type="button" class="md-del" data-del="' + esc(p.id) + '" aria-label="Remove ' + esc(p.name) + '">Remove</button>' : '<span class="pill gray">Sample</span>')],
       ['id', 'Player ID', (p) => p.id, (p) => esc(p.id)],
       ['name', 'Player Name', (p) => p.name, (p) => cardLink(p)],
       ['grad', 'Grad Year', (p) => p.grad, (p) => p.grad],
@@ -657,9 +657,9 @@
     sessionStorage.removeItem('theReadMdMsg');
     root.innerHTML =
       '<div class="kpi-row" id="md-kpis"></div>' +
-      '<p class="coach-note md-note"><strong>Master Database:</strong> the one list every other workspace page reads from. Sample players are fictional. Players you add are saved only in this browser as a demo until a real backend exists, and are not shared with anyone. Blank fields stay blank (never 0).</p>' +
+      '<p class="coach-note md-note"><strong>Master Database:</strong> the one list every other workspace page reads from. Sample players are fictional. This is for college coaches adding prospects from their offline recruiting board. Prospects you add are your private, coach-entered, unverified board entries (not athlete-verified), saved only in this browser as a demo until a real backend exists, and not shared with anyone. It is not for high school coaches or private instructors creating athlete accounts; that is a separate athlete signup flow. Blank fields stay blank (never 0).</p>' +
       (msg ? '<p class="coach-note md-msg" role="status">' + esc(msg) + '</p>' : '') +
-      '<details class="card md-add" id="md-add"' + (msg ? '' : '') + '><summary>Add Player (Demo Entry)</summary><form id="md-form" novalidate>' +
+      '<details class="card md-add" id="md-add"' + (msg ? '' : '') + '><summary>Add Prospect From Your Recruiting Board (Demo Entry)</summary><form id="md-form" novalidate>' +
       '<div class="md-grid">' +
       '<label>Player Name *<input name="name" type="text" maxlength="80" required /></label>' +
       '<label>Grad Year *<select name="grad" required>' + opt([2026, 2027, 2028, 2029, 2030, 2031], 'Select') + '</select></label>' +
@@ -672,24 +672,24 @@
       '<label>State (2 letters)<input name="state" type="text" maxlength="2" pattern="[A-Za-z]{2}" /></label>' +
       NUMS.map((n) => '<label>' + n[1] + '<input name="' + n[0] + '" type="text" inputmode="decimal" /></label>').join('') +
       '<label>Evaluation Date<input name="eval" type="date" /></label>' +
-      '<label>Evaluation Method<select name="method">' + opt(METHODS.concat(['Coach Entry']), 'Not Set') + '</select></label>' +
+      '<label>Evaluation Method<select name="method">' + opt(METHODS.concat(['Coach Entry (Unverified)']), 'Not Set') + '</select></label>' +
       LINKS.map((l) => '<label>' + l[1] + '<input name="' + l[0] + '" type="url" placeholder="https://" /></label>').join('') +
       '<label class="md-wide">Player Notes<textarea name="notes" rows="2" maxlength="300"></textarea></label></div>' +
       '<p class="coach-note"><strong>Calculated by THE READ (not entered by coaches):</strong> Frame Score and projection grades, OPG/SOPG/DPG/SDPG/PPG, Athletic Score, Recruit Score, Tier, Confidence, and ranks. Coaches enter only raw, verifiable data. Until the calculation service exists, these show as blank / Not Rated / Unknown for added players (never 0). The owner-defined grade tables and formulas are not published in this public demo.</p>' +
       '<ul class="md-errors" id="md-errors" role="alert"></ul>' +
-      '<div class="md-actions"><button type="submit" class="button button-primary">Add Player</button> <button type="button" class="button button-secondary" id="md-clear">Remove All Added Players</button></div></form></details>' +
+      '<div class="md-actions"><button type="submit" class="button button-primary">Add Prospect</button> <button type="button" class="button button-secondary" id="md-clear">Remove All Added Prospects</button></div></form></details>' +
       '<form class="controls" id="md-filters" aria-label="Filter master database" onsubmit="return false">' +
       '<label>Search<input type="search" id="md-q" placeholder="Name, school, state, notes" /></label>' +
       '<label>Position<select id="md-pos">' + opt(POS, 'All') + '</select></label>' +
       '<label>Grad Year<select id="md-grad">' + opt([2026, 2027, 2028, 2029, 2030, 2031], 'All') + '</select></label>' +
-      '<label>Source<select id="md-src"><option value="">All</option><option value="s">Sample</option><option value="a">Added (Demo)</option></select></label>' +
+      '<label>Source<select id="md-src"><option value="">All</option><option value="s">Sample</option><option value="a">Coach-Entered (Demo)</option></select></label>' +
       '<button type="button" class="button button-secondary" id="md-reset">Reset</button></form>' +
       '<p class="coach-count" id="md-count" role="status"></p><div class="table-wrap md-wrap"><table id="md-table" class="rd-table md-table"></table></div>' +
       '<p class="coach-note">SAMPLE DATA / FICTIONAL EXAMPLE. Helper columns from the owner workbook are calculated, not stored.</p>';
     const tbl = $('#md-table', root);
     function kpis() {
       const k = $('#md-kpis', root);
-      k.innerHTML = kpi('Total Players', players.length) + kpi('Sample Players', players.filter((p) => !p.entered).length) + kpi('Added (Demo)', players.filter((p) => p.entered).length) + kpi('Possible Duplicates', players.filter((p) => dupCount[dupKey(p)] > 1).length) + kpi('Missing 60 Time (Position Players)', players.filter((p) => p.pos !== 'P' && p.t60 == null).length);
+      k.innerHTML = kpi('Total Players', players.length) + kpi('Sample Players', players.filter((p) => !p.entered).length) + kpi('Coach-Entered (Demo)', players.filter((p) => p.entered).length) + kpi('Possible Duplicates', players.filter((p) => dupCount[dupKey(p)] > 1).length) + kpi('Missing 60 Time (Position Players)', players.filter((p) => p.pos !== 'P' && p.t60 == null).length);
     }
     function draw() {
       const q = $('#md-q', root).value.trim().toLowerCase(), fp = $('#md-pos', root).value, fg = $('#md-grad', root).value, fs = $('#md-src', root).value;
@@ -728,7 +728,7 @@
       rec.pos = v('pos');
       if (!rec.pos) errs.push('Primary Position is required.');
       rec.sec = v('sec'); rec.bats = v('bats'); rec.throws = v('throws'); rec.twoWay = f.elements.twoWay.checked;
-      rec.hs = v('hs'); rec.state = v('state').toUpperCase(); rec.eval = v('eval'); rec.method = v('method') || 'Coach Entry'; rec.notes = v('notes');
+      rec.hs = v('hs'); rec.state = v('state').toUpperCase(); rec.eval = v('eval'); rec.method = v('method') || 'Coach Entry (Unverified)'; rec.notes = v('notes');
       if (rec.sec && rec.sec === rec.pos) errs.push('Secondary Position must differ from Primary Position.');
       if (rec.state && !/^[A-Z]{2}$/.test(rec.state)) errs.push('State must be two letters.');
       NUMS.forEach((n) => {
@@ -751,7 +751,7 @@
       rec.id = 'E' + String(max + 1).padStart(3, '0');
       cur.push(rec);
       if (!saveAdded(cur)) { ul.innerHTML = '<li>This browser blocked saving. The player was not added.</li>'; return; }
-      sessionStorage.setItem('theReadMdMsg', rec.name + ' was added as ' + rec.id + ' (demo, saved in this browser only).');
+      sessionStorage.setItem('theReadMdMsg', rec.name + ' was added from your board as ' + rec.id + ' (demo, saved in this browser only).');
       location.reload();
     });
   };

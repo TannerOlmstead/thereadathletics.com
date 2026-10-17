@@ -11,23 +11,21 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Sora:wght@400;500;600;700;800&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,600;0,700;1,700;1,800;1,900&family=Inter:wght@400;500;600;700;800;900&display=swap"
       rel="stylesheet"
     />
     <link rel="stylesheet" href="styles.css" />
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 120'%3E%3Crect width='120' height='120' rx='28' fill='%239E1B32'/%3E%3Ctext x='50%25' y='52%25' dominant-baseline='middle' text-anchor='middle' font-size='54' font-family='Arial, sans-serif' fill='white'%3ER%3C/text%3E%3C/svg%3E" />
   </head>
   <body>
+    <a class="skip-link" href="#main">Skip to main content</a>
     <header class="site-header">
       <div class="container nav-wrap">
         <a class="brand" href="index.html" aria-label="THE READ Athletics home">
-          <div class="brand-mark" aria-hidden="true"><span>TR</span></div>
-          <div class="wordmark">
-            <span class="wordmark-main">THE READ</span>
-            <span class="wordmark-sub">ATHLETICS</span>
-          </div>
+          <svg class="brand-emblem" viewBox="0 0 110 110" aria-hidden="true" focusable="false"><circle cx="55" cy="55" r="52" fill="#fff" stroke="#E41E3F" stroke-width="3"/><circle cx="55" cy="55" r="45" fill="none" stroke="#E41E3F" stroke-width="1"/><text x="55" y="68" text-anchor="middle" font-family="'Barlow Condensed','Arial Narrow',Impact,sans-serif" font-style="italic" font-weight="900" font-size="46" letter-spacing="-2"><tspan fill="#14284B">T</tspan><tspan fill="#E41E3F">R</tspan><tspan fill="#14284B">A</tspan></text></svg>
+          <span class="wordmark"><span class="wordmark-main">THE READ</span><span class="wordmark-sub">ATHLETICS</span></span>
         </a>
-        <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="main-nav">Menu</button>
+        <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="main-nav"><span class="nav-toggle-bars" aria-hidden="true"></span><span>Menu</span></button>
         <nav class="main-nav" id="main-nav" aria-label="Main navigation">
           <a href="features.html">Features</a>
           <a href="scoring.html">Scoring</a>
@@ -37,7 +35,8 @@
           <a href="resources.html">Resources</a>
           <a href="faq.html">FAQ</a>
           <a href="security.html">Security</a>
-  <a class="mobile-only" href="contact.html#demo">Request demo</a>
+          <a class="mobile-only" href="contact.html">Contact</a>
+          <a class="mobile-only" href="contact.html#demo">Request demo</a>
         </nav>
         <div class="nav-actions">
           <a class="nav-link" href="contact.html">Contact</a>
@@ -50,10 +49,12 @@
       <section class="hero">
         <div class="container hero-grid">
           <div class="hero-copy">
-            <div class="eyebrow">Recruiting Evaluation, Analysis &amp; Development</div>
-            <h1>Verified recruiting data. Clear athlete evaluation.</h1>
+            <p class="tagline">Data driven. People focused.</p>
+            <h1 class="hero-title"><span class="t-the">THE</span> <span class="t-read">READ</span><span class="visually-hidden">: verified recruiting data and clear athlete evaluation</span></h1>
+            <div class="hero-subtitle">Recruiting Evaluation, Analysis &amp; Development</div>
+            <h2 class="hero-headline">Verified recruiting data. Clear athlete evaluation.</h2>
             <p class="hero-text">
-              THE READ brings objective scores, private staff evaluations, fit analysis,
+              <span class="tr">THE READ</span> brings objective scores, private staff evaluations, fit analysis,
               recruiting boards, and communication into one secure system built for college programs.
             </p>
             <div id="paths" class="audience-grid" role="list" aria-label="Choose your path">
@@ -62,7 +63,8 @@
               <a class="audience-card" role="listitem" href="institution-signup.html"><strong>I represent an institution</strong><span>One shared board and private evaluations for your athletic department.</span><em>Request access &rarr;</em></a>
             </div>
             <div class="cta-row">
-              <a class="button button-primary" href="contact.html#demo">Request a demo</a>
+              <a class="button button-primary" href="#paths">Get started</a>
+              <a class="button button-secondary" href="contact.html#demo">Request a demo</a>
               <a class="button button-secondary" href="internal-preview.html">See the product preview</a>
             </div>
             <ul class="hero-points" aria-label="Key benefits">
@@ -71,62 +73,22 @@
               <li>Multi-sport ready</li>
             </ul>
           </div>
-
-          <div class="hero-panel" aria-label="Platform overview panel (fictional sample data)">
-            <div class="panel-topbar">
-              <span class="dot red" aria-hidden="true"></span>
-              <span class="dot amber" aria-hidden="true"></span>
-              <span class="dot green" aria-hidden="true"></span>
-            </div>
-
-            <div class="panel-body">
-              <div class="score-row">
-                <div>
-                  <p class="label">Recruit Score &middot; sample</p>
-                  <div class="large-score">9.4</div>
-                </div>
-                <div class="confidence high">
-                  <span>High Confidence</span>
-                  <strong>94%</strong>
-                </div>
-              </div>
-
-              <div class="mini-metrics">
-                <div class="mini-card">
-                  <span>Staff Score</span>
-                  <strong>8.7</strong>
-                </div>
-                <div class="mini-card">
-                  <span>Coach Fit</span>
-                  <strong>9.1</strong>
-                </div>
-                <div class="mini-card">
-                  <span>Priority</span>
-                  <strong>91</strong>
-                </div>
-              </div>
-
-              <div class="insights">
-                <div class="insight-row">
-                  <span>What stands out</span>
-                  <strong>High EV, strong frame projection, and clean defensive tools.</strong>
-                </div>
-                <div class="insight-row">
-                  <span>Next step</span>
-                  <strong>Schedule live evaluation and verify final metrics.</strong>
-                </div>
-              </div>
-            </div>
-          </div>
         </div>
       </section>
 
-      <section class="stats-bar" aria-label="At a glance">
-        <div class="container stats-grid">
-          <div><strong>6</strong><span>Scores, with facts and opinions kept apart</span></div>
-          <div><strong>8</strong><span>Sports in the field guide</span></div>
-          <div><strong>5</strong><span>Board stages, Discovered to Committed</span></div>
-          <div><strong>Free</strong><span>Athlete profile</span></div>
+      <section class="sport-strip" aria-label="Sports covered">
+        <div class="container">
+          <ul class="sport-tiles">
+            <li><a class="sport-tile" href="sport-guide.html#baseball">Baseball</a></li>
+            <li><a class="sport-tile" href="sport-guide.html#basketball">Men&rsquo;s Basketball</a></li>
+            <li><a class="sport-tile" href="sport-guide.html#basketball">Women&rsquo;s Basketball</a></li>
+            <li><a class="sport-tile" href="sport-guide.html#football">Football</a></li>
+            <li><a class="sport-tile" href="sport-guide.html#soccer">Men&rsquo;s Soccer</a></li>
+            <li><a class="sport-tile" href="sport-guide.html#soccer">Women&rsquo;s Soccer</a></li>
+            <li><a class="sport-tile" href="sport-guide.html#softball">Softball</a></li>
+            <li><a class="sport-tile" href="sport-guide.html#volleyball">Women&rsquo;s Volleyball</a></li>
+            <li><a class="sport-tile sport-tile-soon" href="sport-guide.html">More coming soon</a></li>
+          </ul>
         </div>
       </section>
 
@@ -165,7 +127,7 @@
             </article>
             <article class="feature-card">
               <div class="icon">06</div>
-              <h3>THE READ AI</h3>
+              <h3><span class="tr">THE READ</span> AI</h3>
               <p>Planned: Deliver concise, evidence-based summaries that highlight what matters without replacing staff judgment.</p>
             </article>
           </div>
@@ -220,7 +182,7 @@
             <div class="eyebrow">Built for real recruiting</div>
             <h2>From athlete discovery to commitment tracking.</h2>
             <p>
-              THE READ helps programs move from profile review to evaluation, communication, fit analysis,
+              <span class="tr">THE READ</span> helps programs move from profile review to evaluation, communication, fit analysis,
               class planning, and commitment workflows without leaving the platform.
             </p>
           </div>
@@ -264,7 +226,7 @@
             <div class="eyebrow light">Built to trust</div>
             <h2>Recruiting operations should be clear, secure, and accountable.</h2>
             <p>
-              THE READ gives institutions one source of truth for talent evaluation, recruiting history,
+              <span class="tr">THE READ</span> gives institutions one source of truth for talent evaluation, recruiting history,
               and staff communication without compromising data ownership or objective scoring integrity.
             </p>
           </div>
@@ -318,8 +280,8 @@
         <div class="footer-cols">
           <div>
             <a class="brand footer-brand" href="index.html" aria-label="THE READ Athletics home">
-              <div class="brand-mark" aria-hidden="true">TR</div>
-              <span>THE READ</span>
+              <svg class="brand-emblem" viewBox="0 0 110 110" aria-hidden="true" focusable="false"><circle cx="55" cy="55" r="52" fill="#fff" stroke="#E41E3F" stroke-width="3"/><circle cx="55" cy="55" r="45" fill="none" stroke="#E41E3F" stroke-width="1"/><text x="55" y="68" text-anchor="middle" font-family="'Barlow Condensed','Arial Narrow',Impact,sans-serif" font-style="italic" font-weight="900" font-size="46" letter-spacing="-2"><tspan fill="#14284B">T</tspan><tspan fill="#E41E3F">R</tspan><tspan fill="#14284B">A</tspan></text></svg>
+              <span class="wordmark"><span class="wordmark-main">THE READ</span><span class="wordmark-sub">ATHLETICS</span></span>
             </a>
             <p>Recruiting intelligence for institutions, coaches, athletes, and trusted programs.</p>
             <p><a href="mailto:hello@thereadathletics.com"><strong>hello@thereadathletics.com</strong></a></p>
@@ -329,7 +291,7 @@
           <div class="footer-col"><h4>Company</h4><a href="resources.html">Resources</a><a href="faq.html">FAQ</a><a href="security.html">Security &amp; privacy</a><a href="success-stories.html">Success stories</a><a href="contact.html">Contact</a></div>
         </div>
         <div class="footer-bottom">
-          <span>&copy; <span data-year>2026</span> THE READ Athletics</span>
+          <span>&copy; <span data-year>2026</span> <span class="tr">THE READ</span> Athletics</span>
           <span><a href="privacy.html">Privacy</a> &middot; <a href="terms.html">Terms</a> &middot; <a href="contact.html">Contact</a></span>
         </div>
       </div>

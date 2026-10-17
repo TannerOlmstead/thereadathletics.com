@@ -70,7 +70,8 @@ This site is plain HTML/CSS/JS with no build step. There is **no backend**: form
 
 - [x] Navy secondary color added to the scarlet/white design system
 - [x] Replaced unverifiable homepage statistics (92%, 3x faster, 100%) with factual counts
-- [x] Homepage hero data labeled as a sample
+- [x] Homepage hero data labeled as a sample (later removed entirely, along with the homepage stats bar, so no sample numbers appear on the homepage)
+- [x] Visual redesign: bright scarlet nav bar, notched-corner buttons, bold condensed italic headings, homepage sport tiles, bold scarlet "THE READ", shared mobile nav
 
 ## Next up (not started)
 

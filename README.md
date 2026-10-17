@@ -37,7 +37,7 @@ Static recruiting-intelligence website for athletes, independent recruiting prof
 
 ## Files
 
-- `styles.css` — scarlet (#9E1B32), navy, and white design system, responsive.
+- `styles.css` — bright scarlet (#E41E3F), navy, and white design system (Barlow Condensed + Inter fonts, notched-corner buttons and tiles), responsive.
 - `script.js` — navigation toggle, form validation and mailto, query parameters, select-all, preview switching.
 
 ## Local preview

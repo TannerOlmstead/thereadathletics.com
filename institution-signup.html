@@ -45,11 +45,11 @@
           <a class="mobile-only" href="faq.html">FAQ</a>
           <a class="mobile-only" href="security.html">Security</a>
           <a class="mobile-only" href="contact.html">Contact</a>
-          <a class="narrow-only" href="contact.html">Sign In</a>
+          <a class="narrow-only" href="sign-in.html">Sign In</a>
           <a class="narrow-only" href="index.html#paths">Get Started</a>
         </nav>
         <div class="nav-actions">
-          <a class="button button-outline-light" href="contact.html">Sign In</a>
+          <a class="button button-outline-light" href="sign-in.html">Sign In</a>
           <a class="button button-primary" href="index.html#paths">Get Started</a>
         </div>
       </div>
@@ -94,6 +94,8 @@
         </div>
       </div>
     </footer>
+
+    <script src="account.js"></script>
 
     <script src="script.js"></script>
     <script>(function(){var l=document.getElementById("level"),s=document.getElementById("subdiv"),D=window.TheReadDivisions;if(!l||!D)return;function fill(){var x=D.get(l.value);s.innerHTML='<option value="">Not applicable</option>'+(x?x.subs:[]).map(function(y){return"<option>"+y+"</option>"}).join("");s.disabled=!x||!x.subs.length}l.addEventListener("change",function(){fill();if(l.value)D.set(l.value,"")});s.addEventListener("change",function(){if(l.value)D.set(l.value,s.value)});fill();})();</script>

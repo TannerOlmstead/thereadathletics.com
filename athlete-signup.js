@@ -7,6 +7,7 @@
   var POS = ['P', 'C', '1B', '2B', '3B', 'SS', 'OF'];
   var LEVELS = ['High School', 'JUCO', '4-Year College / Transfer Portal', 'Other'];
   var PREF_POS = ['C', '1B', '2B', '3B', 'SS', 'LF', 'CF', 'RF', 'DH/UT'];
+  var DIVS = ['NCAA Division I', 'NCAA Division II', 'NCAA Division III', 'NAIA', 'NJCAA Division I', 'NJCAA Division II', 'NJCAA Division III', 'Other'];
   var VERIFIERS = [['hs', 'High School Coach'], ['pi', 'Private Instructor'], ['vdp', 'Verified Data Provider']];
   var METRICS = [['ht', 'Height (in)', 40, 96], ['wt', 'Weight (lb)', 60, 400], ['t60', '60-Yard Time (sec)', 5, 12], ['tv', 'Throwing Velocity (mph)', 30, 110], ['avgEV', 'Avg Exit Velocity (mph)', 40, 120], ['maxEV', 'Max Exit Velocity (mph)', 40, 130], ['avgFBV', 'Avg Fastball Velocity (mph)', 30, 105], ['maxFBV', 'Max Fastball Velocity (mph)', 30, 110]];
   var esc = function (s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); };
@@ -53,9 +54,10 @@
   };
   var verifyMetric = function (r, key, ok, who, method) {
     r.verified = r.verified || {}; r.vdecl = r.vdecl || {};
-    var rec = { by: who.by, role: who.role, date: new Date().toISOString().slice(0, 10), method: method || '' };
+    var rec = { by: who.by, role: who.role, date: new Date().toISOString().slice(0, 10), method: method || '', vid: who.vid || '' };
     delete r.verified[key]; delete r.vdecl[key];
     if (ok) r.verified[key] = rec; else r.vdecl[key] = rec;
+    r.vlog = r.vlog || []; r.vlog.push({ k: key, ok: !!ok, by: who.by, role: who.role, vid: who.vid || '', method: method || '', value: r.metrics ? r.metrics[key] : null, ts: new Date().toISOString() });
     return r;
   };
   /* Interest in programs (localStorage demo; no email or push is sent). */
@@ -81,8 +83,9 @@
   if (wiz) {
     var d = { v: {}, m: {}, privacy: { list: true } };
     var step = 0;
-    var STEPS = [['account', 'Account Basics'], ['agegate', 'Age Check'], ['profile', 'Athlete Profile'], ['guardian', 'Parent / Guardian'], ['verifier', 'Verify Metrics'], ['privacy', 'Privacy & Terms'], ['review', 'Review & Submit']];
-    var visible = function () { return STEPS.filter(function (s) { return s[0] !== 'guardian' || d.path !== 'adult'; }); };
+    var STEPS = [['account', 'Account Basics'], ['agegate', 'Age Check'], ['profile', 'Athlete Profile'], ['transfer', 'Transfer Details'], ['guardian', 'Parent / Guardian'], ['verifier', 'Verify Metrics'], ['privacy', 'Privacy & Terms'], ['review', 'Review & Submit']];
+    var isXfer = function () { return d.level === 'JUCO' || d.level === '4-Year College / Transfer Portal'; };
+    var visible = function () { return STEPS.filter(function (s) { return (s[0] !== 'guardian' || d.path !== 'adult') && (s[0] !== 'transfer' || isXfer()); }); };
     var fld = function (id, label, o) {
       o = o || {}; var val = getPath(d, id), t = o.type || 'text', h = o.hint ? '<p class="hint" id="h-' + id + '">' + o.hint + '</p>' : '';
       var ctl;
@@ -141,6 +144,24 @@
           (!sel('baseball') ? '<p class="hint">Scoring Not Yet Available for your selected sport(s). Measurables and verification are collected for Baseball first; your profile will show Not Rated and Confidence Unknown, never 0.</p>' : '<fieldset class="full"><legend>Measurables <span class="pill">Self-Reported / Unverified Until Verified</span></legend><p class="hint">Optional. Leave blank if unknown. Blank is never treated as 0.</p><div class="form-grid">' +
           METRICS.map(function (m) { return fld('m.' + m[0], m[1], { type: 'number', attrs: ' step="any" min="' + m[2] + '" max="' + m[3] + '"' }); }).join('') + '</div></fieldset>');
       },
+      transfer: function () {
+        var t = d.tr || {}, yrs = []; for (var y = new Date().getFullYear(); y <= new Date().getFullYear() + 3; y++) yrs.push(y);
+        var ec = ['Not Started', 'Registered', 'Certified (Athlete-Reported)', 'Not Applicable'];
+        return '<h2>Transfer Details</h2><div class="notice navy" role="note"><strong>Enter only what you know.</strong> Blank is shown as Not Provided and is never guessed. Redshirt, hardship, portal and eligibility details are your own entries; ask your compliance office to confirm them. Nothing here is checked against NCAA, NAIA or NJCAA records.</div><div class="form-grid">' +
+          fld('tr.college', 'Current College', { req: 1 }) + fld('tr.conf', 'Conference (Optional)') + fld('tr.assoc', 'Division / Association', { req: 1, type: 'select', opts: DIVS }) +
+          fld('tr.seasons', 'Seasons Played', { type: 'select', opts: [0, 1, 2, 3, 4, 5], blank: 'Not Provided' }) +
+          '<div class="field"><p class="hint">Years of eligibility left: <strong>' + esc(d.elig || 'Not Provided') + '</strong> (set on the previous step).</p></div><div class="field"></div>' +
+          fld('tr.rs', 'Redshirt / Medical Hardship Status', { type: 'select', opts: ['No Redshirt Used', 'Redshirt Used', 'Medical Hardship Requested', 'Medical Hardship Granted'], blank: 'Not Provided', hint: 'Enter only what your school has told you.' }) + '<div class="field"></div>' +
+          fld('tr.portal', 'Transfer Portal Status', { req: 1, type: 'select', opts: ['Not In Portal', 'Entered', 'Committed', 'Withdrawn'] }) + fld('tr.portalDate', 'Portal Status Date' + (t.portal && t.portal !== 'Not In Portal' ? '' : ' (Only If In Portal)'), { type: 'date', attrs: ' max="' + todayIso() + '"' }) +
+          fld('tr.release', 'Release / Permission-To-Contact Status', { type: 'select', opts: ['Not Needed', 'Not Requested', 'Requested', 'Granted', 'Denied'], blank: 'Not Provided' }) + fld('tr.year', 'Intended Transfer Year', { type: 'select', opts: yrs, blank: 'Not Provided' }) +
+          fld('tr.gradStatus', 'Graduation Status', { type: 'select', opts: ['Not Graduated', 'Expected To Graduate This Year', 'Graduated'], blank: 'Not Provided' }) + fld('tr.credits', 'Credits Earned (Optional)', { type: 'number', attrs: ' min="0" max="250" step="1"' }) +
+          fld('tr.standing', 'Academic Standing', { type: 'select', opts: ['Good Standing', 'Academic Probation', 'Other / Not Sure'], blank: 'Not Provided' }) + '<div class="field"></div>' +
+          '<fieldset class="full"><legend>Eligibility Center Status <span class="pill gray">Self-Reported, Not Checked</span></legend><div class="form-grid">' + fld('tr.ncaa', 'NCAA Eligibility Center', { type: 'select', opts: ec, blank: 'Not Provided' }) + fld('tr.naia', 'NAIA Eligibility Center', { type: 'select', opts: ec, blank: 'Not Provided' }) + fld('tr.njcaa', 'NJCAA Eligibility', { type: 'select', opts: ec, blank: 'Not Provided' }) + '</div></fieldset>' +
+          fld('tr.stats', 'College Stats (Optional, Self-Reported)', { full: 1, hint: 'Short summary, for example seasons, games, key numbers. Coaches see it as self-reported.' }) +
+          '<fieldset class="full"><legend>Current Coach Reference (Optional)</legend><div class="form-grid">' + fld('tr.cName', 'Coach Name') + fld('tr.cEmail', 'Coach Email', { type: 'email' }) + fld('tr.cPhone', 'Coach Phone', { type: 'tel' }) + '</div>' +
+          chk('tr.cVerify', 'Also ask this coach to verify my metrics. They confirm each metric separately as a school-coach verifier (demo: nothing is sent).') + '</fieldset></div>' +
+          '<p class="hint">You are 18 or older on this path, so no parent or guardian step is needed. The age check still applies.</p>';
+      },
       guardian: function () {
         return '<h2>Parent / Guardian Verification</h2><div class="notice navy" role="note"><strong>Demo &ndash; no email is sent.</strong> After you submit, your guardian would get a link and code. In this demo, open the guardian page and use code <strong>' + DEMO_CODE + '</strong>.</div><div class="form-grid">' +
           fld('g.name', 'Guardian Full Name', { req: 1 }) + fld('g.rel', 'Relationship', { req: 1, type: 'select', opts: ['Parent', 'Legal Guardian', 'Other'] }) + fld('g.email', 'Guardian Email', { req: 1, type: 'email' }) + fld('g.phone', 'Guardian Phone', { req: 1, type: 'tel' }) + '</div>' +
@@ -150,7 +171,7 @@
       verifier: function () {
         return '<h2>Verify Your Metrics</h2><p>Optional. Choose who can confirm your metrics. Until they do, every metric stays <strong>Unverified</strong>.</p><div class="ver-list">' +
           VERIFIERS.map(function (v) { return '<fieldset class="ver-row"><legend>' + v[1] + '</legend>' + chk('v.' + v[0] + '.on', 'Send a verification request') + '<div class="form-grid">' + fld('v.' + v[0] + '.name', 'Name / Organization') + fld('v.' + v[0] + '.email', 'Email', { type: 'email' }) + '</div></fieldset>'; }).join('') + '</div>' +
-          '<p class="coach-note">Demo: no request is actually sent. You can simulate a verifier&rsquo;s confirmation on your status page afterward.</p>';
+          '<p class="coach-note">Verifiers create their own profile on the <a href="verifier-signup.html">Verifier Signup</a> page. Demo: no request is actually sent. You can simulate a verifier&rsquo;s confirmation on your status page afterward.</p>';
       },
       privacy: function () {
         var minor = d.path !== 'adult';
@@ -161,7 +182,7 @@
       review: function () {
         var rows = [['Name', d.name], ['Email', d.email], ['Age Path', d.path === 'adult' ? 'Adult (18+)' : d.path === 'minor' ? 'Minor (13-17), guardian required' : 'Under 13, guardian-created'], ['Sports / Positions', selected().map(function (x) { return x.name + ' / ' + d.sp[x.id].pos + (d.sp[x.id].sec ? ' / ' + d.sp[x.id].sec : ''); }).join('; ')],
           ['College Role Preference', !sel('baseball') ? 'Not applicable' : rolePrefTxt(d.rp)],
-          ['Level / Class', d.level + ' ' + d.grad], ['School / State', d.school + ', ' + d.state], ['Eligibility Left', d.level === 'High School' ? 'N/A' : d.elig || 'Not Provided'],
+          ['Level / Class', d.level + ' ' + d.grad], ['Transfer Details', !isXfer() ? 'Not applicable' : xferTxt(d.tr)], ['School / State', d.school + ', ' + d.state], ['Eligibility Left', d.level === 'High School' ? 'N/A' : d.elig || 'Not Provided'],
           ['Metrics', METRICS.filter(function (m) { return d.m[m[0]] !== '' && d.m[m[0]] != null; }).map(function (m) { return m[1] + ': ' + d.m[m[0]]; }).join('; ') || 'None entered (Unverified)'],
           ['Guardian', d.path === 'adult' ? 'Not needed' : d.g.name + ' (' + d.g.rel + ')'],
           ['Verification Requests', VERIFIERS.filter(function (v) { return d.v[v[0]] && d.v[v[0]].on; }).map(function (v) { return v[1]; }).join(', ') || 'None'],
@@ -170,6 +191,7 @@
       }
     };
     var rolePrefTxt = function (r) { r = r || {}; return !r.twoWay ? 'Not Provided' : r.twoWay === 'Yes' ? 'Two-Way' + (r.emphasis ? ' (' + r.emphasis + ')' : '') : r.twoWay === 'No' ? (r.role || 'Not Provided') + (r.role === 'Position Player' && r.pos ? ' (' + r.pos + ')' : '') : r.twoWay; };
+    var xferTxt = function (t) { t = t || {}; return [t.college, t.assoc, 'Portal: ' + (t.portal || 'Not Provided') + (t.portalDate ? ' (' + t.portalDate + ')' : ''), 'Release: ' + (t.release || 'Not Provided')].filter(Boolean).join('; '); };
     var errs = [];
     var bad = function (id, msg) { errs.push([id, msg]); };
     var checks = {
@@ -194,6 +216,15 @@
         }
         if (!d.level) bad('level', 'Choose a playing level.'); if (!d.school || !d.school.trim()) bad('school', 'Enter a school or club.'); if (!d.state || !d.state.trim()) bad('state', 'Enter a state.');
         METRICS.forEach(function (m) { var v = d.m[m[0]]; if (v !== '' && v != null && (isNaN(Number(v)) || Number(v) < m[2] || Number(v) > m[3])) bad('m.' + m[0], m[1] + ' must be between ' + m[2] + ' and ' + m[3] + ', or blank.'); });
+      },
+      transfer: function () {
+        var t = d.tr || {};
+        if (!t.college || !t.college.trim()) bad('tr.college', 'Enter your current college.');
+        if (!t.assoc) bad('tr.assoc', 'Choose a division or association.');
+        if (!t.portal) bad('tr.portal', 'Choose your transfer portal status.');
+        else if (t.portal !== 'Not In Portal' && !t.portalDate) bad('tr.portalDate', 'Enter the date of this portal status.');
+        if (t.credits !== '' && t.credits != null && (isNaN(Number(t.credits)) || Number(t.credits) < 0 || Number(t.credits) > 250)) bad('tr.credits', 'Credits must be between 0 and 250, or blank.');
+        if (t.cVerify && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(t.cEmail || '')) bad('tr.cEmail', 'Enter the coach\u2019s email to ask them to verify.');
       },
       guardian: function () {
         var g = d.g || {};
@@ -260,7 +291,12 @@
       };
       METRICS.forEach(function (m) { var v = d.m[m[0]]; if (v !== '' && v != null) rec.metrics[m[0]] = Number(v); });
       VERIFIERS.forEach(function (v) { var x = d.v[v[0]]; if (x && x.on) rec.verifiers.push({ type: v[1], name: x.name || '', email: x.email, status: 'Requested', date: todayIso() }); });
-      upsert(rec); renderStatus(rec, true);
+      if (isXfer() && d.tr) {
+        var t = d.tr; rec.transfer = { college: t.college.trim(), conf: t.conf || '', assoc: t.assoc, seasons: t.seasons === '' || t.seasons == null ? null : Number(t.seasons), rs: t.rs || '', portal: t.portal, portalDate: t.portal === 'Not In Portal' ? '' : t.portalDate || '', release: t.release || '', year: t.year || '', gradStatus: t.gradStatus || '', credits: t.credits === '' || t.credits == null ? null : Number(t.credits), standing: t.standing || '', ncaa: t.ncaa || '', naia: t.naia || '', njcaa: t.njcaa || '', stats: t.stats || '', coach: { name: t.cName || '', email: t.cEmail || '', phone: t.cPhone || '' } };
+        if (t.cVerify && t.cEmail) rec.verifiers.push({ type: 'High School Coach', name: t.cName || t.college, email: t.cEmail, status: 'Requested', date: todayIso() });
+      }
+      upsert(rec); try { localStorage.setItem('theReadSession', JSON.stringify({ role: 'athlete', name: rec.name, email: rec.email, org: '', aid: rec.id, ts: new Date().toISOString() })); } catch (x) { /* ignore */ }
+      renderStatus(rec, true);
     };
 
     // status panel / "athlete dashboard"
@@ -269,7 +305,7 @@
       var h = '<div class="form-card status-card"><h2>' + (fresh ? 'Submitted (Demo)' : 'Your Athlete Status') + '</h2>' + (fresh ? '<div class="notice navy" role="status"><strong>Demo &ndash; nothing was sent.</strong> Your profile is saved in this browser only. No email or text message went out, and no identity was verified.</div>' : '') +
         '<dl class="review-list"><dt>Athlete</dt><dd>' + esc(r.name) + ' &middot; ' + esc(r.path === 'adult' ? 'Adult (18+)' : r.path === 'minor' ? 'Minor (13-17)' : 'Under 13, guardian-created') + '</dd>' +
         '<dt>Guardian Verification</dt><dd>' + (gs ? badge(gs) + (gs === 'Pending' ? ' Waiting for ' + esc(r.guardian.name) + '. Demo code: ' + DEMO_CODE : gs === 'Declined' ? ' The guardian declined or revoked access.' : gs === 'Expired' ? ' The code expired. Use the guardian page to resend (demo).' : ' Verified.') : 'Not needed (adult)') + '</dd>' +
-        '<dt>Listed To Coaches</dt><dd>' + (lst ? 'Yes &ndash; in the Master Database as <strong>Athlete-Created</strong>' + (r.path !== 'adult' ? ' and <strong>Guardian-Verified</strong>' : '') + '. Recruit Score and Tier show Not Rated until enough data exists.' : 'No' + (r.path !== 'adult' && gs !== 'Verified' ? ' &ndash; minors cannot be contacted or listed until a guardian verifies.' : r.privacy.list ? '.' : ' &ndash; you chose not to be listed.')) + '</dd></dl>' +
+        (r.transfer ? '<dt>Transfer Details</dt><dd>' + esc(xferTxt(r.transfer)) + '</dd>' : '') + '<dt>Listed To Coaches</dt><dd>' + (lst ? 'Yes &ndash; in the Master Database as <strong>Athlete-Created</strong>' + (r.path !== 'adult' ? ' and <strong>Guardian-Verified</strong>' : '') + '. Recruit Score and Tier show Not Rated until enough data exists.' : 'No' + (r.path !== 'adult' && gs !== 'Verified' ? ' &ndash; minors cannot be contacted or listed until a guardian verifies.' : r.privacy.list ? '.' : ' &ndash; you chose not to be listed.')) + '</dd></dl>' +
         '<p><a class="button button-primary" href="athlete-profile.html">Open My Athlete Profile</a> ' + (r.guardian ? '<a class="button button-secondary" href="guardian-verify.html">Open Guardian Page (Demo)</a>' : '') + '</p>' +
         '<h3>Metric Verification</h3>' + (Object.keys(r.metrics).length ? '<div class="table-wrap"><table><thead><tr><th scope="col">Metric</th><th scope="col">Value</th><th scope="col">Status</th></tr></thead><tbody>' + METRICS.filter(function (m) { return r.metrics[m[0]] != null; }).map(function (m) { var v = (r.verified || {})[m[0]]; return '<tr><th scope="row">' + m[1] + '</th><td>' + r.metrics[m[0]] + '</td><td>' + (v ? 'Verified by ' + esc(v.by) + ' (' + esc(v.role) + ', ' + esc(v.date) + ', demo)' : 'Unverified (Self-Reported)') + '</td></tr>'; }).join('') + '</tbody></table></div>' : '<p>No metrics entered.</p>') +
         (r.verifiers.length ? '<ul class="intro-list">' + r.verifiers.map(function (v, i) { return '<li><strong>' + esc(v.type) + '</strong> ' + esc(v.name) + ': ' + badge(v.status) + (v.status === 'Requested' ? ' <button type="button" class="button button-secondary sim-ver" data-i="' + i + '">Demo: Simulate Verifier Confirmation</button>' : '') + '</li>'; }).join('') + '</ul>' : '<p class="hint">No verifier requested. All metrics stay Unverified.</p>') +

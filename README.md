@@ -153,3 +153,20 @@ The Max FBV lookup is `TheReadScore.getMaxFBVGrade(maxFBV)`, a port of the owner
 - `divisions-config.js` is the ONE config for NCAA Division I (FBS/FCS/Non-Football), Division II, Division III, NAIA and NJCAA/JUCO (Division I/II/III). It sets tab names, finance/aid model, roster fields, eligibility status field, Overview KPIs, compliance sections, official links and reminder text. Pick the division at institution signup or in Department Settings; the Division View selector in the department header previews each one.
 - No rule numbers are hardcoded. Limits, counts and dates are entered by the department (stored in this browser) and every division page carries a Verify With Your Compliance Office / Official Governing Body note with links to ncaa.org, naia.org and njcaa.org.
 - Division III hides scholarship equivalency and athletic aid and shows admissions/academic fit and a recruiting budget instead. JUCO tracks transfers placed to 4-year schools as a key metric. Eligibility statuses (NCAA/NAIA/NJCAA/admissions) are staff- or athlete-entered, not verified.
+
+## Sign In, Account Settings And Demo Session
+
+- `account.js` (loaded on every page) keeps a demo session in this browser (`theReadSession`). Roles: Athlete, Guardian, High School Coach, Private Instructor, Verified Data Provider, College Coach, Athletic Department. Each role goes to its own home after sign-in.
+- Pages: `sign-in.html`, `forgot-password.html`, `reset-password.html` (demo code 000000), `account-settings.html` (profile, email, password check, notification preferences, sign out). The header shows Sign In / Get Started when signed out and an account menu with Sign Out when signed in.
+- **Demo only, not real security.** No password is stored or checked, no email is sent, and nothing is encrypted. Athlete, guardian and verifier sign-ins must match a profile saved in this browser. Workspace pages redirect to Sign In unless you are signed in or use Continue In Preview Mode (or `?demo=1`). Set `REQUIRE_SIGN_IN: false` in `site-config.js` to turn the guard off.
+- Coach Grading "Signed in as" and the coach/department identity come from the session.
+
+## Verifier Signup And Workspace
+
+- `verifier-signup.html`: High School Coach, Private Instructor or Verified Data Provider (free for providers per pricing). Approval of verifiers is an admin step on the roadmap; profiles show Pending Approval and nothing is checked.
+- `verifier-dashboard.html` (`verifier.js`): Athletes Awaiting Verification, Requests (accept/decline), My Athletes, Verification History audit log (who, what, when, method), Calendar, Profile And Credentials. Every metric is confirmed or declined individually with a method; statuses feed Confidence. Athletes reach it from Request Verification.
+
+## JUCO / Transfer Signup Path
+
+- Choosing JUCO or 4-Year College / Transfer Portal as Current Playing Level adds a Transfer Details step in `player-signup.html`: current college, association/division, eligibility left, seasons played, redshirt/medical hardship, portal status and date, graduation and credits, academic standing, release to contact, college stats, coach reference, intended transfer year and NCAA/NAIA/NJCAA statuses. All entered by the athlete and unchecked.
+- Feeds Master Database (Current College, Transfer Portal Status), the coach Transfer Portal / JUCO view and the department Transfer Portal / JUCO Watch.

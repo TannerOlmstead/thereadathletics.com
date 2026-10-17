@@ -207,3 +207,16 @@ This site is plain HTML/CSS/JS with no build step. There is **no backend**: form
 - [x] Athlete signup rebuilt as a 7-step demo wizard (account, age gate, profile, parent/guardian, metric verifier, privacy, review) plus `guardian-verify.html`. Under 18 requires guardian verification (demo code 000000, statuses Pending / Verified / Declined / Expired) before the athlete is listed or contactable. Athlete-created profiles appear in the Master Database flagged Athlete-Created / Guardian-Verified. Self-reported metrics stay Unverified until a verifier confirms (demo).
 - [x] Baseball College Role Preference (two-way yes/no/open/not sure, preferred role and position) is an athlete preference, not a rating. Coaches get a separate coach-entered Projected College Role. Both show on the Player Card, Master Database (with filter) and Rankings filter; neither changes Recruit Score, Tier or Confidence. Missing = Not Provided.
 - [ ] Real requirements for athlete signup: email/SMS verification service, identity verification options, consent records and audit log, COPPA / FERPA / state minor-privacy review with counsel (under-13 handling is a legal review item, no compliance is claimed), NCAA contact rules, account recovery, guardian revocation propagation, server-side password handling.
+
+## Accounts, Verifiers And Transfers (done in this PR)
+
+- [x] Sign In, Forgot/Reset Password, Account Settings with a role-aware demo session, workspace route guard and header account menu.
+- [x] Verifier Signup and Verifier Workspace (queue, requests, per-metric confirm/decline, history, My Athletes, calendar, profile).
+- [x] JUCO / Transfer athlete signup step feeding Master Database and portal views.
+
+### Still needed for real accounts (not built)
+
+- [ ] Server-side authentication, password hashing, email verification and reset emails, session tokens, rate limiting.
+- [ ] Server-enforced role and permission checks (the current guard is browser-only and can be bypassed).
+- [ ] Admin approval and credential checks for verifiers; a dedicated College/JUCO Coach verifier type (currently uses High School Coach as a stand-in).
+- [ ] Real notifications (email/push) and official eligibility-center checks (NCAA/NAIA/NJCAA).

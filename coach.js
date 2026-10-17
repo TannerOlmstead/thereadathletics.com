@@ -180,7 +180,7 @@
       const p = { id: 'ATH-' + r.id.replace(/[^a-z0-9]/gi, '').slice(-6).toUpperCase() + r._sx, sport: r.sport, athKey: 'ATH-' + r._aid.replace(/[^a-z0-9]/gi, '').slice(-6).toUpperCase(), name: r.name, grad: r.grad, pos: r.pos, sec: r.sec || '', twoWay: !!(r.rolePref && r.rolePref.twoWay === 'Yes'), state: r.state || '', hs: r.school || '',
         method: 'Athlete-Created (Self-Reported' + (A.anyVerified(r) ? ', some metrics verified by third party (demo)' : ', Unverified') + ')', notes: 'Athlete-Created' + (gv ? '; Guardian-Verified (demo)' : '') + '. Contact info ' + (share('contact') ? 'shared by athlete.' : 'Not shared.'),
         eval: '', links: {}, ht: null, wt: null, gpa: null, staff: null, fit: null, need: null, adj: null, pri: null, hc: null, pc: null, ac: null, committed: '', coach: '', action: '',
-        level: LEVELS.indexOf(r.level) < 0 ? 'Other' : r.level, photo: share('photo') ? r.photo || '' : '', elig: r.elig == null ? null : r.elig, entered: true, athleteCreated: true, guardianVerified: gv, pref: r.rolePref || null, projRole: '' };
+        level: LEVELS.indexOf(r.level) < 0 ? 'Other' : r.level, photo: share('photo') ? r.photo || '' : '', elig: r.elig == null ? null : r.elig, xfer: r.transfer || null, entered: true, athleteCreated: true, guardianVerified: gv, pref: r.rolePref || null, projRole: '' };
       ['opg', 'sopg', 'dpg', 'sdpg', 'ppg', 'ath', 'rs', 'conf', 'pop', 'avgEV', 'maxEV', 'avgFBV', 'maxFBV', 'tv', 't60'].forEach((k) => { p[k] = share('metrics') && m[k] != null ? m[k] : null; });
       if (share('metrics')) { p.ht = m.ht == null ? null : m.ht; p.wt = m.wt == null ? null : m.wt; }
       ['rs', 'conf', 'ath'].forEach((k) => { p[k] = null; });
@@ -295,7 +295,12 @@
 
   // Demo identity: a real site would know who is signed in. Stored per tab only so the owner can preview other staff roles.
   const USER_KEY = 'theReadDemoUser';
-  const ME = () => { let id = 'A'; try { id = sessionStorage.getItem(USER_KEY) || 'A'; } catch (e) { /* ignore */ } return COACHES.filter((c) => c.id === id)[0] || COACHES[0]; };
+  const ME = () => { let sess = null; try { sess = JSON.parse(localStorage.getItem('theReadSession') || 'null'); } catch (e) { sess = null; } let id = null; try { id = sessionStorage.getItem(USER_KEY); } catch (e) { /* ignore */ }
+  if (!id && sess && (sess.role === 'coach' || sess.role === 'ad')) {
+    const head = sess.role === 'coach' && sess.staffRole === 'Head Coach', base = COACHES.filter((c) => c.id === (head ? 'A' : 'B'))[0] || COACHES[0];
+    return Object.assign({}, base, { name: sess.name, role: sess.role === 'ad' ? 'Athletic Department' : sess.staffRole || 'Coach', org: sess.org || base.org });
+  }
+  return COACHES.filter((c) => c.id === (id || 'A'))[0] || COACHES[0]; };
 
   // Activity log: every coach action on a prospect is stamped with the signed-in coach. Stage is derived from it (no manual stage).
   const ACT_KEY = 'theReadDemoActivity';
@@ -1329,6 +1334,8 @@
       ['name', 'Player Name', (p) => p.name, (p) => cardLink(p)],
       ['grad', 'Grad Year', (p) => p.grad, (p) => p.grad],
       ['level', 'Current Playing Level', (p) => p.level, (p) => esc(p.level)],
+      ['xcollege', 'Current College', (p) => (p.xfer ? p.xfer.college : ''), (p) => esc(p.xfer ? p.xfer.college : 'Not Provided')],
+      ['xportal', 'Transfer Portal Status', (p) => (p.xfer ? p.xfer.portal : ''), (p) => esc(p.xfer ? p.xfer.portal + (p.xfer.portalDate ? ' (' + p.xfer.portalDate + ')' : '') : 'Not Provided')],
       ['lvl', 'Level / Class', (p) => lvlSort(p), (p) => lvlCell(p)],
       ['elig', 'Eligibility Left', (p) => eligSort(p), (p) => esc(eligTxt(p))],
       ['bats', 'Bats', (p) => p.bats, (p) => p.bats || '&mdash;'],
@@ -1611,7 +1618,7 @@
       '<section class="card msg-conv" aria-label="Conversation" id="cn-conv"></section></div>' +
       '<section class="card"><h2>New Message (Demo)</h2><form id="cn-new" novalidate><div class="md-grid"><label>To *<select name="to"></select></label><label class="md-wide">Message *<textarea name="body" rows="3" maxlength="1000"></textarea></label></div><ul class="md-errors" id="cn-errors" role="alert"></ul><div class="md-actions"><button type="submit" class="button button-primary">Save Message (Demo)</button> <button type="button" class="button button-secondary" id="cn-reset">Reset Demo Inbox</button></div><p class="coach-note">Athletes control who can message them. Athletes who are not accepting messages, and prospects who only exist on a coach\u2019s own board, cannot be messaged.</p></form></section>' +
       '<h2 class="coach-h2">Transfer Portal And JUCO</h2><p class="coach-note">Prospects in the Master Database who are not high school players (Current Playing Level: JUCO or 4-Year College / Transfer Portal). Sample Data / Fictional Example.</p>' +
-      card('JUCO And Transfer Prospects', miniTable(['Player', 'Pos', 'Level / Class', 'Eligibility Left', 'Recruit Score', 'Tier', 'Confidence'], portal.map((p) => '<tr><td>' + cardLink(p) + '</td><td>' + p.pos + '</td><td>' + lvlCell(p) + '</td><td>' + esc(eligTxt(p)) + '</td><td class="rd-num">' + TRC.formatRecruitScore(p.rs) + '</td><td>' + tierBadge(p) + '</td><td>' + confBadge(p) + '</td></tr>'), 'JUCO and transfer prospects'), 'wide') +
+      card('JUCO And Transfer Prospects', miniTable(['Player', 'Pos', 'Level / Class', 'Current College', 'Portal Status', 'Release To Contact', 'Eligibility Left', 'Recruit Score', 'Tier', 'Confidence'], portal.map((p) => '<tr><td>' + cardLink(p) + '</td><td>' + p.pos + '</td><td>' + lvlCell(p) + '</td><td>' + esc(p.xfer ? p.xfer.college : 'Not Provided') + '</td><td>' + esc(p.xfer ? p.xfer.portal : 'Not Provided') + '</td><td>' + esc(p.xfer && p.xfer.release ? p.xfer.release : 'Not Provided') + '</td><td>' + esc(eligTxt(p)) + '</td><td class="rd-num">' + TRC.formatRecruitScore(p.rs) + '</td><td>' + tierBadge(p) + '</td><td>' + confBadge(p) + '</td></tr>'), 'JUCO and transfer prospects'), 'wide') +
       theRead('A message thread is where a recruiting conversation actually happens, so keep it short and specific: who you are, what you saw, and what you need next. For JUCO and transfer players, ask about remaining eligibility and academic status early. This inbox is a demo: real messaging needs accounts, a server, encryption and contact-rule enforcement (see the roadmap).');
     const toSel = root.querySelector('#cn-new [name=to]');
     toSel.innerHTML = '<option value="">Choose a recipient</option>' + MS.contacts().map((c) => '<option value="' + esc(c.id) + '"' + (c.accepting ? '' : ' disabled') + '>' + esc(c.name) + ' \u2014 ' + esc(c.role) + (c.accepting ? '' : ' (not accepting messages)') + '</option>').join('');

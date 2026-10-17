@@ -6,6 +6,8 @@
 (function () {
   'use strict';
   window.SITE_CONFIG = window.SITE_CONFIG || {};
+  // Demo route guard (account.js): workspace pages redirect to sign-in.html unless signed in or in owner preview mode. Set false to turn the guard off.
+  if (typeof window.SITE_CONFIG.REQUIRE_SIGN_IN === 'undefined') window.SITE_CONFIG.REQUIRE_SIGN_IN = true;
   if (typeof window.SITE_CONFIG.SHOW_SAMPLE_LABELS === 'undefined') window.SITE_CONFIG.SHOW_SAMPLE_LABELS = false;
   if (window.SITE_CONFIG.SHOW_SAMPLE_LABELS) return;
   var root = document.documentElement;

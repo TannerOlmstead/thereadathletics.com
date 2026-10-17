@@ -24,7 +24,9 @@ ul { list-style: none; padding: 0; }
 <ul id="results"></ul>
 <script src="classification.js"></script>
 <script src="classification.tests.js"></script>
+<script src="account.js"></script>
 <script src="athlete-signup.js"></script>
+<script src="verifier.js"></script>
 <script src="recruit-score.js"></script>
 <script src="coach.js"></script>
 <script>
@@ -196,6 +198,20 @@ test('Per-metric verification and interests API', function () {
 });
 test('Department scope API: allPlayersFor filters by config sport', function () { var C = window.TheReadCoach, n = TheReadSports.list[0].name; yes(typeof C.allPlayersFor === 'function' && !!C.ours, 'API exposed'); var all = C.allPlayersFor(), b = C.allPlayersFor(n); yes(b.length > 0 && b.length <= all.length && b.every(function (p) { return p.sport === n; }), 'only ' + n); yes(all.every(function (p) { return TheReadSports.names.indexOf(p.sport) >= 0; }), 'every player sport is a launch sport'); });
 test('Division config: five associations, D3 has no athletic aid fields, no invented rule numbers', function () { var D = window.TheReadDivisions; eq(D.list.map(function (x) { return x.id; }).join(','), 'd1,d2,d3,naia,njcaa', 'ids'); yes(D.get('NCAA D3') === D.byId.d3, 'legacy signup value maps'); var d3 = D.byId.d3; eq(d3.aid, 'none', 'D3 aid'); yes(!d3.limitFields.some(function (f) { return f[0] === 'sa' || f[0] === 'su'; }), 'no scholarship fields for D3'); yes(D.byId.njcaa.kpis[0][0] === 'Transfers Placed', 'JUCO key metric'); D.list.forEach(function (x) { yes(x.links.length > 0 && x.sections.length > 0 && x.eligValues.indexOf('Not Provided') === 0, x.id + ' complete'); yes(!/\b\d{2,}\s*(scholarships|roster spots)/i.test(JSON.stringify(x)), x.id + ' has no hardcoded limits'); }); });
+test('Account: password rules and email check', function () {
+  var A = window.TheReadAccount;
+  eq(A.emailOk('a@b.co'), true); eq(A.emailOk('nope'), false);
+  eq(A.pwOk('short'), false);
+});
+test('Account: sign out clears the demo session', function () {
+  localStorage.setItem('theReadSession', JSON.stringify({ role: 'coach', name: 'T' }));
+  window.TheReadAccount.signOut();
+  eq(window.TheReadAccount.session(), null);
+});
+test('Account: every role has a home page', function () {
+  var A = window.TheReadAccount;
+  Object.keys(A.roles).forEach(function (k) { yes(/\.html$/.test(A.homeOf({ role: k })), k); });
+});
 test('Rankings row: Grad Class is the 4th column after Player Name', function () {
       var t = document.createElement('table'); t.innerHTML = '<tbody>' + D.rankingRowHtml(D.players[0]) + '</tbody>';
       var cells = t.querySelectorAll('tr > *');

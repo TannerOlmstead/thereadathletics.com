@@ -2042,3 +2042,15 @@ html.hide-sample-labels [data-sample-label] { display: none !important; }
 .ad-sport h3 { font-family: var(--font-display); font-style: italic; text-transform: uppercase; color: var(--navy); margin: 0 0 .5rem; }
 .ad-scope { font-weight: 700; color: var(--navy); }
 .inline-check { display: inline-flex; align-items: center; gap: 6px; margin: 0 12px 6px 0; }
+/* Account menu (signed-in header) and sign-in pages */
+.acct-menu { position: relative; }
+.acct-menu summary { display: flex; align-items: center; gap: 8px; cursor: pointer; list-style: none; color: #fff; font-weight: 800; text-transform: uppercase; letter-spacing: .06em; font-size: .85rem; padding: 6px 8px; }
+.acct-menu summary::-webkit-details-marker { display: none; }
+.acct-menu summary:focus-visible { outline: 3px solid #fff; outline-offset: 2px; }
+.acct-ava { display: inline-grid; place-items: center; width: 34px; height: 34px; border-radius: 50%; background: #fff; color: #14284B; font-weight: 900; }
+.acct-name { max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.acct-pop { position: absolute; right: 0; top: calc(100% + 6px); min-width: 230px; background: #fff; color: #14284B; border: 2px solid #14284B; border-top: 4px solid #E41E3F; padding: 12px; z-index: 60; display: grid; gap: 6px; box-shadow: 0 8px 22px rgba(20,40,75,.25); }
+.acct-pop p { margin: 0 0 4px; font-size: .9rem; }
+.acct-pop a, .acct-pop button { display: block; text-align: left; padding: 8px 10px; background: #fff; color: #14284B; border: 1px solid #d9deea; font: inherit; font-weight: 700; text-decoration: none; cursor: pointer; }
+.acct-pop a:hover, .acct-pop button:hover, .acct-pop a:focus-visible, .acct-pop button:focus-visible { background: #14284B; color: #fff; }
+@media (max-width: 900px) { .acct-menu { display: none; } }

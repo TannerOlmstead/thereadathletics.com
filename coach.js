@@ -239,21 +239,53 @@
       get: (id) => map[id],
       add: (id, tier) => { if (!byId[id] || byId[id].committed || map[id]) return false; map[id] = { tier: tier || 3, stage: 'Identified', notes: '', staffNotes: '' }; return save(); },
       remove: (id) => { delete map[id]; return save(); },
+      restore: (id, v) => { map[id] = v; return save(); },
       update: (id, f) => { if (map[id]) { Object.keys(f).forEach((k) => { map[id][k] = f[k]; }); } return save(); },
       clear: () => { map = {}; return save(); },
       list: () => players.filter((p) => map[p.id] && !p.committed)
     };
   })();
+  const ICON_PLUS = '<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false"><path d="M12 5v14M5 12h14" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round"/></svg>';
+  const ICON_CHECK = '<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false"><path d="M5 12.5l4.5 4.5L19 7.5" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  const boardLabel = (p, on) => on ? p.name + ' is on your Recruiting Board. Activate to remove' : 'Add ' + p.name + ' to Recruiting Board';
+  const paintBoardBtn = (x, p, on) => {
+    x.setAttribute('aria-pressed', on ? 'true' : 'false');
+    x.setAttribute('aria-label', boardLabel(p, on));
+    x.title = on ? 'On Board (click to remove)' : 'Add To Board';
+    x.classList.toggle('on', on);
+    x.innerHTML = on ? ICON_CHECK : ICON_PLUS;
+  };
   const boardBtn = (p) => {
-    if (p.committed) return '<button type="button" class="button button-secondary btn-board" disabled>Committed Elsewhere</button>';
+    if (p.committed) return '<span class="board-na">Committed Elsewhere</span>';
     const on = Board.has(p.id);
-    return '<button type="button" class="button ' + (on ? 'button-secondary' : 'button-primary') + ' btn-board" data-addboard="' + p.id + '"' + (on ? ' disabled' : '') + '>' + (on ? 'On Board' : 'Add To Board') + '</button>';
+    return '<button type="button" class="board-icon' + (on ? ' on' : '') + '" data-addboard="' + p.id + '" aria-pressed="' + (on ? 'true' : 'false') + '" aria-label="' + esc(boardLabel(p, on)) + '" title="' + (on ? 'On Board (click to remove)' : 'Add To Board') + '">' + (on ? ICON_CHECK : ICON_PLUS) + '</button>';
+  };
+  const toast = (html, undo) => {
+    let t = document.getElementById('board-toast');
+    if (!t) { t = document.createElement('div'); t.id = 'board-toast'; t.className = 'board-toast'; t.setAttribute('role', 'status'); document.body.appendChild(t); }
+    t.innerHTML = '<span>' + html + '</span>' + (undo ? ' <button type="button" class="button button-secondary" id="board-undo">Undo</button>' : '');
+    t.hidden = false;
+    clearTimeout(t._h); t._h = setTimeout(() => { t.hidden = true; }, 6000);
+    const u = document.getElementById('board-undo');
+    if (u) u.addEventListener('click', () => { undo(); t.hidden = true; });
+  };
+  const syncBoardBtns = (id) => {
+    const p = byId[id], on = Board.has(id);
+    document.querySelectorAll('[data-addboard="' + id + '"]').forEach((x) => paintBoardBtn(x, p, on));
   };
   document.addEventListener('click', (e) => {
     const b = e.target.closest && e.target.closest('[data-addboard]');
-    if (!b || b.disabled) return;
-    if (!Board.add(b.dataset.addboard)) { b.textContent = 'Could not save'; return; }
-    document.querySelectorAll('[data-addboard="' + b.dataset.addboard + '"]').forEach((x) => { x.disabled = true; x.textContent = 'On Board'; x.classList.remove('button-primary'); x.classList.add('button-secondary'); });
+    if (!b) return;
+    const id = b.dataset.addboard, p = byId[id];
+    if (Board.has(id)) {
+      const saved = JSON.parse(JSON.stringify(Board.get(id)));
+      Board.remove(id); syncBoardBtns(id);
+      toast(esc(p.name) + ' removed from your Recruiting Board.', () => { Board.restore(id, saved); syncBoardBtns(id); });
+    } else {
+      if (!Board.add(id)) { toast('Could not save.'); return; }
+      syncBoardBtns(id);
+      toast(esc(p.name) + ' added to your Recruiting Board.');
+    }
   });
 
   const db = {

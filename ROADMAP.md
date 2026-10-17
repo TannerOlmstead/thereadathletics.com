@@ -164,3 +164,5 @@ This site is plain HTML/CSS/JS with no build step. There is **no backend**: form
 
 
 - [x] Sample data: every fictional position player now has a 60 Time (6.4-7.6 s, faster at OF/SS/2B, slower at C/1B); pitchers stay blank. Sample Data only.
+
+- [x] Add To Board icon button (green + / green checkmark, accessible, remove with Undo toast)

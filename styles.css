@@ -1972,3 +1972,5 @@ body.pc-open { overflow: hidden; }
 
 .pc-board-row{margin:.5rem 0}.btn-board{min-height:36px;padding:.3rem .8rem;font-size:.85rem}.ba-wrap{max-height:340px;overflow:auto}.b-edit{max-width:11rem;min-height:32px}.signed-in{border-left:4px solid var(--scarlet,#E41E3F);padding-left:.75rem}.demo-controls{margin:.75rem 0;padding:.5rem .75rem;border:1px dashed #14284B;border-radius:6px}.demo-controls summary{cursor:pointer;font-weight:700;color:#14284B}
 
+
+.board-icon{width:32px;min-width:32px;height:32px;border-radius:50%;border:2px solid #1E8E3E;background:#1E8E3E;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;padding:0}.board-icon:hover{background:#17722f}.board-icon:focus-visible{outline:3px solid #14284B;outline-offset:2px}.board-na{font-size:.8rem;color:#555}.board-toast{position:fixed;left:50%;bottom:1rem;transform:translateX(-50%);background:#14284B;color:#fff;padding:.6rem 1rem;border-radius:8px;z-index:3000;display:flex;gap:.75rem;align-items:center;max-width:92vw}.board-toast[hidden]{display:none}.board-toast .button{min-height:32px;padding:.2rem .8rem}

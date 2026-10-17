@@ -89,3 +89,5 @@ No score in the coach workspace is random. Team Need Score, Coach Fit Score, Adj
 ## Local preview
 
 Open `index.html` in a browser, or run a simple static server from this folder, for example `python -m http.server 8000` and visit http://localhost:8000.
+
+- **Add To Board control:** a green circle with a white + adds a prospect to your Recruiting Board; it turns into a green circle with a white checkmark (On Board). Clicking the checkmark removes the prospect and shows an Undo toast. It is a real button with aria-pressed and an aria-label, a 32px target and a visible focus ring.

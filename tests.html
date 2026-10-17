@@ -84,6 +84,18 @@ ul { list-style: none; padding: 0; }
       yes(ics.indexOf('DTSTART:20261120T100000') >= 0 && ics.indexOf('DTEND:20261120T113000') >= 0, 'timed');
       yes(ics.indexOf('DTSTART;VALUE=DATE:20261130') >= 0 && ics.indexOf('DTEND;VALUE=DATE:20261201') >= 0, 'all day');
       yes(ics.indexOf('SUMMARY:[Sample] Visit\\, Fictional\\; Day') >= 0, 'escape');
+    });    test('Level / Class codes: HS, JUCO, Tr plus grad year', function () {
+      eq(D.lvlCode({ level: 'High School', grad: 2027 }), 'HS 2027'); eq(D.lvlCode({ level: 'JUCO', grad: 2028 }), 'JUCO 2028');
+      eq(D.lvlCode({ level: '4-Year College / Transfer Portal', grad: 2029 }), 'Tr 2029'); eq(D.lvlCode({ level: 'Other', grad: 2028 }), 'Other 2028');
+    });
+    test('Eligibility Left: HS = N/A, entered value shown, unknown = Not Provided (never 0)', function () {
+      eq(D.eligTxt({ level: 'High School', elig: null }), 'N/A'); eq(D.eligTxt({ level: 'JUCO', elig: 2 }), '2');
+      eq(D.eligTxt({ level: 'JUCO', elig: null }), 'Not Provided'); eq(D.eligTxt({ level: '4-Year College / Transfer Portal', elig: '' }), 'Not Provided');
+      eq(D.eligTxt({ level: 'JUCO', elig: 0 }), '0');
+    });
+    test('Sample JUCO/transfer players carry an entered eligibility; HS sample players do not', function () {
+      var nonHs = D.players.filter(function (p) { return !p.entered && p.level !== 'High School'; });
+      yes(nonHs.length > 0 && nonHs.every(function (p) { return p.elig >= 1; }), 'non-HS sample elig'); yes(D.players.filter(function (p) { return p.level === 'High School'; }).every(function (p) { return p.elig == null; }), 'HS blank');
     });    test('Rankings row: Grad Class is the 4th column after Player Name', function () {
       var t = document.createElement('table'); t.innerHTML = '<tbody>' + D.rankingRowHtml(D.players[0]) + '</tbody>';
       var cells = t.querySelectorAll('tr > *');

@@ -134,6 +134,9 @@ This site is plain HTML/CSS/JS with no build step. There is **no backend**: form
 - [x] Current Playing Level field, filters and columns.
 - [x] Workspace header (no Sign In / Get Started).
 - [x] Player Card Connect button (page and pop-up): athlete contact (shared fields only), school/club/level, metric verifiers (HS coach, private instructor, showcase staff) and Unverified / Coach-Entered labels; sample data only.
+- [x] Connect tab rebuilt as a messaging inbox DEMO (threads, compose, filters, unread, block/report) with a MessageService interface; Player Card Connect opens a composer. Labeled "Demo - messages are not sent"; no encryption claim.
+- [ ] Real secure messaging needs: accounts and auth, server-side message storage, TLS in transit and encryption at rest (decide end-to-end vs server-side), athlete-controlled message permissions, moderation and reporting workflow, audit log.
+- [ ] Compliance for messaging: NCAA contact and recruiting rules (contact periods, dead periods), minor safety (under-18 contact restrictions, parent/guardian visibility, coach-to-minor contact windows), and a legal review before launch.
 - [ ] Define contact-sharing rules for athletes under 18, and how verifiers are confirmed (needs backend, accounts and consent).
 - [ ] Needs a backend: real grading storage per coach account, messaging, athlete photo upload, and whether Staff Score should weight into Priority Score.
 ## Open decisions (from the owner workbook; not built)

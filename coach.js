@@ -394,6 +394,57 @@
 
   // Pop-up player card (opens from any player-name link; no page navigation)
   const SIL = '<svg viewBox="0 0 64 64" role="img" aria-label="No profile photo" focusable="false"><rect width="64" height="64" fill="#e9edf6"/><circle cx="32" cy="24" r="11" fill="#9aa6c0"/><path d="M10 62c2-16 12-24 22-24s20 8 22 24z" fill="#9aa6c0"/></svg>';
+  // Message service: the ONLY place messages are stored. This demo version uses localStorage. A real backend (auth, server storage,
+  // TLS + at-rest encryption) would replace these methods with the same interface (made async). Nothing here is encrypted or delivered.
+  const DIR = [
+    { id: 'c1', name: 'Coach Dana Whitlock (Fictional)', role: 'High School Coach', org: 'Fictional Ridge High School', state: 'TX' },
+    { id: 'c2', name: 'Coach Marcus Bell (Fictional)', role: 'High School Coach', org: 'Fictional Lakeview Prep', state: 'FL' },
+    { id: 'c3', name: 'Alex Moreno (Fictional)', role: 'Private Instructor', org: 'Fictional Diamond Performance Lab', state: 'CA' },
+    { id: 'c4', name: 'Priya Nair (Fictional)', role: 'Private Instructor', org: 'Fictional Catching Academy', state: 'GA' },
+    { id: 'c5', name: 'Coach Ray Tolliver (Fictional)', role: 'JUCO Coach', org: 'Fictional Prairie JUCO', state: 'KS' },
+    { id: 'c6', name: 'Coach Elena Park (Fictional)', role: 'JUCO Coach', org: 'Fictional Coastal JUCO', state: 'CA' },
+    { id: 'c7', name: 'Coach Sam Okafor (Fictional)', role: '4-Year Coach', org: 'Fictional Northern State', state: 'OH' },
+    { id: 'c8', name: 'Coach Lena Brandt (Fictional)', role: '4-Year Coach', org: 'Fictional Mountain University', state: 'CO' },
+    { id: 'c9', name: 'Jordan Pike (Fictional)', role: 'Player', org: 'Fictional Ridge High School', state: 'TX' },
+    { id: 'c10', name: 'Casey Vega (Fictional)', role: 'Player', org: 'Fictional Prairie JUCO', state: 'KS' },
+    { id: 'c11', name: 'Sam Rivera (Fictional)', role: 'Showcase/Event Staff', org: 'Fictional Prospect Showcase Series', state: 'TX' }
+  ];
+  const SCHOOLS_HS = ['Fictional Ridge High School', 'Fictional Lakeview Prep', 'Fictional Harbor High School', 'Fictional Summit Academy'];
+  const schoolOf = (p) => { const n = Number(String(p.id).replace(/\D/g, '')) || 0; return p.entered ? 'Not provided (board entry)' : p.level === 'JUCO' ? 'Fictional ' + p.state + ' JUCO' : p.level === 'Transfer' ? 'Fictional ' + p.state + ' University (transfer portal)' : SCHOOLS_HS[n % 4]; };
+  const MessageService = (function () {
+    const KEY = 'theReadDemoMessages', ME = 'You (Sample Program Coach)';
+    const now = () => new Date().toISOString().slice(0, 16);
+    const seed = () => [
+      { id: 't-c5', cid: 'c5', unread: 1, blocked: false, reported: false, messages: [{ from: 'me', ts: '2026-09-02T10:15', body: 'Coach Tolliver, we are looking at a few JUCO sophomores for next fall. Who should we talk to on your roster?' }, { from: 'them', ts: '2026-09-03T08:40', body: 'Thanks for reaching out. Two of our pitchers are open to 4-year offers. Happy to set up a call. (Sample message)' }] },
+      { id: 't-c7', cid: 'c7', unread: 0, blocked: false, reported: false, messages: [{ from: 'them', ts: '2026-08-28T14:05', body: 'We are also tracking the portal for outfielders. Want to compare notes? (Sample message)' }, { from: 'me', ts: '2026-08-28T16:30', body: 'Yes, send what you are seeing and we will share ours.' }] },
+      { id: 't-c3', cid: 'c3', unread: 1, blocked: false, reported: false, messages: [{ from: 'them', ts: '2026-09-10T09:00', body: 'I verified exit velocity for two of my hitters at last month\u2019s session. Happy to share the dates. (Sample message)' }] },
+      { id: 't-c9', cid: 'c9', unread: 0, blocked: false, reported: false, messages: [{ from: 'me', ts: '2026-09-12T11:20', body: 'Jordan, thanks for the questionnaire. Could you send your most recent game schedule?' }, { from: 'them', ts: '2026-09-12T18:02', body: 'Sure, I will send it tonight. (Sample message)' }] }
+    ];
+    const load = () => { try { const s = JSON.parse(localStorage.getItem(KEY) || 'null'); if (Array.isArray(s)) return s; } catch (e) { /* use seed */ } return seed(); };
+    let state = load();
+    const save = () => { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) { /* demo only */ } };
+    const athletes = () => players.filter((p) => !p.entered).map((p) => { const n = Number(String(p.id).replace(/\D/g, '')) || 0; return { id: 'pl:' + p.id, name: p.name, role: 'Player', org: schoolOf(p), state: p.state, accepting: n % 7 !== 0 }; });
+    const contacts = () => DIR.map((c) => Object.assign({ accepting: true }, c)).concat(athletes());
+    const contact = (id) => contacts().filter((c) => c.id === id)[0] || null;
+    const view = (th) => { const c = contact(th.cid) || { name: 'Unknown', role: '', org: '' }; return Object.assign({}, th, { name: c.name, role: c.role, org: c.org }); };
+    const sortKey = (th) => th.messages.length ? th.messages[th.messages.length - 1].ts : '';
+    return {
+      mode: 'demo-localStorage', encrypted: false, me: ME, contacts: contacts, contact: contact,
+      listThreads: () => state.map(view).sort((a, b) => (sortKey(a) < sortKey(b) ? 1 : -1)),
+      getThread: (id) => { const th = state.filter((x) => x.id === id)[0]; return th ? view(th) : null; },
+      startThread: (c, body) => {
+        let th = state.filter((x) => x.cid === c.id)[0];
+        if (!th) { th = { id: 't-' + c.id.replace(':', '-'), cid: c.id, unread: 0, blocked: false, reported: false, messages: [] }; state.push(th); }
+        th.messages.push({ from: 'me', ts: now(), body: String(body).slice(0, 1000) }); save(); return th.id;
+      },
+      send: (id, body) => { const th = state.filter((x) => x.id === id)[0]; if (!th || th.blocked) return false; th.messages.push({ from: 'me', ts: now(), body: String(body).slice(0, 1000) }); save(); return true; },
+      markRead: (id) => { const th = state.filter((x) => x.id === id)[0]; if (th) { th.unread = 0; save(); } },
+      setBlocked: (id, v) => { const th = state.filter((x) => x.id === id)[0]; if (th) { th.blocked = !!v; save(); } },
+      report: (id) => { const th = state.filter((x) => x.id === id)[0]; if (th) { th.reported = true; save(); } },
+      reset: () => { state = seed(); save(); }
+    };
+  })();
+  window.TheReadMessaging = MessageService;
   // Connect panel: sample contact and metric-verifier info. Fictional, deterministic by player; athlete shares only what they choose (demo flags).
   const VERIFIERS = {
     hs: { name: 'Coach Dana Whitlock (Fictional)', role: 'High School Coach', org: 'Fictional Ridge High School', email: 'dwhitlock@example.com', phone: '' },
@@ -406,12 +457,11 @@
     'Showcase Data': [['pi', ['avgEV', 'maxEV', 'avgFBV', 'maxFBV']], ['hs', ['t60']]],
     'Video Review': [['hs', ['t60', 'pop', 'tv']]]
   };
-  const SCHOOLS_HS = ['Fictional Ridge High School', 'Fictional Lakeview Prep', 'Fictional Harbor High School', 'Fictional Summit Academy'];
   function connectHtml(p) {
     const n = Number(String(p.id).replace(/\D/g, '')) || 0, entered = !!p.entered;
     const first = p.name.split(' ')[0].toLowerCase(), last = p.name.split(' ').slice(-1)[0].toLowerCase();
     const shared = entered ? [] : [n % 3 === 0 ? ['Email', first + '.' + last + '@example.com'] : null, n % 4 === 0 ? ['Phone', '(555) 010-' + String(100 + n).slice(-4)] : null, n % 5 === 0 ? ['Social', '@' + first + '_' + last + '_fictional'] : null].filter(Boolean);
-    const org = entered ? 'Not provided (board entry)' : p.level === 'JUCO' ? 'Fictional ' + p.state + ' JUCO' : p.level === 'Transfer' ? 'Fictional ' + p.state + ' University (transfer portal)' : SCHOOLS_HS[n % 4];
+    const org = schoolOf(p);
     const hasMet = MET.filter((m) => p[m[1]] != null);
     const vers = entered ? [] : (VER_BY_METHOD[p.method] || []);
     const done = {};
@@ -430,9 +480,29 @@
       '<h4>Metric Verifiers</h4>' + (vHtml ? '<ul class="plain-list pc-vers">' + vHtml + '</ul>' : '') +
       (entered || !vHtml ? '<p class="coach-note"><strong>Unverified / Coach-Entered.</strong> ' + (entered ? 'This prospect came from a college coach\u2019s own board, so no metric has been verified by a third party.' : 'No verifier on file for this player\u2019s metrics.') + '</p>' : '') +
       (vHtml && unv.length ? '<p class="coach-note"><strong>Unverified / Coach-Entered:</strong> ' + unv.join(', ') + '.</p>' : '') +
-      '<p><a class="button button-outline" href="coach-connect.html">Request Intro (Not Live)</a> <span class="coach-note">Message sending is a placeholder tied to the Connect tab; it needs a backend.</span></p></section>';
+      composeHtml(p, vers) + '</section>';
   }
-  document.addEventListener('click', (e) => {
+  const VER_CID = { hs: 'c1', pi: 'c3', ev: 'c11' };
+  function composeHtml(p, vers) {
+    const ath = MessageService.contact('pl:' + p.id);
+    const boxes = [];
+    boxes.push('<label class="pc-to"><input type="checkbox" name="to" value="pl:' + p.id + '"' + (ath && ath.accepting ? ' checked' : ' disabled') + '> ' + esc(p.name) + ' (athlete)' + (ath ? (ath.accepting ? '' : ' \u2014 not accepting messages') : ' \u2014 board entry only, no THE READ account') + '</label>');
+    vers.forEach((v) => { const c = MessageService.contact(VER_CID[v[0]]); if (c) boxes.push('<label class="pc-to"><input type="checkbox" name="to" value="' + c.id + '"> ' + esc(c.name) + ' (' + esc(c.role) + ', verifier)</label>'); });
+    return '<form class="pc-compose" data-pid="' + p.id + '" novalidate><h4>Message (Demo &ndash; Not Sent)</h4><div class="msg-banner" role="note"><strong>Demo &ndash; messages are not sent or encrypted today.</strong> Secure messaging coming soon (roadmap): encrypted in transit and at rest. Athletes control who can message them.</div>' +
+      '<fieldset><legend>To</legend>' + boxes.join('') + '</fieldset><label>Message<textarea name="body" rows="3" maxlength="1000"></textarea></label><ul class="md-errors" role="alert"></ul><button type="submit" class="button button-primary">Save Message (Demo)</button> <a class="button button-outline" href="coach-connect.html">Open Inbox</a><p class="pc-status coach-note" role="status"></p></form>';
+  }
+  document.addEventListener('submit', (e) => {
+    const f = e.target.closest && e.target.closest('.pc-compose'); if (!f) return;
+    e.preventDefault();
+    const to = Array.prototype.slice.call(f.querySelectorAll('input[name=to]:checked')).map((i) => i.value), body = f.elements.body.value.trim(), errs = [];
+    if (!to.length) errs.push('Choose at least one recipient.');
+    if (!body) errs.push('Type a message first.');
+    f.querySelector('.md-errors').innerHTML = errs.map((m) => '<li>' + esc(m) + '</li>').join('');
+    if (errs.length) return;
+    const ids = to.map((id) => MessageService.startThread(MessageService.contact(id), body));
+    f.elements.body.value = '';
+    f.querySelector('.pc-status').innerHTML = 'Saved to the demo inbox for ' + to.length + ' recipient' + (to.length > 1 ? 's' : '') + '. Not sent anywhere. <a href="coach-connect.html?thread=' + encodeURIComponent(ids[0]) + '">Open conversation</a>';
+  });  document.addEventListener('click', (e) => {
     const b = e.target.closest && e.target.closest('[data-connect]'); if (!b) return;
     const panel = document.getElementById(b.getAttribute('aria-controls')); if (!panel) return;
     const open = panel.hidden; panel.hidden = !open; b.setAttribute('aria-expanded', open ? 'true' : 'false');
@@ -1055,45 +1125,73 @@
     });
   };
   pages.connect = (root) => {
-    const DIR = [
-      ['Coach Dana Whitlock (Fictional)', 'High School Coach', 'Fictional Ridge High School', 'TX', 'Infielders and catchers, Class of 2027'],
-      ['Coach Marcus Bell (Fictional)', 'High School Coach', 'Fictional Lakeview Prep', 'FL', 'Pitchers, Class of 2028'],
-      ['Alex Moreno (Fictional)', 'Private Instructor', 'Fictional Diamond Performance Lab', 'CA', 'Hitting and velocity development'],
-      ['Priya Nair (Fictional)', 'Private Instructor', 'Fictional Catching Academy', 'GA', 'Catcher receiving and pop time'],
-      ['Coach Ray Tolliver (Fictional)', 'JUCO Coach', 'Fictional Prairie JUCO', 'KS', 'Sophomores seeking 4-year offers'],
-      ['Coach Elena Park (Fictional)', 'JUCO Coach', 'Fictional Coastal JUCO', 'CA', 'Pitchers and middle infielders'],
-      ['Coach Sam Okafor (Fictional)', '4-Year Coach', 'Fictional Northern State', 'OH', 'Transfer portal needs: outfield, bullpen'],
-      ['Coach Lena Brandt (Fictional)', '4-Year Coach', 'Fictional Mountain University', 'CO', 'Open to JUCO transfers'],
-      ['Jordan Pike (Fictional)', 'Player', 'Fictional Ridge High School', 'TX', 'SS, Class of 2027, High School'],
-      ['Casey Vega (Fictional)', 'Player', 'Fictional Prairie JUCO', 'KS', 'RHP, JUCO sophomore, entering the portal']
-    ];
-    const ROLES = ['High School Coach', 'Private Instructor', 'JUCO Coach', '4-Year Coach', 'Player'];
+    const MS = MessageService, me = MS.me;
+    const ROLES = ['High School Coach', 'Private Instructor', 'Showcase/Event Staff', 'JUCO Coach', '4-Year Coach', 'Player'];
     const msg = sessionStorage.getItem('theReadConMsg') || ''; sessionStorage.removeItem('theReadConMsg');
     const portal = players.filter((p) => p.level !== 'High School');
+    let sel = new URLSearchParams(location.search).get('thread') || '';
+    const fmt = (ts) => String(ts).replace('T', ' ');
     root.innerHTML =
-      '<p class="coach-note md-note"><strong>Connect:</strong> a placeholder directory for reaching high school coaches, private instructors, JUCO coaches, 4-year coaches and players. Messaging is not live. Every person and school below is fictional sample data; no real people are listed and nothing is sent anywhere.</p>' +
+      '<div class="msg-banner" role="note"><strong>Demo &ndash; messages are not sent.</strong> This inbox is a mock-up that saves sample conversations in this browser only. Messages are <strong>not</strong> encrypted or delivered today. Secure messaging coming soon: messages will be encrypted in transit and at rest (roadmap, not active). Do not type private or real information. All people below are fictional.</div>' +
       (msg ? '<p class="coach-note md-msg" role="status">' + esc(msg) + '</p>' : '') +
-      '<form class="controls" id="cn-filters" onsubmit="return false"><label>Role<select id="cn-role"><option value="">All roles</option>' + ROLES.map((r) => '<option>' + r + '</option>').join('') + '</select></label><label>Search<input type="search" id="cn-q" placeholder="Name, school, state" /></label></form>' +
-      '<p class="coach-count" id="cn-count" role="status"></p><div class="coach-grid" id="cn-list"></div>' +
+      '<form class="controls" id="cn-filters" onsubmit="return false"><label>Role<select id="cn-role"><option value="">All roles</option>' + ROLES.map((r) => '<option>' + r + '</option>').join('') + '</select></label><label>Search<input type="search" id="cn-q" placeholder="Name, school, message text" /></label><label>Show<select id="cn-show"><option value="">All conversations</option><option value="u">Unread only</option></select></label></form>' +
+      '<div class="msg-layout"><section class="card msg-list-card" aria-label="Conversations"><h2>Inbox <span class="pill" id="cn-unread"></span></h2><p class="coach-count" id="cn-count" role="status"></p><ul class="msg-threads" id="cn-threads"></ul></section>' +
+      '<section class="card msg-conv" aria-label="Conversation" id="cn-conv"></section></div>' +
+      '<section class="card"><h2>New Message (Demo)</h2><form id="cn-new" novalidate><div class="md-grid"><label>To *<select name="to"></select></label><label class="md-wide">Message *<textarea name="body" rows="3" maxlength="1000"></textarea></label></div><ul class="md-errors" id="cn-errors" role="alert"></ul><div class="md-actions"><button type="submit" class="button button-primary">Save Message (Demo)</button> <button type="button" class="button button-secondary" id="cn-reset">Reset Demo Inbox</button></div><p class="coach-note">Athletes control who can message them. Athletes who are not accepting messages, and prospects who only exist on a coach\u2019s own board, cannot be messaged.</p></form></section>' +
       '<h2 class="coach-h2">Transfer Portal And JUCO</h2><p class="coach-note">Prospects on your board who are not high school players (Current Playing Level: JUCO or 4-Year College / Transfer Portal). Sample Data / Fictional Example.</p>' +
       card('JUCO And Transfer Prospects', miniTable(['Player', 'Pos', 'Class', 'Playing Level', 'Recruit Score', 'Tier', 'Confidence'], portal.map((p) => '<tr><td>' + cardLink(p) + '</td><td>' + p.pos + '</td><td>' + p.grad + '</td><td>' + esc(LEVEL_SHORT[p.level] || p.level) + '</td><td class="rd-num">' + TRC.formatRecruitScore(p.rs) + '</td><td>' + tierBadge(p) + '</td><td>' + confBadge(p) + '</td></tr>'), 'JUCO and transfer prospects'), 'wide') +
-      theRead('Recruiting a JUCO or transfer player is different from recruiting a high school athlete: they are older, have college stats, and may have limited eligibility left. Use Playing Level to keep the two groups apart, and note that Tier and Confidence are calculated the same way for everyone. This directory is a mock-up; real messaging needs accounts and a backend.');
-    function draw() {
-      const role = $('#cn-role', root).value, q = $('#cn-q', root).value.trim().toLowerCase();
-      const list = DIR.filter((d) => (!role || d[1] === role) && (!q || d.join(' ').toLowerCase().indexOf(q) >= 0));
-      $('#cn-count', root).textContent = 'Showing ' + list.length + ' of ' + DIR.length + ' sample contacts';
-      $('#cn-list', root).innerHTML = list.length ? list.map((d, i) => '<section class="card"><h3>' + esc(d[0]) + '</h3><p><span class="pill gray">' + esc(d[1]) + '</span></p><p>' + esc(d[2]) + ' &middot; ' + esc(d[3]) + '</p><p>' + esc(d[4]) + '</p><button type="button" class="button button-secondary" data-msg="' + i + '">Message (Not Live)</button><p class="coach-note">Sample Data / Fictional Example</p></section>').join('') : '<p class="coach-note">No contacts match these filters.</p>';
+      theRead('A message thread is where a recruiting conversation actually happens, so keep it short and specific: who you are, what you saw, and what you need next. For JUCO and transfer players, ask about remaining eligibility and academic status early. This inbox is a demo: real messaging needs accounts, a server, encryption and contact-rule enforcement (see the roadmap).');
+    const toSel = root.querySelector('#cn-new [name=to]');
+    toSel.innerHTML = '<option value="">Choose a recipient</option>' + MS.contacts().map((c) => '<option value="' + esc(c.id) + '"' + (c.accepting ? '' : ' disabled') + '>' + esc(c.name) + ' \u2014 ' + esc(c.role) + (c.accepting ? '' : ' (not accepting messages)') + '</option>').join('');
+    function drawList() {
+      const role = $('#cn-role', root).value, q = $('#cn-q', root).value.trim().toLowerCase(), uo = $('#cn-show', root).value === 'u';
+      const all = MS.listThreads();
+      const list = all.filter((th) => (!role || th.role === role) && (!uo || th.unread > 0) && (!q || (th.name + ' ' + th.org + ' ' + th.messages.map((m) => m.body).join(' ')).toLowerCase().indexOf(q) >= 0));
+      const un = all.reduce((a, th) => a + (th.unread > 0 ? 1 : 0), 0);
+      $('#cn-unread', root).textContent = un + ' unread';
+      $('#cn-count', root).textContent = 'Showing ' + list.length + ' of ' + all.length + ' conversations';
+      $('#cn-threads', root).innerHTML = list.length ? list.map((th) => {
+        const last = th.messages[th.messages.length - 1];
+        return '<li><button type="button" class="msg-thread' + (th.id === sel ? ' is-sel' : '') + (th.unread ? ' is-unread' : '') + '" data-th="' + esc(th.id) + '" aria-current="' + (th.id === sel ? 'true' : 'false') + '"><strong>' + esc(th.name) + '</strong>' + (th.unread ? ' <span class="pill pill-t1">' + th.unread + ' new</span>' : '') + (th.blocked ? ' <span class="pill gray">Blocked</span>' : '') + '<small>' + esc(th.role) + ' \u00b7 ' + esc(th.org) + '</small><small>' + esc(last ? last.body.slice(0, 60) : '') + '</small></button></li>';
+      }).join('') : '<li class="coach-note">No conversations match these filters.</li>';
     }
-    draw();
-    root.addEventListener('input', (e) => { if (e.target.closest('#cn-filters')) draw(); });
-    root.addEventListener('change', (e) => { if (e.target.closest('#cn-filters')) draw(); });
+    function drawConv() {
+      const th = sel ? MS.getThread(sel) : null, box = $('#cn-conv', root);
+      if (!th) { box.innerHTML = '<h2>Conversation</h2><p class="coach-note">Select a conversation, or start a new message below.</p>'; return; }
+      box.innerHTML = '<div class="msg-head"><div><h2>' + esc(th.name) + '</h2><p class="coach-note">' + esc(th.role) + ' \u00b7 ' + esc(th.org) + ' \u00b7 Sample Data / Fictional Example</p></div><div><button type="button" class="button button-secondary" data-block="' + esc(th.id) + '">' + (th.blocked ? 'Unblock' : 'Block') + '</button> <button type="button" class="button button-secondary" data-report="' + esc(th.id) + '">' + (th.reported ? 'Reported (Demo)' : 'Report') + '</button></div></div>' +
+        '<ol class="msg-log" aria-label="Messages with ' + esc(th.name) + '">' + th.messages.map((m) => '<li class="msg ' + (m.from === 'me' ? 'mine' : 'theirs') + '"><span class="msg-by">' + (m.from === 'me' ? esc(me) : esc(th.name)) + ' \u00b7 ' + esc(fmt(m.ts)) + '</span><p>' + esc(m.body) + '</p></li>').join('') + '</ol>' +
+        (th.blocked ? '<p class="coach-note">You blocked this contact. Unblock to reply.</p>' : '<form id="cn-reply" novalidate><label>Reply<textarea name="body" rows="2" maxlength="1000"></textarea></label><ul class="md-errors" id="cn-rerr" role="alert"></ul><button type="submit" class="button button-primary">Save Reply (Demo)</button> <span class="coach-note">Demo &ndash; not sent.</span></form>');
+    }
+    const redraw = () => { drawList(); drawConv(); };
+    redraw();
+    root.addEventListener('input', (e) => { if (e.target.closest('#cn-filters')) drawList(); });
+    root.addEventListener('change', (e) => { if (e.target.closest('#cn-filters')) drawList(); });
     root.addEventListener('click', (e) => {
-      const b = e.target.closest('[data-msg]'); if (!b) return;
-      b.insertAdjacentHTML('afterend', '<p class="coach-note" role="status">Messaging is not live in this preview. Nothing was sent.</p>');
-      b.remove();
+      const th = e.target.closest('[data-th]');
+      if (th) { sel = th.dataset.th; MS.markRead(sel); redraw(); const c = $('#cn-conv', root); if (c.scrollIntoView) c.scrollIntoView({ block: 'nearest' }); return; }
+      const bl = e.target.closest('[data-block]'); if (bl) { const t = MS.getThread(bl.dataset.block); MS.setBlocked(t.id, !t.blocked); redraw(); return; }
+      const rp = e.target.closest('[data-report]'); if (rp) { MS.report(rp.dataset.report); redraw(); return; }
+      if (e.target.id === 'cn-reset') { MS.reset(); sel = ''; sessionStorage.setItem('theReadConMsg', 'Demo inbox reset to the fictional sample conversations.'); location.reload(); }
+    });
+    root.addEventListener('submit', (e) => {
+      e.preventDefault();
+      if (e.target.id === 'cn-reply') {
+        const body = e.target.elements.body.value.trim();
+        if (!body) { $('#cn-rerr', root).innerHTML = '<li>Type a message first. Blank messages are not saved.</li>'; return; }
+        MS.send(sel, body); redraw(); return;
+      }
+      if (e.target.id === 'cn-new') {
+        const to = e.target.elements.to.value, body = e.target.elements.body.value.trim(), errs = [], c = MS.contact(to);
+        if (!c) errs.push('Choose a recipient.'); else if (!c.accepting) errs.push('This person is not accepting messages.');
+        if (!body) errs.push('Type a message first.');
+        $('#cn-errors', root).innerHTML = errs.map((m) => '<li>' + esc(m) + '</li>').join('');
+        if (errs.length) return;
+        const id = MS.startThread(c, body);
+        sessionStorage.setItem('theReadConMsg', 'Message saved in the demo inbox for ' + c.name + '. It was not sent anywhere.');
+        location.href = 'coach-connect.html?thread=' + encodeURIComponent(id);
+      }
     });
   };
-
   pages.department = (root) => {
     const tot = (f) => PROGRAMS.reduce((s, p) => s + f(p), 0);
     root.innerHTML =

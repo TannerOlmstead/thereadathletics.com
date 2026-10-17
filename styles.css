@@ -1612,3 +1612,35 @@ details.expand > summary::after { position: absolute; right: 1.3rem; top: 50%; t
   .main-nav .narrow-only { display: block; font-weight: 800; color: var(--white); }
 }.main-nav a, .nav-more > summary { white-space: nowrap; }
 @media (min-width: 1400px) { .main-nav { gap: 14px; font-size: 0.76rem; } .main-nav a, .nav-more > summary { letter-spacing: 0.05em; } }
+/* ---------- Bolder scarlet + navy bands ---------- */
+main > .section { background: #E9EDF6; border-top: 0; }
+main > .section:nth-child(4n+3), main > .section.section-dark { background: linear-gradient(135deg, var(--navy-dark) 0%, var(--navy) 100%); color: var(--white); }
+main > .section:nth-child(4n+1) { background: linear-gradient(135deg, var(--cardinal-red-dark) 0%, var(--cardinal-red) 100%); color: var(--white); border-top: 4px solid var(--navy); }
+main > .section:nth-child(4n+3), main > .section.section-dark { border-top: 4px solid var(--scarlet); }
+main > .section.section-alt:nth-child(4n+2), main > .section.section-alt:nth-child(4n) { background: #E9EDF6; color: inherit; }
+main > .section:nth-child(4n+3) .section-header h2, main > .section:nth-child(4n+1) .section-header h2,
+main > .section.section-dark .section-header h2, main > .section:nth-child(4n+3) .section-header p, main > .section:nth-child(4n+1) .section-header p,
+main > .section.section-dark .section-header p { color: var(--white); }
+main > .section:nth-child(4n+3) .eyebrow, main > .section:nth-child(4n+1) .eyebrow, main > .section.section-dark .eyebrow { color: var(--white); background: none; border-color: var(--scarlet); }
+main > .section:nth-child(4n+1) .eyebrow { border-color: var(--white); }
+main > .section:nth-child(4n+3) :is(.price-note, .lead), main > .section:nth-child(4n+1) :is(.price-note, .lead),
+main > .section:nth-child(4n+3) > .container > p, main > .section:nth-child(4n+1) > .container > p { color: rgba(255, 255, 255, 0.92); }
+main > .section :is(.card, .feature-card, .score-card, .price-card, .form-card, .audience-card, .timeline-item, details.expand, .table-wrap, .article, .legal, .panel, .callout, .steps li, .stat-card) { background: var(--white); color: var(--body-gray); }
+main > .section a:not(.button):not(.card):not(.audience-card) { text-decoration-color: currentColor; }
+main > .section:nth-child(4n+3) > .container > p a, main > .section:nth-child(4n+1) > .container > p a, main > .section:nth-child(4n+3) .section-header a, main > .section:nth-child(4n+1) .section-header a { color: var(--white); }
+main > .section:nth-child(4n+3) .button-secondary, main > .section:nth-child(4n+1) .button-secondary, main > .section.section-dark .button-secondary { background: transparent; color: var(--white); border-color: var(--white); }
+main > .section:nth-child(4n+3) .button-secondary:hover, main > .section:nth-child(4n+1) .button-secondary:hover { background: var(--white); color: var(--navy); }
+main > .section:nth-child(4n+1) .button-primary { background: var(--white); color: var(--cardinal-red-dark); }
+main > .section:nth-child(4n+3) :is(.tr, .section-header .tr), main > .section.section-dark .tr { color: #FF5A78; }
+main > .section:nth-child(4n+1) .tr { color: var(--white); }
+main > .section :is(.card, .feature-card, .score-card, .price-card, .audience-card):nth-child(even) { border-top-color: var(--navy); }
+#pricing { background: #E9EDF6 !important; color: inherit !important; }
+.hero { border-bottom: 5px solid var(--navy); }
+/* ---------- Keep white as the base; color comes from bands ---------- */
+main > .section { background: var(--white); border-top: 4px solid var(--scarlet); }
+main > .section:nth-child(4n+1) { border-top: 4px solid var(--navy); }
+main > .section:nth-child(4n+3), main > .section.section-dark { border-top: 4px solid var(--scarlet); }
+main > .section.section-alt:nth-child(4n+2), main > .section.section-alt:nth-child(4n) { background: var(--white); }
+#pricing { background: var(--white) !important; }
+main > .section:not(:nth-child(4n+3)):not(:nth-child(4n+1)):not(.section-dark) .section-header h2 { color: var(--navy); }
+main > .section :is(.card, .feature-card, .score-card, .price-card, .audience-card):nth-child(odd) { border-top-color: var(--scarlet); }main > .page-hero + .section:last-child { background: #E9EDF6; }

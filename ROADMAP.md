@@ -129,6 +129,7 @@ This site is plain HTML/CSS/JS with no build step. There is **no backend**: form
 - [x] THE READ AI context notes on every workspace tab except H2H.
 - [x] Player-name pop-up card with optional athlete-provided photo.
 - [x] Coach Grading tab (browser-saved demo) feeding Staff Score.
+- [x] Coach Grading: simple A+ to F dropdown with a conversion table; Head Coach weight settings per coach with per-position-group overrides (re-normalised among graders); Staff Score is the weighted average; Adjusted Recruit Score includes a bounded staff adjustment and updates live.
 - [x] Connect tab with JUCO / transfer portal section (sample entries only).
 - [x] Current Playing Level field, filters and columns.
 - [x] Workspace header (no Sign In / Get Started).

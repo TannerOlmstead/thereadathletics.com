@@ -3,7 +3,9 @@
   'use strict';
 
   const POS = ['P', 'C', '1B', '2B', '3B', 'SS', 'OF'];
-  const GRADES = ['F', 'D', 'C-', 'C', 'C+', 'B-', 'B', 'B+', 'A-', 'A', 'A+'];
+  const GRADES = ['F', 'D-', 'D', 'D+', 'C-', 'C', 'C+', 'B-', 'B', 'B+', 'A-', 'A', 'A+'];
+  const GRADE_TABLE = { 'A+': 98, A: 95, 'A-': 92, 'B+': 88, B: 85, 'B-': 82, 'C+': 78, C: 75, 'C-': 72, 'D+': 68, D: 65, 'D-': 62, F: 50 };
+  const STAFF_BASELINE = 80, STAFF_DIVISOR = 6, STAFF_CAP = 3;
 
 
   const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -15,8 +17,9 @@
   const tierBadge = (p, o) => TRC.renderTierBadge(p.rs, o);
   const confBadge = (p, o) => TRC.renderConfidenceBadge(p.conf, o);
   const rk = (v) => (v == null ? '&mdash;' : '#' + v);
-  const letter = (s) => (s >= 95 ? 'A+' : s >= 92 ? 'A' : s >= 89 ? 'A-' : s >= 86 ? 'B+' : s >= 83 ? 'B' : s >= 80 ? 'B-' : s >= 77 ? 'C+' : s >= 74 ? 'C' : s >= 70 ? 'C-' : s >= 60 ? 'D' : 'F');
+  const letter = (s) => { let best = 'F', bd = Infinity; GRADES.forEach((g) => { const d = Math.abs(GRADE_TABLE[g] - s); if (d < bd) { bd = d; best = g; } }); return best; };
   const $ = (s, r) => (r || document).querySelector(s);
+  const $$ = (s, r) => Array.prototype.slice.call((r || document).querySelectorAll(s));
 
   // ---------- Fictional data (seeded so it is the same every visit) ----------
   const seed = (s) => () => { s |= 0; s = (s + 0x6D2B79F5) | 0; let t = Math.imul(s ^ (s >>> 15), 1 | s); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
@@ -144,35 +147,54 @@
     p.fit = Math.round(parts.reduce((s, x) => s + x[0] * x[1], 0) / sw);
     if (p.rs == null) { p.adj = null; p.pri = null; return; }
     const delta = Math.max(-2.5, Math.min(2.5, ((p.fit + p.need) / 2 - 50) / 20));
-    p.adj = Math.round(Math.max(0, Math.min(100, p.rs + delta)) * 10) / 10;
+    const sd = p.staff == null ? 0 : Math.max(-STAFF_CAP, Math.min(STAFF_CAP, (p.staff - STAFF_BASELINE) / STAFF_DIVISOR));
+    p.adj = Math.round(Math.max(0, Math.min(100, p.rs + delta + sd)) * 10) / 10;
     const wr = RW(rBPA), wn = RW(rNeed), wf = 3;
     p.pri = Math.round((p.rs * wr + p.fit * wf + p.need * wn) / (wr + wf + wn));
   };
   const adjPriority = (p) => (p.rs == null || p.fit == null || p.pri == null ? null : Math.round((p.rs + p.fit + p.pri) / 3 * 10) / 10);
   const nv = (v) => (v == null ? '&mdash;' : v);
+  const staffTxt = (p) => (p.staff == null ? 'No staff grades yet' : p.staff.toFixed(1) + ' (' + letter(p.staff) + ')');
   // Coach Grading: staff grades are coach-entered opinions saved in this browser (demo). Staff Score = average of entered grades.
   const GR_KEY = 'theReadDemoCoachGrades';
   const loadGrades = () => { try { const g = JSON.parse(localStorage.getItem(GR_KEY) || '{}'); return g && typeof g === 'object' && !Array.isArray(g) ? g : {}; } catch (e) { return {}; } };
   const saveGrades = (g) => { try { localStorage.setItem(GR_KEY, JSON.stringify(g)); return true; } catch (e) { return false; } };
   const GRADE_STORE = loadGrades();
-  const gradeScores = (p) => { const g = GRADE_STORE[p.id] || {}; return Object.keys(g).map((c) => g[c] && Number(g[c].score)).filter((v) => isFinite(v) && v >= 0 && v <= 100); };
+  const GROUPS = [['P', 'Pitchers', ['P']], ['C', 'Catchers', ['C']], ['IF', 'Infielders', ['1B', '2B', '3B', 'SS']], ['OF', 'Outfielders', ['OF']]];
+  const groupOf = (pos) => { const g = GROUPS.filter((x) => x[2].indexOf(pos) >= 0)[0]; return g ? g[0] : null; };
+  const WT_KEY = 'theReadDemoGradeWeights';
+  const DEFAULT_WEIGHTS = { all: { A: 30, B: 25, C: 25, D: 20 }, groups: { P: { A: 25, B: 15, C: 45, D: 15 } } };
+  const cloneW = (w) => JSON.parse(JSON.stringify(w));
+  const validW = (w) => w && typeof w === 'object' && w.all && Object.keys(DEFAULT_WEIGHTS.all).every((k) => isFinite(Number(w.all[k])) && Number(w.all[k]) >= 0);
+  const loadWeights = () => { try { const w = JSON.parse(localStorage.getItem(WT_KEY) || 'null'); if (validW(w)) { w.groups = w.groups && typeof w.groups === 'object' ? w.groups : {}; return w; } } catch (e) { /* use defaults */ } return cloneW(DEFAULT_WEIGHTS); };
+  const saveWeights = (w) => { try { localStorage.setItem(WT_KEY, JSON.stringify(w)); return true; } catch (e) { return false; } };
+  const WEIGHTS = loadWeights();
+  const weightsFor = (w, pos) => { const g = groupOf(pos); return (g && w.groups[g] && Object.keys(DEFAULT_WEIGHTS.all).every((k) => isFinite(Number(w.groups[g][k])) && Number(w.groups[g][k]) >= 0)) ? w.groups[g] : w.all; };
+  // Weighted staff score over the coaches who HAVE graded; weights re-normalised among them (missing graders are excluded, never 0/F).
+  const staffCalc = (gradesForPlayer, pos, w) => {
+    const wt = weightsFor(w, pos), rows = [];
+    Object.keys(gradesForPlayer || {}).forEach((c) => { const e = gradesForPlayer[c], s = e && Number(e.score); if (isFinite(s) && s >= 0 && s <= 100) rows.push({ id: c, score: s, w: Number(wt[c]) || 0 }); });
+    if (!rows.length) return { score: null, rows: [] };
+    let tot = rows.reduce((a, r) => a + r.w, 0);
+    if (tot <= 0) { rows.forEach((r) => { r.w = 1; }); tot = rows.length; }
+    rows.forEach((r) => { r.share = r.w / tot; });
+    return { score: Math.round(rows.reduce((a, r) => a + r.score * r.share, 0) * 10) / 10, rows: rows };
+  };
   players.forEach((p) => {
     const g = GRADE_STORE[p.id] || {}, sc = (id) => (g[id] && isFinite(Number(g[id].score)) ? letter(Number(g[id].score)) : null);
     p.hc = sc('A'); p.ac = sc('B'); p.pc = sc('C');
-    const all = gradeScores(p);
-    p.staff = all.length ? Math.round(all.reduce((s, v) => s + v, 0) / all.length) : null;
-  });
-  players.forEach(computeProgramScores);
+    p.staff = staffCalc(g, p.pos, WEIGHTS).score;
+  });  players.forEach(computeProgramScores);
   const formulaPanel = () => {
     const rk = (i) => PHIL[i];
     return '<section class="card coach-card wide how-calc"><h2>How This Is Calculated</h2><p class="coach-note">SAMPLE DATA / FICTIONAL EXAMPLE. Nothing here is random. Every score comes from the inputs below. If an input is missing it is skipped or the score stays blank (&mdash;); missing is never counted as 0. None of these scores can change Player Tier or Confidence.</p><ul>' +
       '<li><strong>Team Need Score</strong> = 100 &minus; 40 &times; (position need rank &minus; 1) &divide; 6, using this program\u2019s Positional Needs ranking (1 = biggest need = 100, 7 = 60). If the player has a secondary position, the higher of the primary score and the secondary score minus 10 is used.</li>' +
       '<li><strong>Coach Fit Score</strong> = weighted average of: position priority (same scale as above, weight 3); philosophy alignment (weight 3); and each skill priority this program ranks, scored from the player\u2019s own data (Pitching = PPG, Defense = DPG, Athleticism = Athletic Score, Speed = 60 Time scaled 7.6 s &rarr; 0 to 6.4 s &rarr; 100, Power = Avg EV scaled 70 mph &rarr; 0 to 100 mph &rarr; 100, Immediate Impact = Recruit Score), each with weight 8 &minus; its priority rank. Skills with no data for that player are skipped. Long-Term Projection has no data input yet, so it is not used.</li>' +
       '<li><strong>Philosophy alignment</strong> = 50 + 12.5 &times; (rank weight of Prefer Pitching &minus; rank weight of Prefer Position Players) for pitchers, the reverse for position players. If Balanced Approach is ranked above both, it is 50. Rank weights: rank 1 = 5, 2 = 4, 3 = 3, 4 = 2, 5 = 1.</li>' +
-      '<li><strong>Adjusted Recruit Score</strong> = Recruit Score + a small adjustment, then kept between 0 and 100. Adjustment = ((Coach Fit + Team Need) &divide; 2 &minus; 50) &divide; 20, limited to &minus;2.5 to +2.5 points. Example: Recruit Score 95.0 with Coach Fit 90 and Team Need 100 gives 95.0 + 2.5 = 97.5. Blank when there is no Recruit Score.</li>' +
+      '<li><strong>Adjusted Recruit Score</strong> = Recruit Score + a small adjustment, then kept between 0 and 100. Adjustment = ((Coach Fit + Team Need) &divide; 2 &minus; 50) &divide; 20, limited to &minus;2.5 to +2.5 points. Example: Recruit Score 95.0 with Coach Fit 90 and Team Need 100 gives 95.0 + 2.5 = 97.5. Plus a staff-grade adjustment of up to &plusmn;3 points once any staff grade exists (see Coach Grading). Blank when there is no Recruit Score.</li>' +
       '<li><strong>Priority Score</strong> = weighted average of Recruit Score (weight = rank weight of Best Player Available, now ' + RW(rk(3)) + '), Coach Fit (fixed weight 3) and Team Need (weight = rank weight of Need-Based Recruiting, now ' + RW(rk(4)) + '). Blank when there is no Recruit Score.</li>' +
       '<li><strong>Adjusted Priority Score</strong> (Coach Fit tab) = simple average of Recruit Score, Coach Fit Score and Priority Score. Blank if any of the three is missing.</li>' +
-      '<li><strong>Staff Score and HC / PC / AC Grades</strong> are coach-entered opinions, so they stay blank until a coach enters them.</li></ul></section>';
+      '<li><strong>Staff Score</strong> = the Head Coach\u2019s weighted average of staff letter grades (Coach Grading tab). With no grades it stays blank.</li></ul></section>';
   };
   players.sort((a, b) => (a.rs == null ? 1 : b.rs == null ? -1 : b.rs - a.rs) || (a.name < b.name ? -1 : 1));
   const rated = players.filter((p) => p.rs != null);
@@ -362,7 +384,7 @@
         card('Recruit Score, Player Tier, And Confidence', field('Recruit Score', '<span class="rd-num" title="' + esc(TRC.TEXT.recruitScoreTooltip) + '">' + TRC.formatRecruitScore(p.rs) + '</span>') + field('Player Tier', tierBadge(p, { focusable: true, size: 'large' })) + field('Confidence', confBadge(p, { focusable: true, size: 'large' })) +
           '<p class="coach-note">' + TRC.TEXT.cardTier + ' ' + TRC.TEXT.cardConfidence + ' Missing data lowers Confidence, not Recruit Score.</p>', 'kvs rd-triple') +
         card('Grades', field('OPG', num(p.opg)) + field('SOPG', num(p.sopg)) + field('DPG', num(p.dpg)) + field('SDPG', num(p.sdpg)) + field('PPG', num(p.ppg)), 'kvs') +
-        card('Team Evaluation', field('HC Grade', nv(p.hc)) + field('PC Grade', nv(p.pc)) + field('AC Grade', nv(p.ac)) + field('Staff Score', nv(p.staff)) + field('Coach Fit Score', nv(p.fit)) + field('Team Need Score', nv(p.need)) + field('Adjusted Recruit Score', num(p.adj)) + field('Priority Score', nv(p.pri)), 'kvs') +
+        card('Team Evaluation', field('HC Grade', nv(p.hc)) + field('PC Grade', nv(p.pc)) + field('AC Grade', nv(p.ac)) + field('Staff Score', staffTxt(p)) + field('Coach Fit Score', nv(p.fit)) + field('Team Need Score', nv(p.need)) + field('Adjusted Recruit Score', num(p.adj)) + field('Priority Score', nv(p.pri)), 'kvs') +
         card('Measurables', field('Avg EV', num(p.avgEV) + ' mph') + field('Max EV', num(p.maxEV) + ' mph') + field('Avg FBV', num(p.avgFBV) + ' mph') + field('Max FBV', num(p.maxFBV) + ' mph') + field('Throwing Velo', num(p.tv) + ' mph') + field('60 Time', num(p.t60, 2) + ' s') + field('Pop Time', num(p.pop, 2) + ' s'), 'kvs') +
         card('Database Benchmarks', field('Avg EV vs Avg', bench('avgEV', p)) + field('Max EV vs Avg', bench('maxEV', p)) + field('Avg FBV vs Avg', bench('avgFBV', p)) + field('60 Time vs Avg', bench('t60', p, true, 2)) + field('Overall Standing', stand), 'kvs') +
         card('External Profile Links', field('PBR', 'Not linked in demo') + field('PG', 'Not linked in demo') + field('NCSA', 'Not linked in demo') + field('Fieldlevel', 'Not linked in demo') + field('Video', 'Not linked in demo'), 'kvs') +
@@ -875,64 +897,115 @@
     });
   };
   pages.grading = (root) => {
-    const store = loadGrades();
+    const store = loadGrades(), W = loadWeights();
     const today = new Date().toISOString().slice(0, 10);
     const msg = sessionStorage.getItem('theReadGrMsg') || ''; sessionStorage.removeItem('theReadGrMsg');
+    const role = sessionStorage.getItem('theReadGrRole') === 'staff' ? 'staff' : 'hc';
     const opts = (arr) => arr.map((x) => '<option value="' + esc(x[0]) + '">' + esc(x[1]) + '</option>').join('');
+    const gradeOpts = '<option value="">Select grade</option>' + GRADES.slice().reverse().map((g) => '<option value="' + g + '">' + g + '</option>').join('');
+    const cols = [['all', 'All Positions (Default)']].concat(GROUPS.map((g) => [g[0], g[1]]));
+    const wCell = (c, k) => {
+      const v = k === 'all' ? W.all[c.id] : (W.groups[k] && W.groups[k][c.id] != null ? W.groups[k][c.id] : '');
+      return '<td data-label="' + esc(cols.filter((x) => x[0] === k)[0][1]) + '"><input type="number" min="0" max="100" step="1" class="gw-in" data-c="' + c.id + '" data-k="' + k + '" value="' + v + '" aria-label="' + esc(c.name) + ' weight for ' + esc(cols.filter((x) => x[0] === k)[0][1]) + '"' + (role === 'hc' ? '' : ' disabled') + (k === 'all' ? '' : ' placeholder="Default"') + ' /></td>';
+    };
+    const convRows = GRADES.slice().reverse().map((g) => '<tr><th scope="row">' + g + '</th><td>' + GRADE_TABLE[g] + '</td></tr>').join('');
     root.innerHTML =
-      '<p class="coach-note md-note"><strong>Coach Grading:</strong> each staff member enters a 0&ndash;100 grade (shown with a letter) for any player. Staff Score is the simple average of the grades entered for a player; it stays blank until at least one grade exists (never 0). Grades are coach-entered opinions saved only in this browser as a demo. Staff names are sample (fictional). Grades never change a player\u2019s Tier or Confidence.</p>' +
+      '<p class="coach-note md-note"><strong>Coach Grading:</strong> each staff member picks a simple letter grade (A+ to F) for a player. The Head Coach decides how much each coach\u2019s grade counts, and can set different weights for different position groups. Staff Score is the weighted average of the grades entered so far and stays blank until at least one grade exists (never 0). Grades and weights are coach-entered opinions saved only in this browser as a demo. Staff names are sample (fictional). Grades never change a player\u2019s Tier or Confidence.</p>' +
       (msg ? '<p class="coach-note md-msg" role="status">' + esc(msg) + '</p>' : '') +
       '<section class="card"><h2>Enter A Grade</h2><form id="gr-form" novalidate><div class="md-grid">' +
       '<label>Player *<select name="player">' + opts(players.map((p) => [p.id, p.name + ' \u2014 ' + p.pos + ', ' + p.grad])) + '</select></label>' +
       '<label>Staff Member *<select name="staff">' + opts(COACHES.map((c) => [c.id, c.name + ' (' + c.role + ')'])) + '</select></label>' +
-      '<label>Grade (0&ndash;100) *<input name="score" type="text" inputmode="decimal" /></label>' +
+      '<label>Grade *<select name="grade">' + gradeOpts + '</select></label>' +
       '<label>Date<input name="date" type="date" value="' + today + '" max="' + today + '" /></label>' +
       '<label class="md-wide">Evaluator Notes<textarea name="note" rows="2" maxlength="300"></textarea></label></div>' +
       '<ul class="md-errors" id="gr-errors" role="alert"></ul><div class="md-actions"><button type="submit" class="button button-primary">Save Grade</button></div></form></section>' +
+      '<section class="card" id="gw-card"><h2>Grade Weights (Head Coach)</h2>' +
+      '<form class="controls" onsubmit="return false"><label>Viewing As (Demo Role)<select id="gw-role"><option value="hc"' + (role === 'hc' ? ' selected' : '') + '>Head Coach (can edit weights)</option><option value="staff"' + (role === 'staff' ? ' selected' : '') + '>Other Staff (view only)</option></select></label></form>' +
+      '<p class="coach-note">Only the Head Coach can change weights. This role switch is a demo; real permissions need a backend. Weights are relative numbers, not required to add to 100: for each player, only the coaches who HAVE graded are counted, and their weights are re-scaled to total 100%. A coach who has not graded is left out, never counted as an F. Leave a position-group box blank to use the Default column.</p>' +
+      '<div class="table-wrap"><table class="rd-table" id="gw-table"><caption class="visually-hidden">Grade weights by staff member and position group (sample, fictional)</caption><thead><tr><th scope="col">Staff Member</th>' + cols.map((c) => '<th scope="col">' + esc(c[1]) + '</th>').join('') + '</tr></thead><tbody>' +
+      COACHES.map((c) => '<tr><th scope="row">' + esc(c.name) + '<small class="rd-mobile-meta">' + esc(c.role) + '</small></th>' + cols.map((k) => wCell(c, k[0])).join('') + '</tr>').join('') + '</tbody></table></div>' +
+      '<ul class="md-errors" id="gw-errors" role="alert"></ul><div class="md-actions"><button type="button" class="button button-primary" id="gw-save"' + (role === 'hc' ? '' : ' disabled') + '>Save Weights</button> <button type="button" class="button button-secondary" id="gw-reset"' + (role === 'hc' ? '' : ' disabled') + '>Reset To Defaults</button></div>' +
+      '<p class="coach-note">Default sample weights: Head Coach 30, Associate Head Coach 25, Pitching Coach 25, Recruiting Coordinator 20; Pitchers override: Pitching Coach 45, Head Coach 25, Associate 15, Coordinator 15. These are sample starting points only.</p></section>' +
+      '<section class="card"><h2>How Grades Convert</h2><div class="table-wrap"><table class="rd-table"><caption class="visually-hidden">Letter grade to number conversion</caption><thead><tr><th scope="col">Letter Grade</th><th scope="col">Counts As (0&ndash;100)</th></tr></thead><tbody>' + convRows + '</tbody></table></div>' +
+      '<p class="coach-note">Staff Score is shown with the nearest letter grade. A blank grade is not saved.</p></section>' +
+      '<section class="card coach-card wide how-calc"><h2>How This Is Calculated</h2><ul>' +
+      '<li><strong>Staff Score</strong> = &Sigma;(grade number &times; weight) &divide; &Sigma;(weight), over only the coaches who graded that player. The weights used depend on the player\u2019s position group (Pitchers, Catchers, Infielders, Outfielders), falling back to the Default column. If every graded coach has weight 0, they count equally. Blank when nobody has graded.</li>' +
+      '<li><strong>Adjusted Recruit Score</strong> = Recruit Score + fit/need adjustment (&minus;2.5 to +2.5, see Team Needs) + staff adjustment, kept between 0 and 100. Staff adjustment = (Staff Score &minus; ' + STAFF_BASELINE + ') &divide; ' + STAFF_DIVISOR + ', limited to &minus;' + STAFF_CAP + ' to +' + STAFF_CAP + ' points (' + STAFF_BASELINE + ' is a neutral, about B-, grade). With no staff grades the staff adjustment is 0 and the score is marked &ldquo;No staff grades yet&rdquo;. It updates on every grade added, changed or removed, and flows to Rankings, Recruiting Board, Coach Fit, Commitments and the Player Card pop-up.</li>' +
+      '<li><strong>Never changes Tier or Confidence.</strong> Those come only from the Recruit Score and the data confidence.</li></ul></section>' +
       '<form class="controls" id="gr-filters" onsubmit="return false"><label>Search<input type="search" id="gr-q" placeholder="Player name" /></label><label>Show<select id="gr-show"><option value="">All players</option><option value="g">Players with grades</option></select></label></form>' +
       '<div class="table-wrap"><table id="gr-table" class="rd-table"></table></div>' +
       '<p class="coach-note">SAMPLE DATA / FICTIONAL EXAMPLE. No grades exist until a staff member enters them.</p>' +
-      theRead('Grades are opinions entered by your staff, not calculated by THE READ. The Staff Score is just their average, so one grade counts fully until a second is added. Use the notes to record why a grade was given. Staff Score appears on the Player Card; a missing Staff Score means no one has graded the player yet, not a low grade.');
+      theRead('Grades are opinions entered by your staff, not calculated by THE READ. Each player\u2019s Staff Score is a weighted average using the Head Coach\u2019s weights, so a pitcher can lean on the pitching coach. The Adjusted Recruit Score nudges the Recruit Score by at most ' + STAFF_CAP + ' points for staff grades, so a few opinions can sharpen the ranking without replacing the data. A missing grade means no one has graded yet, not a low grade.');
     const tbl = $('#gr-table', root);
     function draw() {
       const q = $('#gr-q', root).value.trim().toLowerCase(), only = $('#gr-show', root).value === 'g';
       const list = players.filter((p) => (!q || p.name.toLowerCase().indexOf(q) >= 0) && (!only || store[p.id] && Object.keys(store[p.id]).length));
-      tbl.innerHTML = '<caption class="visually-hidden">Staff grades by player (sample data, fictional)</caption><thead><tr><th scope="col">Player</th>' + COACHES.map((c) => '<th scope="col">' + esc(c.name) + '<small class="rd-mobile-meta">' + esc(c.role) + '</small></th>').join('') + '<th scope="col">Staff Score</th></tr></thead><tbody>' +
+      tbl.innerHTML = '<caption class="visually-hidden">Staff grades by player (sample data, fictional)</caption><thead><tr><th scope="col">Player</th>' + COACHES.map((c) => '<th scope="col">' + esc(c.name) + '<small class="rd-mobile-meta">' + esc(c.role) + '</small></th>').join('') + '<th scope="col">Staff Score</th><th scope="col">Recruit Score</th><th scope="col">Adjusted Recruit Score</th></tr></thead><tbody>' +
         (list.length ? list.map((p) => {
-          const g = store[p.id] || {}, sc = Object.keys(g).map((c) => Number(g[c].score)).filter((v) => isFinite(v));
-          const avgS = sc.length ? Math.round(sc.reduce((s, v) => s + v, 0) / sc.length) : null;
-          return '<tr><th scope="row">' + cardLink(p) + '</th>' + COACHES.map((c) => {
+          const g = store[p.id] || {}, calc = staffCalc(g, p.pos, W), shareOf = {};
+          calc.rows.forEach((r) => { shareOf[r.id] = r.share; });
+          const live = byId[p.id], sd = calc.score == null ? 0 : Math.max(-STAFF_CAP, Math.min(STAFF_CAP, (calc.score - STAFF_BASELINE) / STAFF_DIVISOR));
+          const adj = live.rs == null ? null : Math.round(Math.max(0, Math.min(100, live.rs + Math.max(-2.5, Math.min(2.5, ((live.fit + live.need) / 2 - 50) / 20)) + sd)) * 10) / 10;
+          return '<tr><th scope="row">' + cardLink(p) + '<small class="rd-mobile-meta">' + p.pos + '</small></th>' + COACHES.map((c) => {
             const e = g[c.id];
-            return '<td data-label="' + esc(c.name) + '">' + (e ? '<strong>' + e.score + '</strong> (' + letter(Number(e.score)) + ')' + (e.date ? '<small class="rd-mobile-meta">' + esc(e.date) + '</small>' : '') + (e.note ? '<small class="rd-mobile-meta">' + esc(e.note) + '</small>' : '') + ' <button type="button" class="md-del" data-pl="' + esc(p.id) + '" data-co="' + c.id + '" aria-label="Remove grade by ' + esc(c.name) + ' for ' + esc(p.name) + '">Remove</button>' : '&mdash;') + '</td>';
-          }).join('') + '<td data-label="Staff Score">' + (avgS == null ? '&mdash;' : '<strong>' + avgS + '</strong> (' + letter(avgS) + ')') + '</td></tr>';
-        }).join('') : '<tr class="rd-empty"><td colspan="' + (COACHES.length + 2) + '">No players match.</td></tr>') + '</tbody>';
+            return '<td data-label="' + esc(c.name) + '">' + (e ? '<strong>' + esc(e.grade || letter(Number(e.score))) + '</strong><small class="rd-mobile-meta">Counts ' + Math.round((shareOf[c.id] || 0) * 100) + '%</small>' + (e.date ? '<small class="rd-mobile-meta">' + esc(e.date) + '</small>' : '') + (e.note ? '<small class="rd-mobile-meta">' + esc(e.note) + '</small>' : '') + ' <button type="button" class="md-del" data-pl="' + esc(p.id) + '" data-co="' + c.id + '" aria-label="Remove grade by ' + esc(c.name) + ' for ' + esc(p.name) + '">Remove</button>' : '&mdash;') + '</td>';
+          }).join('') + '<td data-label="Staff Score">' + (calc.score == null ? 'No staff grades yet' : '<strong>' + calc.score.toFixed(1) + '</strong> (' + letter(calc.score) + ')') + '</td><td data-label="Recruit Score">' + (live.rs == null ? 'Not Rated' : live.rs.toFixed(1)) + '</td><td data-label="Adjusted Recruit Score">' + (adj == null ? '&mdash;' : '<strong>' + adj.toFixed(1) + '</strong>') + '</td></tr>';
+        }).join('') : '<tr class="rd-empty"><td colspan="' + (COACHES.length + 4) + '">No players match.</td></tr>') + '</tbody>';
     }
     draw();
     root.addEventListener('input', (e) => { if (e.target.closest('#gr-filters')) draw(); });
-    root.addEventListener('change', (e) => { if (e.target.closest('#gr-filters')) draw(); });
+    root.addEventListener('change', (e) => {
+      if (e.target.closest('#gr-filters')) draw();
+      if (e.target.id === 'gw-role') { sessionStorage.setItem('theReadGrRole', e.target.value); location.reload(); }
+    });
     root.addEventListener('click', (e) => {
-      const d = e.target.closest('[data-pl]'); if (!d) return;
-      if (store[d.dataset.pl]) { delete store[d.dataset.pl][d.dataset.co]; if (!Object.keys(store[d.dataset.pl]).length) delete store[d.dataset.pl]; }
-      saveGrades(store); sessionStorage.setItem('theReadGrMsg', 'Grade removed.'); location.reload();
+      const d = e.target.closest('[data-pl]');
+      if (d) {
+        if (store[d.dataset.pl]) { delete store[d.dataset.pl][d.dataset.co]; if (!Object.keys(store[d.dataset.pl]).length) delete store[d.dataset.pl]; }
+        saveGrades(store); sessionStorage.setItem('theReadGrMsg', 'Grade removed. Staff Score and Adjusted Recruit Score were recalculated.'); location.reload(); return;
+      }
+      if (e.target.id === 'gw-reset' && role === 'hc') {
+        saveWeights(cloneW(DEFAULT_WEIGHTS)); sessionStorage.setItem('theReadGrMsg', 'Weights reset to the sample defaults.'); location.reload(); return;
+      }
+      if (e.target.id === 'gw-save') {
+        if (role !== 'hc') { $('#gw-errors', root).innerHTML = '<li>Only the Head Coach can change weights.</li>'; return; }
+        const errs = [], nw = { all: {}, groups: {} };
+        $$('.gw-in', root).forEach((i) => {
+          const raw = i.value.trim(), k = i.dataset.k, c = i.dataset.c;
+          if (raw === '') { if (k === 'all') errs.push('Default weight for ' + c + ' cannot be blank.'); return; }
+          const v = Number(raw);
+          if (!isFinite(v) || v < 0) { errs.push('Weights must be numbers of 0 or more (' + (k === 'all' ? 'Default' : k) + ', coach ' + c + ').'); return; }
+          if (k === 'all') nw.all[c] = v; else { nw.groups[k] = nw.groups[k] || {}; nw.groups[k][c] = v; }
+        });
+        if (!errs.length) {
+          if (Object.keys(nw.all).reduce((a, c) => a + nw.all[c], 0) <= 0) errs.push('Default weights must add up to more than 0.');
+          Object.keys(nw.groups).forEach((k) => {
+            COACHES.forEach((c) => { if (nw.groups[k][c.id] == null) nw.groups[k][c.id] = nw.all[c.id]; });
+            if (Object.keys(nw.groups[k]).reduce((a, c) => a + nw.groups[k][c], 0) <= 0) errs.push('Weights for ' + k + ' must add up to more than 0.');
+          });
+        }
+        $('#gw-errors', root).innerHTML = errs.slice(0, 5).map((m) => '<li>' + esc(m) + '</li>').join('');
+        if (errs.length) return;
+        if (!saveWeights(nw)) { $('#gw-errors', root).innerHTML = '<li>This browser blocked saving. Weights were not saved.</li>'; return; }
+        sessionStorage.setItem('theReadGrMsg', 'Weights saved (demo, this browser only). Staff Scores and Adjusted Recruit Scores were recalculated.'); location.reload();
+      }
     });
     $('#gr-form', root).addEventListener('submit', (e) => {
       e.preventDefault();
-      const f = e.target, errs = [], raw = f.elements.score.value.trim(), score = Number(raw);
-      if (raw === '' || !isFinite(score)) errs.push('Grade must be a number from 0 to 100. A blank grade is not saved as 0.');
-      else if (score < 0 || score > 100) errs.push('Grade must be between 0 and 100.');
+      const f = e.target, errs = [], grade = f.elements.grade.value;
+      if (!GRADE_TABLE[grade]) errs.push('Choose a grade from A+ to F. A blank grade is not saved.');
       const date = f.elements.date.value;
       if (date && date > today) errs.push('Date cannot be in the future.');
       $('#gr-errors', root).innerHTML = errs.map((m) => '<li>' + esc(m) + '</li>').join('');
       if (errs.length) return;
       const pid = f.elements.player.value, cid = f.elements.staff.value;
       store[pid] = store[pid] || {};
-      store[pid][cid] = { score: Math.round(score * 10) / 10, note: f.elements.note.value.trim().slice(0, 300), date: date };
+      store[pid][cid] = { grade: grade, score: GRADE_TABLE[grade], note: f.elements.note.value.trim().slice(0, 300), date: date };
       if (!saveGrades(store)) { $('#gr-errors', root).innerHTML = '<li>This browser blocked saving. The grade was not saved.</li>'; return; }
-      sessionStorage.setItem('theReadGrMsg', 'Grade saved for ' + byId[pid].name + ' (demo, saved in this browser only).');
+      sessionStorage.setItem('theReadGrMsg', 'Grade saved for ' + byId[pid].name + ' (demo, this browser only). Staff Score and Adjusted Recruit Score were recalculated.');
       location.reload();
     });
   };
-
   pages.connect = (root) => {
     const DIR = [
       ['Coach Dana Whitlock (Fictional)', 'High School Coach', 'Fictional Ridge High School', 'TX', 'Infielders and catchers, Class of 2027'],

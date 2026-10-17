@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="robots" content="noindex" />
+<title>Tests | Recruit Score, Tier, And Confidence</title>
+<style>
+body { font-family: system-ui, sans-serif; margin: 24px; color: #14284b; }
+h1 { font-size: 1.4rem; }
+#summary { font-weight: 700; padding: 10px 14px; border: 2px solid #14284b; display: inline-block; }
+#summary.pass { border-color: #1b7f3b; color: #1b7f3b; }
+#summary.fail { border-color: #e41e3f; color: #e41e3f; }
+li { margin: 3px 0; font-size: .9rem; }
+li.ok::before { content: "PASS  "; color: #1b7f3b; font-weight: 700; }
+li.bad::before { content: "FAIL  "; color: #e41e3f; font-weight: 700; }
+ul { list-style: none; padding: 0; }
+</style>
+</head>
+<body>
+<h1>Recruit Score, Tier, And Confidence Tests</h1>
+<p>Runs every boundary, validation, color, label, sort, and filter test in your browser. Sample data only. Open this page and check the summary.</p>
+<p id="summary" role="status">Running...</p>
+<ul id="results"></ul>
+<script src="classification.js"></script>
+<script src="classification.tests.js"></script>
+<script src="coach.js"></script>
+<script>
+(function () {
+  var C = window.TheReadClassification;
+  var out = window.runClassificationTests(C, function (test, eq, yes) {
+    var D = window.TheReadCoach;
+    test('Sample data: 40+ players loaded', function () { yes(D && D.players.length >= 40, 'players'); });
+    test('Sample data: every Tier and Confidence combination exists, incl. Not Rated + Unknown', function () {
+      var tiers = ['Platinum', 'Gold', 'Silver', 'Bronze'], levels = ['High', 'Medium', 'Low'], miss = [];
+      tiers.forEach(function (t) { levels.forEach(function (l) {
+        if (!D.players.some(function (p) { return p.tier === t && p.confLevel === l; })) miss.push(t + '+' + l);
+      }); });
+      if (!D.players.some(function (p) { return p.tier === 'Not Rated' && p.confLevel === 'Unknown'; })) miss.push('Not Rated+Unknown');
+      eq(miss.join(','), '', 'missing combos');
+    });
+    test('Sample data: 94.96 is Gold and displays 95.0', function () {
+      var p = D.players.filter(function (x) { return x.rs === 94.96; })[0];
+      yes(p, 'player'); eq(p.tier, 'Gold'); eq(C.formatRecruitScore(p.rs), '95.0');
+    });
+    test('Sample data: 89.96 confidence is Medium and displays 90.0%', function () {
+      var p = D.players.filter(function (x) { return x.conf === 89.96; })[0];
+      yes(p, 'player'); eq(p.confLevel, 'Medium'); eq(C.formatConfidencePercentage(p.conf), '90.0%');
+    });
+    test('Sample data: Not Rated players have no Recruit Score of 0', function () {
+      D.players.forEach(function (p) { if (p.tier === 'Not Rated') yes(p.rs === null, 'rs must stay null'); });
+    });
+    test('Rankings row: Recruit Score, Tier, and Confidence are three separate cells', function () {
+      var t = document.createElement('table'); t.innerHTML = '<tbody>' + D.rankingRowHtml(D.players[0]) + '</tbody>';
+      var tr = t.querySelector('tr');
+      eq(tr.querySelectorAll('td.c-rs').length, 1); eq(tr.querySelectorAll('td.c-tier').length, 1); eq(tr.querySelectorAll('td.c-conf').length, 1);
+      yes(tr.querySelector('td.c-tier .rd-tier') && !tr.querySelector('td.c-tier .rd-conf'), 'tier cell holds only tier badge');
+      yes(tr.querySelector('td.c-conf .rd-conf') && !tr.querySelector('td.c-conf .rd-tier'), 'conf cell holds only confidence badge');
+      yes(!tr.hasAttribute('style') && !tr.querySelector('td[style], th[style]'), 'no cell or row is colored');
+    });
+    test('Rankings row: Grad Class is the 4th column after Player Name', function () {
+      var t = document.createElement('table'); t.innerHTML = '<tbody>' + D.rankingRowHtml(D.players[0]) + '</tbody>';
+      var cells = t.querySelectorAll('tr > *');
+      yes(cells[2].classList.contains('c-name') && cells[3].classList.contains('c-grad'), 'order');
+    });
+  });
+  var ul = document.getElementById('results');
+  out.results.forEach(function (r) {
+    var li = document.createElement('li'); li.className = r.ok ? 'ok' : 'bad';
+    li.textContent = r.name + (r.ok ? '' : ' - ' + r.error); ul.appendChild(li);
+  });
+  var s = document.getElementById('summary');
+  s.textContent = out.failed === 0 ? 'ALL ' + out.passed + ' TESTS PASSED' : out.failed + ' FAILED, ' + out.passed + ' passed';
+  s.className = out.failed === 0 ? 'pass' : 'fail';
+  document.title = s.textContent;
+})();
+</script>
+</body>
+</html>

@@ -10,7 +10,11 @@
   const num = (v, d) => (v == null ? '&mdash;' : Number(v).toFixed(d == null ? 1 : d));
   const ftin = (h) => Math.floor(h / 12) + '\u2032' + (h % 12) + '\u2033';
   const avg = (a) => { a = a.filter((v) => v != null); return a.length ? a.reduce((s, v) => s + v, 0) / a.length : null; };
-  const confLabel = (c) => (c >= 90 ? 'High' : c >= 60 ? 'Medium' : 'Low');
+  const TRC = window.TheReadClassification;
+  const confLabel = (c) => TRC.getConfidenceLevel(c);
+  const tierBadge = (p, o) => TRC.renderTierBadge(p.rs, o);
+  const confBadge = (p, o) => TRC.renderConfidenceBadge(p.conf, o);
+  const rk = (v) => (v == null ? '&mdash;' : '#' + v);
   const letter = (s) => (s >= 95 ? 'A+' : s >= 92 ? 'A' : s >= 89 ? 'A-' : s >= 86 ? 'B+' : s >= 83 ? 'B' : s >= 80 ? 'B-' : s >= 77 ? 'C+' : s >= 74 ? 'C' : s >= 70 ? 'C-' : s >= 60 ? 'D' : 'F');
   const $ = (s, r) => (r || document).querySelector(s);
 
@@ -76,7 +80,6 @@
     if (i % 7 === 3 && p.avgFBV != null) { p.avgFBV = null; miss++; }
     if (i % 8 === 2) { if (p.maxEV != null) { p.maxEV = null; miss++; } }
     p.conf = Math.max(48, Math.min(100, Math.round(55 + 45 * r() - miss * 11)));
-    p.tier = p.rs >= 88 ? 'Elite' : p.rs >= 80 ? 'High-End' : 'Target';
     p.hc = letter(p.rs + (r() - 0.5) * 12);
     p.pc = letter(p.rs + (r() - 0.5) * 12);
     p.ac = letter(p.rs + (r() - 0.5) * 12);
@@ -91,13 +94,20 @@
     p.action = ACTIONS[i % 5];
     players.push(p);
   }
-  players.sort((a, b) => b.rs - a.rs);
-  players.forEach((p, i) => { p.overall = i + 1; });
-  [2027, 2028, 2029, 2030].forEach((g) => players.filter((p) => p.grad === g).forEach((p, i) => { p.classRank = i + 1; }));
+  // Sample edge cases so every Tier / Confidence combination (and the 94.96 / 89.96 rounding cases) appears.
+  // Values are fictional; Tier and Confidence Level are always derived from these stored numbers.
+  [[94.96, 89.96], [95, 90], [97.4, 72.5], [96.1, 54], [91.3, 93], [85, 60], [87.6, 41.5], [84.99, 95], [78.2, 70], [70, 59.99], [69.99, 91], [66.4, 64], [58.7, 47], [null, null], [null, null], [88, null]]
+    .forEach((v, k) => { const p = players[k]; p.rs = v[0]; p.conf = v[1]; if (v[0] == null) p.adj = null; });
+  players.forEach((p) => { p.tier = TRC.getPlayerTier(p.rs); p.confLevel = TRC.getConfidenceLevel(p.conf); p.recruitScore = p.rs; p.confidencePercentage = p.conf; });
+  players.sort((a, b) => (a.rs == null ? 1 : b.rs == null ? -1 : b.rs - a.rs) || (a.name < b.name ? -1 : 1));
+  const rated = players.filter((p) => p.rs != null);
+  rated.forEach((p, i) => { p.overall = i + 1; });
+  players.filter((p) => p.rs == null).forEach((p) => { p.overall = null; p.classRank = null; });
+  [2027, 2028, 2029, 2030].forEach((g) => rated.filter((p) => p.grad === g).forEach((p, i) => { p.classRank = i + 1; }));
   const bySc = players.slice().sort((a, b) => b.pri - a.pri);
   let tcount = { 1: 0, 2: 0, 3: 0 };
   bySc.forEach((p) => {
-    if (p.grad === 2027 && (p.overall % 2 === 0 || p.overall % 5 === 0)) {
+    if (p.overall != null && p.grad === 2027 && (p.overall % 2 === 0 || p.overall % 5 === 0)) {
       p.committed = p.overall % 3 === 0 ? OUR : SCHOOLS[1 + (p.overall % 7)];
       p.commitDate = '2026-' + String(2 + (p.overall % 8)).padStart(2, '0') + '-' + String(3 + ((p.overall * 3) % 24)).padStart(2, '0');
       return;
@@ -143,9 +153,7 @@
   const pages = {};
 
   pages.dashboard = (root) => {
-    const elite = players.filter((p) => p.tier === 'Elite').length;
-    const high = players.filter((p) => p.tier === 'High-End').length;
-    const target = players.filter((p) => p.tier === 'Target').length;
+    const tierCount = (t) => players.filter((p) => p.tier === t).length;
     const top = players[0];
     const posCounts = POS.map((x) => tr([x, players.filter((p) => p.pos === x).length]));
     const classCounts = [2027, 2028, 2029, 2030].map((g) => tr([g, players.filter((p) => p.grad === g).length]));
@@ -157,7 +165,7 @@
     root.innerHTML =
       '<div class="kpi-row">' + kpi('Total Players', db.total) + kpi('Avg Recruit Score', num(db.avgRS)) + kpi('Avg Confidence %', num(db.avgConf) + '%') + kpi('Avg Athletic Score', num(db.avgAth)) + '</div>' +
       '<div class="coach-grid">' +
-      card('Database Health', miniTable(['Measure', 'Players'], [tr(['Elite Players', elite]), tr(['High-End Players', high]), tr(['Target Players', target])], 'Database health')) +
+      card('Database Health', miniTable(['Player Tier', 'Players'], TRC.TIER_NAMES.map((t) => tr([TRC.renderTierBadge(t === 'Not Rated' ? null : TRC.PLAYER_TIER_CONFIG[t].minimumScore, { showTooltip: false }) + ' <span class="rd-range">' + TRC.PLAYER_TIER_CONFIG[t].rangeLabel + '</span>', tierCount(t)])), 'Database health by Player Tier') + '<p class="coach-note">' + TRC.TEXT.cardTier + ' Tier is derived only from Recruit Score.</p>') +
       card('Top Recruits', miniTable(['Category', 'Player', 'Value'], [
         '<tr><th scope="row">#1 Overall</th><td>' + cardLink(top) + '</td><td>' + num(top.rs) + '</td></tr>',
         leader('Highest Recruit Score', 'rs'), leader('Highest OPG', 'opg'), leader('Highest DPG', 'dpg'), leader('Highest PPG', 'ppg'), leader('Highest Athletic Score', 'ath')], 'Top recruits')) +
@@ -167,7 +175,7 @@
         leader('Highest Recruit Score', 'rs'), leader('Highest Confidence Score', 'conf', null, false, 0), leader('Highest Avg EV', 'avgEV'), leader('Highest Max EV', 'maxEV'),
         leader('Highest Avg FBV', 'avgFBV'), leader('Highest Max FBV', 'maxFBV'), leader('Fastest 60 Time', 't60', null, true, 2),
         '<tr><th scope="row">Top Ranked Player</th><td>' + cardLink(top) + '</td><td>#1</td></tr>'], 'Database leaders')) +
-      card('Confidence Snapshot', miniTable(['Level', 'Players'], [tr(['High Confidence (90%\u2013100%)', conf('High')]), tr(['Medium Confidence (60%\u201389.99%)', conf('Medium')]), tr(['Low Confidence (&lt;60%)', conf('Low')])], 'Confidence snapshot')) +
+      card('Confidence Snapshot', miniTable(['Confidence Level', 'Players'], TRC.CONFIDENCE_NAMES.map((l) => tr([TRC.renderConfidenceBadge(l === 'Unknown' ? null : TRC.CONFIDENCE_LEVEL_CONFIG[l].minimumPercentage, { showPercentage: false, showTooltip: false }) + ' <span class="rd-range">' + TRC.CONFIDENCE_LEVEL_CONFIG[l].rangeLabel + '</span>', conf(l)])), 'Confidence snapshot') + '<p class="coach-note">' + TRC.TEXT.cardConfidence + ' It does not measure talent.</p>') +
       card('Database Coverage', miniTable(['Missing Data', 'Players'], [tr(['Players Missing Avg EV', miss('avgEV')]), tr(['Players Missing Max EV', miss('maxEV')]), tr(['Players Missing Avg FBV', miss('avgFBV')]), tr(['Players Missing Max FBV', miss('maxFBV')]), tr(['Players Missing 60 Time', miss('t60')])], 'Database coverage')) +
       card('Database Updates', miniTable(['Update', 'Value'], [tr(['Newest Player Added', cardLink(newest)]), tr(['Most Recent Evaluation', latest]), tr(['Last Database Update', latest])], 'Database updates')) +
       card('Recruiting Snapshot', miniTable(['Snapshot', 'Player', 'Value'], [leader('Highest Avg EV', 'avgEV'), leader('Highest Max EV', 'maxEV'), leader('Highest Avg FBV', 'avgFBV'), leader('Highest Max FBV', 'maxFBV'), leader('Fastest 60 Time', 't60', null, true, 2)], 'Recruiting snapshot')) +
@@ -175,46 +183,77 @@
       theRead('Sample summary built from this page\u2019s fictional data: ' + db.total + ' sample players, led by ' + esc(top.name) + ' (' + top.pos + ', Class of ' + top.grad + '). The dashboard is informational \u2014 it summarizes the shared database and is not a recruiting CRM.');
   };
 
+  const RK_COLS = [
+    ['overall', 'Overall Rank', (p) => rk(p.overall), 'c-rank'],
+    ['classRank', 'Class Rank', (p) => rk(p.classRank), 'c-crank'],
+    ['name', 'Player Name', (p) => cardLink(p) + '<small class="rd-mobile-meta">' + p.pos + ' &middot; Class of ' + p.grad + ' &middot; ' + p.state + '</small>', 'c-name'],
+    ['grad', 'Grad Class', (p) => p.grad, 'c-grad'],
+    ['pos', 'Primary Position', (p) => p.pos, 'c-pos'],
+    ['sec', 'Secondary Position', (p) => p.sec || '&mdash;', 'c-sec'],
+    ['rs', 'Recruit Score', (p) => TRC.formatRecruitScore(p.rs), 'c-rs rd-num', TRC.TEXT.recruitScoreTooltip],
+    ['tier', 'Tier', (p) => tierBadge(p), 'c-tier', TRC.TEXT.tierTooltip],
+    ['conf', 'Confidence', (p) => confBadge(p), 'c-conf', TRC.TEXT.confidenceTooltip],
+    ['opg', 'OPG', (p) => num(p.opg), 'c-grade rd-num'],
+    ['dpg', 'DPG', (p) => num(p.dpg), 'c-grade rd-num'],
+    ['ppg', 'PPG', (p) => num(p.ppg), 'c-grade rd-num']
+  ];
+  const rankingRowHtml = (p) => '<tr>' + RK_COLS.map((c) => (c[0] === 'name'
+    ? '<th scope="row" class="' + c[3] + '">' + c[2](p) + '</th>'
+    : '<td class="' + c[3] + '" data-label="' + c[1] + '">' + c[2](p) + '</td>')).join('') + '</tr>';
+
   pages.rankings = (root) => {
-    const COLSR = [
-      ['overall', 'Overall Rank', (p) => p.overall], ['classRank', 'Class Rank', (p) => p.classRank], ['name', 'Player Name', (p) => cardLink(p)], ['grad', 'Grad Class', (p) => p.grad],
-      ['pos', 'Primary Position', (p) => p.pos], ['sec', 'Secondary Position', (p) => p.sec || '&mdash;'], ['opg', 'OPG', (p) => num(p.opg)],
-      ['dpg', 'DPG', (p) => num(p.dpg)], ['ppg', 'PPG', (p) => num(p.ppg)], ['rs', 'Recruit Score', (p) => num(p.rs)], ['tier', 'Tier', (p) => p.tier],
-      ['conf', 'Confidence Score', (p) => confLabel(p.conf) + ' (' + p.conf + '%)']
-    ];
-    const state = { key: 'overall', dir: 1 };
+    const state = { key: 'rs', dir: -1 };
+    const checks = (name, label, names) => '<fieldset class="rd-multi"><legend>' + label + '</legend>' + names.map((n) => '<label class="rd-check"><input type="checkbox" name="' + name + '" value="' + n + '" /> <span>' + n + '</span></label>').join('') + '</fieldset>';
     root.innerHTML =
-      '<form class="controls" aria-label="Filter rankings" onsubmit="return false">' +
-      '<label>Search<input type="search" id="f-q" placeholder="Player name" /></label>' +
+      '<form class="controls" id="r-form" aria-label="Filter rankings" onsubmit="return false">' +
+      '<label>Search<input type="search" id="f-q" placeholder="Name, position, class, or state" /></label>' +
       '<label>Position<select id="f-pos"><option value="">All</option>' + POS.map((x) => '<option>' + x + '</option>').join('') + '</select></label>' +
       '<label>Class<select id="f-class"><option value="">All</option>' + [2027, 2028, 2029, 2030].map((g) => '<option>' + g + '</option>').join('') + '</select></label>' +
-      '<label>Tier<select id="f-tier"><option value="">All</option><option>Elite</option><option>High-End</option><option>Target</option></select></label>' +
-      '<label>Confidence<select id="f-conf"><option value="">All</option><option>High</option><option>Medium</option><option>Low</option></select></label>' +
-      '</form><p class="coach-count" id="r-count" role="status"></p><div class="table-wrap"><table id="r-table"></table></div>';
+      checks('tier', 'Tier', TRC.TIER_NAMES) + checks('conf', 'Confidence', TRC.CONFIDENCE_NAMES) +
+      '<button type="button" class="button button-secondary" id="r-reset">Reset</button>' +
+      '</form><p class="coach-count" id="r-count" role="status"></p><div class="table-wrap"><table id="r-table" class="rd-table"></table></div>' +
+      '<div class="rd-legend"><h2>How To Read Recruit Score, Tier, And Confidence</h2><ul>' +
+      '<li><strong>Recruit Score:</strong> ' + TRC.TEXT.recruitScoreTooltip + '</li>' +
+      '<li><strong>Tier:</strong> ' + TRC.TEXT.tierTooltip + ' Platinum 95.0&ndash;100.0, Gold 85.0&ndash;94.9, Silver 70.0&ndash;84.9, Bronze 0.0&ndash;69.9, Not Rated when no Recruit Score exists. Tier uses the full stored score before rounding, so a stored 94.96 displays as 95.0 and is Gold.</li>' +
+      '<li><strong>Confidence:</strong> ' + TRC.TEXT.confidenceTooltip + ' High 90.0%&ndash;100.0%, Medium 60.0%&ndash;89.9%, Low 0.0%&ndash;59.9%, Unknown when it cannot be calculated. A stored 89.96% displays as 90.0% and is Medium. ' + TRC.TEXT.lowConfidenceTooltip + '</li></ul></div>';
     const tbl = $('#r-table', root);
+    const picked = (name) => Array.from(root.querySelectorAll('input[name="' + name + '"]:checked')).map((i) => i.value);
     function draw() {
-      const q = $('#f-q', root).value.trim().toLowerCase();
-      const fp = $('#f-pos', root).value, fc = $('#f-class', root).value, ft = $('#f-tier', root).value, fq = $('#f-conf', root).value;
-      let list = players.filter((p) => (!q || p.name.toLowerCase().includes(q)) && (!fp || p.pos === fp) && (!fc || String(p.grad) === fc) && (!ft || p.tier === ft) && (!fq || confLabel(p.conf) === fq));
-      const k = state.key === 'conf' ? 'conf' : state.key;
-      list.sort((a, b) => {
-        const x = a[k], y = b[k];
-        if (x == null && y == null) return 0;
-        if (x == null) return 1;
-        if (y == null) return -1;
-        if (typeof x === 'string') return x.localeCompare(y) * state.dir;
-        return (x - y) * state.dir;
+      const fp = $('#f-pos', root).value, fc = $('#f-class', root).value;
+      let list = TRC.filterAthletes(players, {
+        search: $('#f-q', root).value, tiers: picked('tier'), confidences: picked('conf'),
+        extra: (p) => (!fp || p.pos === fp) && (!fc || String(p.grad) === fc)
       });
+      const k = state.key, dir = state.dir === 1 ? 'asc' : 'desc';
+      if (k === 'rs') list = TRC.sortAthletes(list, 'recruitScore', dir);
+      else if (k === 'tier') list = TRC.sortAthletes(list, 'tier', dir);
+      else if (k === 'conf') list = TRC.sortAthletes(list, 'confidence', dir);
+      else {
+        list = list.slice().sort((a, b) => {
+          const x = a[k], y = b[k];
+          if (x == null && y == null) return 0;
+          if (x == null) return 1;
+          if (y == null) return -1;
+          if (typeof x === 'string') return x.localeCompare(y) * state.dir;
+          return (x - y) * state.dir;
+        });
+      }
       $('#r-count', root).textContent = 'Showing ' + list.length + ' of ' + players.length + ' sample players';
-      tbl.innerHTML = '<caption class="visually-hidden">Player rankings (fictional data)</caption><thead><tr>' + COLSR.map((c) => '<th scope="col" aria-sort="' + (state.key === c[0] ? (state.dir === 1 ? 'ascending' : 'descending') : 'none') + '"><button type="button" data-k="' + c[0] + '">' + c[1] + (state.key === c[0] ? (state.dir === 1 ? ' \u25B2' : ' \u25BC') : '') + '</button></th>').join('') + '</tr></thead><tbody>' +
-        list.map((p) => '<tr>' + COLSR.map((c) => '<td>' + c[2](p) + '</td>').join('') + '</tr>').join('') + '</tbody>';
-      if (!list.length) tbl.querySelector('tbody').innerHTML = '<tr><td colspan="' + COLSR.length + '">No players match these filters.</td></tr>';
+      tbl.innerHTML = '<caption class="visually-hidden">Player rankings (sample data, fictional)</caption><thead><tr>' + RK_COLS.map((c) => '<th scope="col" class="' + c[3].replace('c-name', 'c-name-h') + '"' + (c[4] ? ' title="' + esc(c[4]) + '"' : '') + ' aria-sort="' + (state.key === c[0] ? (state.dir === 1 ? 'ascending' : 'descending') : 'none') + '"><button type="button" data-k="' + c[0] + '">' + c[1] + (state.key === c[0] ? (state.dir === 1 ? ' \u25B2' : ' \u25BC') : '') + '</button></th>').join('') + '</tr></thead><tbody>' +
+        list.map(rankingRowHtml).join('') + '</tbody>';
+      if (!list.length) tbl.querySelector('tbody').innerHTML = '<tr class="rd-empty"><td colspan="' + RK_COLS.length + '"><p>' + TRC.TEXT.empty + '</p><button type="button" class="button button-secondary" data-reset="1">Reset Filters</button></td></tr>';
+    }
+    function reset() {
+      $('#r-form', root).reset();
+      state.key = 'rs'; state.dir = -1;
+      draw();
     }
     root.addEventListener('click', (e) => {
+      if (e.target.closest('#r-reset, [data-reset]')) { reset(); const q = $('#f-q', root); if (q) q.focus(); return; }
       const b = e.target.closest('button[data-k]');
       if (!b) return;
       const k = b.dataset.k;
-      if (state.key === k) state.dir *= -1; else { state.key = k; state.dir = (k === 'name' || k === 'grad' || k === 'pos' || k === 'sec' || k === 'tier' || k === 'overall' || k === 'classRank') ? 1 : -1; }
+      if (state.key === k) state.dir *= -1; else { state.key = k; state.dir = (k === 'name' || k === 'grad' || k === 'pos' || k === 'sec' || k === 'overall' || k === 'classRank') ? 1 : -1; }
       draw();
       const nb = $('button[data-k="' + k + '"]', root); if (nb) nb.focus();
     });
@@ -241,18 +280,20 @@
     };
     function draw() {
       const p = byId[sel.value];
-      const stand = p.overall <= 5 ? 'Top 5 overall' : p.overall <= 15 ? 'Top 15 overall' : 'Rank ' + p.overall + ' of ' + players.length;
+      const stand = p.overall == null ? 'Not ranked (Not Rated)' : p.overall <= 5 ? 'Top 5 overall' : p.overall <= 15 ? 'Top 15 overall' : 'Rank ' + p.overall + ' of ' + players.filter((x) => x.rs != null).length;
       $('#pc-out', root).innerHTML =
         '<div class="coach-grid">' +
         card(esc(p.name), field('Grad Year', p.grad) + field('Primary Position', p.pos) + field('Secondary Position', p.sec || '&mdash;') + field('Bats/Throws', p.bats + '/' + p.throws) + field('Height', ftin(p.ht)) + field('Weight', p.wt + ' lb') + field('GPA', p.gpa.toFixed(2)) + field('State', p.state), 'kvs') +
-        card('Rankings', field('Overall Rank', '#' + p.overall) + field('Class Rank', '#' + p.classRank) + field('Athletic Score', num(p.ath)) + field('Recruit Score', num(p.rs)) + field('Confidence %', p.conf + '%') + field('Confidence Score', confLabel(p.conf)) + field('Tier', p.tier), 'kvs') +
+        card('Rankings', field('Overall Rank', rk(p.overall)) + field('Class Rank', rk(p.classRank)) + field('Athletic Score', num(p.ath)), 'kvs') +
+        card('Recruit Score, Player Tier, And Confidence', field('Recruit Score', '<span class="rd-num" title="' + esc(TRC.TEXT.recruitScoreTooltip) + '">' + TRC.formatRecruitScore(p.rs) + '</span>') + field('Player Tier', tierBadge(p, { focusable: true, size: 'large' })) + field('Confidence', confBadge(p, { focusable: true, size: 'large' })) +
+          '<p class="coach-note">' + TRC.TEXT.cardTier + ' ' + TRC.TEXT.cardConfidence + ' Missing data lowers Confidence, not Recruit Score.</p>', 'kvs rd-triple') +
         card('Grades', field('OPG', num(p.opg)) + field('SOPG', num(p.sopg)) + field('DPG', num(p.dpg)) + field('SDPG', num(p.sdpg)) + field('PPG', num(p.ppg)), 'kvs') +
         card('Team Evaluation', field('HC Grade', p.hc) + field('PC Grade', p.pc) + field('AC Grade', p.ac) + field('Staff Score', p.staff) + field('Coach Fit Score', p.fit) + field('Team Need Score', p.need) + field('Adjusted Recruit Score', num(p.adj)) + field('Priority Score', p.pri), 'kvs') +
         card('Measurables', field('Avg EV', num(p.avgEV) + ' mph') + field('Max EV', num(p.maxEV) + ' mph') + field('Avg FBV', num(p.avgFBV) + ' mph') + field('Max FBV', num(p.maxFBV) + ' mph') + field('Throwing Velo', num(p.tv) + ' mph') + field('60 Time', num(p.t60, 2) + ' s') + field('Pop Time', num(p.pop, 2) + ' s'), 'kvs') +
         card('Database Benchmarks', field('Avg EV vs Avg', bench('avgEV', p)) + field('Max EV vs Avg', bench('maxEV', p)) + field('Avg FBV vs Avg', bench('avgFBV', p)) + field('60 Time vs Avg', bench('t60', p, true, 2)) + field('Overall Standing', stand), 'kvs') +
         card('External Profile Links', field('PBR', 'Not linked in demo') + field('PG', 'Not linked in demo') + field('NCSA', 'Not linked in demo') + field('Fieldlevel', 'Not linked in demo') + field('Video', 'Not linked in demo'), 'kvs') +
         '</div>' +
-        theRead('Sample summary for ' + esc(p.name) + ' (fictional): ' + p.tier + ' tier ' + p.pos + ' with a Recruit Score of ' + num(p.rs) + ' and ' + p.conf + '% confidence (' + confLabel(p.conf) + '). Evaluation method: ' + p.method + '. ' + esc(p.notes));
+        theRead('Sample summary for ' + esc(p.name) + ' (fictional): ' + (p.rs == null ? 'Not Rated ' + p.pos + '. Recruit Score has not been calculated, so no Player Tier is assigned (this is not the same as Bronze).' : p.tier + ' ' + p.pos + ' with a Recruit Score of ' + TRC.formatRecruitScore(p.rs) + '.') + ' Confidence: ' + (p.conf == null ? 'Unknown (not calculated).' : confLabel(p.conf) + ' at ' + TRC.formatConfidencePercentage(p.conf) + ' of expected verified data.') + ' Evaluation method: ' + p.method + '. ' + esc(p.notes));
     }
     sel.addEventListener('change', () => { history.replaceState(null, '', '?id=' + sel.value); draw(); });
     draw();
@@ -261,7 +302,7 @@
   pages.h2h = (root) => {
     root.innerHTML = '<div id="h-out"></div>';
     const SIDES = ['a', 'b'];
-    const T = { rank: [['Overall Rank', 'overall', 'low', (v) => '#' + v], ['Class Rank', 'classRank', 'low', (v) => '#' + v], ['Athletic Score', 'ath', 'high'], ['Recruit Score', 'rs', 'high'], ['Confidence %', 'conf', 'high', (v) => v + '%'], ['Confidence Score', 'conf', null, (v) => confLabel(v)], ['Tier', 'tier']],
+    const T = { rank: [['Overall Rank', 'overall', 'low', (v) => '#' + v], ['Class Rank', 'classRank', 'low', (v) => '#' + v], ['Athletic Score', 'ath', 'high'], ['Recruit Score', 'rs', 'high', (v) => TRC.formatRecruitScore(v)], ['Player Tier', 'rs', 'tier'], ['Confidence', 'conf', 'data']],
       info: [['Player Name', 'name'], ['Primary Position', 'pos'], ['Secondary Position', 'sec'], ['Grad Year', 'grad', null, (v) => String(v)], ['Height', 'ht', null, (v) => ftin(v)], ['Weight', 'wt', null, (v) => v + ' lb'], ['GPA', 'gpa', null, (v) => v.toFixed(2)]],
       grades: [['OPG', 'opg', 'high'], ['SOPG', 'sopg', 'high'], ['DPG', 'dpg', 'high'], ['SDPG', 'sdpg', 'high'], ['PPG', 'ppg', 'high']],
       meas: [['Avg EV', 'avgEV', 'high'], ['Max EV', 'maxEV', 'high'], ['Avg FBV', 'avgFBV', 'high'], ['Max FBV', 'maxFBV', 'high'], ['Throwing Velo', 'tv', 'high'], ['60 Time', 't60', 'low', (v) => v.toFixed(2)], ['Pop Time', 'pop', 'low', (v) => v.toFixed(2)]],
@@ -286,8 +327,15 @@
     const standText = (p) => { const s = standOf(p); if (!s.m) return '&mdash;'; return s.n + ' Of ' + s.m + ' Above Avg<small class="h2h-sub">' + (s.r >= 0.75 ? 'Strong' : s.r >= 0.5 ? 'Above Average' : s.r >= 0.25 ? 'Below Average' : 'Well Below Average') + '</small>'; };
     const standCmp = (pa, pb) => { const x = standOf(pa).r, y = standOf(pb).r; if (x == null || y == null) return null; return Math.abs(x - y) < 1e-9 ? 0 : x - y; };
 
-    const show = (d, p) => { const v = p[d[1]]; if (v == null || v === '') return '&mdash;'; return d[3] ? d[3](v) : (typeof v === 'number' ? num(v) : esc(v)); };
+    const show = (d, p) => {
+      if (d[2] === 'tier') return tierBadge(p, { focusable: true });
+      if (d[2] === 'data') return confBadge(p, { focusable: true });
+      const v = p[d[1]]; if (v == null || v === '') return '&mdash;'; return d[3] ? d[3](v) : (typeof v === 'number' ? num(v) : esc(v));
+    };
+    const tierOrder = (p) => TRC.PLAYER_TIER_CONFIG[p.tier].sortOrder;
     function cmpOf(d, pa, pb) {
+      if (d[2] === 'tier') return pa.rs == null || pb.rs == null ? null : tierOrder(pa) - tierOrder(pb);
+      if (d[2] === 'data') return null;
       const x = pa[d[1]], y = pb[d[1]];
       if (!d[2] || x == null || y == null) return null;
       const c = d[2] === 'grade' ? GRADES.indexOf(x) - GRADES.indexOf(y) : d[2] === 'low' ? y - x : x - y;
@@ -298,14 +346,22 @@
       if (c === 0) return '<span class="adv-even">Tie</span>';
       return c > 0 ? '<span class="adv-a"><span aria-hidden="true">\u25C0</span> ' + esc(pa.name) + '</span>' : '<span class="adv-b">' + esc(pb.name) + ' <span aria-hidden="true">\u25B6</span></span>';
     };
-    const edge = (d, pa, pb) => edgeHtml(cmpOf(d, pa, pb), pa, pb);
+    // Confidence is never a talent winner: the center only says who has more verified data behind the evaluation.
+    const dataEdge = (pa, pb) => {
+      if (pa.conf == null || pb.conf == null) return '<span class="adv-even">Data: Not Comparable</span>';
+      if (pa.conf === pb.conf) return '<span class="adv-even">Same Verified Data</span>';
+      return '<span class="adv-even">More Verified Data: ' + esc(pa.conf > pb.conf ? pa.name : pb.name) + '</span>';
+    };
+    const edge = (d, pa, pb) => (d[2] === 'data' ? dataEdge(pa, pb) : edgeHtml(cmpOf(d, pa, pb), pa, pb));
 
     // Self-check: lower 60 Time / Pop Time must win, higher Avg EV must win, benchmarks must agree.
     function selfCheck() {
       const fast = { t60: 6.8, pop: 1.9, avgEV: 90 }, slow = { t60: 7.4, pop: 2.1, avgEV: 85 };
       const d60 = T.meas.filter((d) => d[1] === 't60')[0], dpop = T.meas.filter((d) => d[1] === 'pop')[0], dev = T.meas.filter((d) => d[1] === 'avgEV')[0];
       const b60 = B.filter((b) => b[1] === 't60')[0], bpop = B.filter((b) => b[1] === 'pop')[0];
-      const tests = [cmpOf(d60, fast, slow) > 0, cmpOf(d60, slow, fast) < 0, cmpOf(dpop, fast, slow) > 0, cmpOf(dpop, slow, fast) < 0, cmpOf(dev, fast, slow) > 0, cmpOf(dev, slow, fast) < 0, cmpOf(d60, fast, fast) === 0];
+      const dtier = T.rank.filter((d) => d[2] === 'tier')[0], ddata = T.rank.filter((d) => d[2] === 'data')[0];
+      const tests = [cmpOf(d60, fast, slow) > 0, cmpOf(d60, slow, fast) < 0, cmpOf(dpop, fast, slow) > 0, cmpOf(dpop, slow, fast) < 0, cmpOf(dev, fast, slow) > 0, cmpOf(dev, slow, fast) < 0, cmpOf(d60, fast, fast) === 0,
+        cmpOf(dtier, { rs: 96, tier: 'Platinum' }, { rs: 90, tier: 'Gold' }) > 0, cmpOf(dtier, { rs: null, tier: 'Not Rated' }, { rs: 60, tier: 'Bronze' }) === null, cmpOf(ddata, { conf: 99 }, { conf: 10 }) === null];
       const bt = [fast, slow].map((p) => ({ t60: p.t60, pop: p.pop }));
       const bGood = dbAvg.t60 != null && dbAvg.pop != null && benchCmp(b60, bt[0], bt[1]) > 0 && benchCmp(b60, bt[1], bt[0]) < 0 && benchCmp(bpop, bt[0], bt[1]) > 0 && benchCmp(bpop, bt[1], bt[0]) < 0;
       const ok = tests.every(Boolean) && bGood;
@@ -314,7 +370,7 @@
     }
     const checkOk = selfCheck();
 
-    const withData = players.filter((p) => p.t60 != null);
+    const withData = players.filter((p) => p.t60 != null && p.rs != null && p.conf != null);
     let ids = { a: withData[0].id, b: withData[1].id };
 
     const row = (d, pa, pb, withEdge) => '<div class="h2h-row"><span class="h2h-l">' + d[0] + '</span><span class="h2h-a">' + show(d, pa) + '</span><span class="h2h-c">' + (withEdge ? edge(d, pa, pb) : '') + '</span><span class="h2h-b">' + show(d, pb) + '</span><span class="h2h-r" aria-hidden="true">' + d[0] + '</span></div>';
@@ -324,7 +380,7 @@
     function breakdown(pa, pb) {
       const benchRows = B.map((b) => ({ name: b[0].replace(' vs Avg', ''), c: benchCmp(b, pa, pb), x: diffOf(b, pa), y: diffOf(b, pb) }));
       const groups = [
-        ['Rankings', T.rank.map((d) => ({ name: d[0], c: cmpOf(d, pa, pb), x: pa[d[1]], y: pb[d[1]], num: d[2] !== 'grade' }))],
+        ['Rankings', T.rank.map((d) => ({ name: d[0], c: cmpOf(d, pa, pb), x: pa[d[1]], y: pb[d[1]], num: d[2] === 'high' || d[2] === 'low' }))],
         ['Grades', T.grades.map((d) => ({ name: d[0], c: cmpOf(d, pa, pb), x: pa[d[1]], y: pb[d[1]], num: true }))],
         ['Measurables', T.meas.map((d) => ({ name: d[0], c: cmpOf(d, pa, pb), x: pa[d[1]], y: pb[d[1]], num: true }))],
         ['Database Benchmarks', benchRows.map((o) => ({ name: o.name + ' vs Avg', c: o.c, x: null, y: null, num: false })).concat([{ name: 'Overall Standing', c: standCmp(pa, pb), x: null, y: null, num: false }])],
@@ -350,7 +406,8 @@
         '<div class="h2h-ai-grid"><div><h4>Category Wins</h4><ul>' + per.map((p) => '<li><strong>' + p[0] + ':</strong> ' + esc(pa.name) + ' ' + p[1].a + ' \u2013 ' + p[1].b + ' ' + esc(pb.name) + (p[1].t ? ' (' + p[1].t + ' tied)' : '') + '</li>').join('') + '<li><strong>Total:</strong> ' + tot.a + ' \u2013 ' + tot.b + (tot.t ? ' (' + tot.t + ' tied)' : '') + '. ' + lead + '</li></ul></div>' +
         '<div><h4>Strengths</h4><ul><li><strong>' + esc(pa.name) + ':</strong> ' + list(wonA) + '</li><li><strong>' + esc(pb.name) + ':</strong> ' + list(wonB) + '</li></ul></div>' +
         '<div><h4>Biggest Differences</h4><ul>' + (diffs.length ? diffs.slice(0, 3).map((x) => '<li>' + x[0] + ' &mdash; edge to ' + esc(x[2]) + '</li>').join('') : '<li>No comparable differences.</li>') + '</ul></div>' +
-        '<div><h4>Team Edge Summary</h4><p>' + teamLine + '</p></div></div>' +
+        '<div><h4>Team Edge Summary</h4><p>' + teamLine + '</p></div>' +
+        '<div><h4>Confidence (Verified Data)</h4><p>' + esc(pa.name) + ': ' + confBadge(pa, { showTooltip: false }) + ' &nbsp; ' + esc(pb.name) + ': ' + confBadge(pb, { showTooltip: false }) + '</p><p>Confidence shows how much verified data supports each evaluation. It is not counted in category wins, does not make either player more talented, and missing data is never treated as poor performance. ' + (pa.rs == null || pb.rs == null ? 'At least one player is Not Rated, so Recruit Score and Player Tier cannot be compared.' : 'Talent is compared by Recruit Score (' + TRC.formatRecruitScore(pa.rs) + ' vs ' + TRC.formatRecruitScore(pb.rs) + ') and Player Tier (' + pa.tier + ' vs ' + pb.tier + ').') + '</p></div></div>' +
         '<p class="h2h-ai-note">Rows with a blank value are skipped. Database Benchmarks use the sample database averages shown above. For 60 Time and Pop Time the lower value wins.</p></section>';
     }
 
@@ -363,7 +420,7 @@
     function draw() {
       const pa = byId[ids.a], pb = byId[ids.b];
       const pick = (s, label) => '<label class="h2h-pick"><span>' + label + '</span><select id="h-' + s + '" aria-label="' + label + '"></select></label>';
-      const readTxt = 'Sample comparison (fictional). Recruit Score difference A\u2212B: ' + ((pa.rs - pb.rs) > 0 ? '+' : '') + (pa.rs - pb.rs).toFixed(1) + '. Benchmarks are measured against the sample database averages below.';
+      const readTxt = 'Sample comparison (fictional). ' + (pa.rs == null || pb.rs == null ? 'Recruit Score difference is unavailable because a player is Not Rated.' : 'Recruit Score difference A\u2212B: ' + ((pa.rs - pb.rs) > 0 ? '+' : '') + (pa.rs - pb.rs).toFixed(1) + '.') + ' Benchmarks are measured against the sample database averages below.';
       const html = '<section class="h2h-sheet" aria-label="H2H Player Comparison">' +
         '<h2 class="h2h-title">H2H Player Comparison</h2>' +
         '<div class="h2h-top"><div class="h2h-pa">' + pick('a', 'Player A') + '</div><div class="h2h-mid">H2H</div><div class="h2h-pb">' + pick('b', 'Player B') + '</div></div>' +
@@ -442,8 +499,8 @@
     function draw() {
       const ft = $('#b-tier', root).value, fp = $('#b-pos', root).value;
       const list = board.filter((p) => (!ft || String(p.board) === ft) && (!fp || p.pos === fp)).sort((a, b) => a.board - b.board || b.pri - a.pri);
-      $('#b-table', root).innerHTML = '<caption class="visually-hidden">Recruiting board (fictional data)</caption><thead><tr>' + ['Priority Tier', 'Player Name', 'Primary Position', 'Secondary Position', 'Class', 'State', 'Athletic Score', 'Recruit Score', 'Adjusted Recruit Score', 'Priority Score', 'Confidence Score', 'Evaluation Method', 'Player Notes'].map((h) => '<th scope="col">' + h + '</th>').join('') + '</tr></thead><tbody>' +
-        list.map((p) => '<tr><td><span class="pill pill-t' + p.board + '">' + tierName[p.board] + '</span></td><td>' + cardLink(p) + '</td><td>' + p.pos + '</td><td>' + (p.sec || '&mdash;') + '</td><td>' + p.grad + '</td><td>' + p.state + '</td><td>' + num(p.ath) + '</td><td>' + num(p.rs) + '</td><td>' + num(p.adj) + '</td><td>' + p.pri + '</td><td>' + confLabel(p.conf) + '</td><td>' + p.method + '</td><td>' + esc(p.notes) + '</td></tr>').join('') + '</tbody>';
+      $('#b-table', root).innerHTML = '<caption class="visually-hidden">Recruiting board (fictional data)</caption><thead><tr>' + ['Priority Tier', 'Player Name', 'Primary Position', 'Secondary Position', 'Class', 'State', 'Athletic Score', 'Recruit Score', 'Tier', 'Confidence', 'Adjusted Recruit Score', 'Priority Score', 'Evaluation Method', 'Player Notes'].map((h) => '<th scope="col">' + h + '</th>').join('') + '</tr></thead><tbody>' +
+        list.map((p) => '<tr><td><span class="pill pill-t' + p.board + '">' + tierName[p.board] + '</span></td><td>' + cardLink(p) + '</td><td>' + p.pos + '</td><td>' + (p.sec || '&mdash;') + '</td><td>' + p.grad + '</td><td>' + p.state + '</td><td>' + num(p.ath) + '</td><td class="rd-num">' + TRC.formatRecruitScore(p.rs) + '</td><td>' + tierBadge(p) + '</td><td>' + confBadge(p) + '</td><td>' + rk(p.adj) + '</td><td>' + p.pri + '</td><td>' + p.method + '</td><td>' + esc(p.notes) + '</td></tr>').join('') + '</tbody>';
     }
     root.addEventListener('change', draw);
     draw();
@@ -451,7 +508,7 @@
 
   function schoolStats() {
     const m = groupBy(players.filter((p) => p.committed), 'committed');
-    return Object.keys(m).map((s) => ({ school: s, n: m[s].length, rs: avgOf('rs', m[s]), opg: avgOf('opg', m[s]), dpg: avgOf('dpg', m[s]), ppg: avgOf('ppg', m[s]), elite: m[s].filter((p) => p.tier === 'Elite').length })).sort((a, b) => b.rs - a.rs);
+    return Object.keys(m).map((s) => ({ school: s, n: m[s].length, rs: avgOf('rs', m[s]), opg: avgOf('opg', m[s]), dpg: avgOf('dpg', m[s]), ppg: avgOf('ppg', m[s]), plat: m[s].filter((p) => p.tier === 'Platinum').length })).sort((a, b) => b.rs - a.rs);
   }
   const schoolRows = (list) => list.map((s, i) => '<tr><th scope="row">#' + (i + 1) + ' School</th><td>' + esc(s.school) + '</td><td>' + s.n + '</td><td>' + num(s.rs) + '</td></tr>');
 
@@ -461,8 +518,8 @@
     const posRows = POS.map((x) => tr([x, list.filter((p) => p.pos === x).length]));
     root.innerHTML =
       '<div class="kpi-row">' + kpi('Total Commitments', list.length) + kpi('Avg Recruit Score', num(avgOf('rs', list))) + kpi('Avg Adjusted Recruit Score', num(avgOf('adj', list))) + kpi('Highest Recruit Score', num(best('rs', list).rs)) + '</div>' +
-      '<div class="table-wrap"><table><caption class="visually-hidden">Commitments (fictional data)</caption><thead><tr>' + ['Player Name', 'Primary Position', 'Secondary Position', 'Class', 'State', 'Athletic Score', 'Recruit Score', 'Adjusted Recruit Score', 'Confidence Score', 'Committed School', 'Commitment Date', 'Evaluation Method', 'Player Notes'].map((h) => '<th scope="col">' + h + '</th>').join('') + '</tr></thead><tbody>' +
-      list.map((p) => '<tr><td>' + cardLink(p) + '</td><td>' + p.pos + '</td><td>' + (p.sec || '&mdash;') + '</td><td>' + p.grad + '</td><td>' + p.state + '</td><td>' + num(p.ath) + '</td><td>' + num(p.rs) + '</td><td>' + num(p.adj) + '</td><td>' + confLabel(p.conf) + '</td><td>' + esc(p.committed) + '</td><td>' + p.commitDate + '</td><td>' + p.method + '</td><td>' + esc(p.notes) + '</td></tr>').join('') + '</tbody></table></div>' +
+      '<div class="table-wrap"><table><caption class="visually-hidden">Commitments (fictional data)</caption><thead><tr>' + ['Player Name', 'Primary Position', 'Secondary Position', 'Class', 'State', 'Athletic Score', 'Recruit Score', 'Tier', 'Confidence', 'Adjusted Recruit Score', 'Committed School', 'Commitment Date', 'Evaluation Method', 'Player Notes'].map((h) => '<th scope="col">' + h + '</th>').join('') + '</tr></thead><tbody>' +
+      list.map((p) => '<tr><td>' + cardLink(p) + '</td><td>' + p.pos + '</td><td>' + (p.sec || '&mdash;') + '</td><td>' + p.grad + '</td><td>' + p.state + '</td><td>' + num(p.ath) + '</td><td class="rd-num">' + TRC.formatRecruitScore(p.rs) + '</td><td>' + tierBadge(p) + '</td><td>' + confBadge(p) + '</td><td>' + rk(p.adj) + '</td><td>' + esc(p.committed) + '</td><td>' + p.commitDate + '</td><td>' + p.method + '</td><td>' + esc(p.notes) + '</td></tr>').join('') + '</tbody></table></div>' +
       '<div class="coach-grid">' +
       card('Commitments By Position', miniTable(['Position', 'Commitments'], posRows, 'Commitments by position')) +
       card('Commitment Quality', miniTable(['Measure', 'Player', 'Value'], [
@@ -492,7 +549,7 @@
       return card(x + ' Position Leaders', miniTable(['Leader', 'Player', 'Value'], rows, x + ' position leaders'));
     }).join('');
     root.innerHTML =
-      '<div class="kpi-row">' + kpi('Total Players', db.total) + kpi('Avg Recruit Score', num(db.avgRS)) + kpi('Avg Confidence %', num(db.avgConf) + '%') + kpi('Elite Players', players.filter((p) => p.tier === 'Elite').length) + kpi('High-End Players', players.filter((p) => p.tier === 'High-End').length) + kpi('Target Players', players.filter((p) => p.tier === 'Target').length) + '</div>' +
+      '<div class="kpi-row">' + kpi('Total Players', db.total) + kpi('Avg Recruit Score', num(db.avgRS)) + kpi('Avg Confidence %', num(db.avgConf) + '%') + kpi('Platinum Players', players.filter((p) => p.tier === 'Platinum').length) + kpi('Gold Players', players.filter((p) => p.tier === 'Gold').length) + kpi('Not Rated Players', players.filter((p) => p.tier === 'Not Rated').length) + '</div>' +
       '<h2 class="coach-h2">Top Performers</h2><div class="coach-grid">' +
       card('Top Performers', miniTable(['Leader', 'Player', 'Value'], [leader('Highest Recruit Score', 'rs'), leader('Highest Athletic Score', 'ath'), leader('Highest OPG', 'opg'), leader('Highest DPG', 'dpg'), leader('Highest SOPG', 'sopg'), leader('Highest SDPG', 'sdpg'), leader('Highest PPG', 'ppg'), leader('Highest Avg EV', 'avgEV'), leader('Highest Max EV', 'maxEV'), leader('Highest Avg FBV', 'avgFBV'), leader('Highest Max FBV', 'maxFBV'), leader('Fastest 60 Time', 't60', null, true, 2)], 'Top performers')) +
       card('Database Benchmarks', miniTable(['Metric', 'Value'], [tr(['Avg Recruit Score', num(db.avgRS)]), tr(['Avg Athletic Score', num(db.avgAth)]), tr(['Avg DPG', num(avgOf('dpg'))]), tr(['Avg PPG', num(avgOf('ppg'))]), tr(['Avg EV', num(avgOf('avgEV'))]), tr(['Avg Max EV', num(avgOf('maxEV'))]), tr(['Avg FBV', num(avgOf('avgFBV'))]), tr(['Avg Max FBV', num(avgOf('maxFBV'))]), tr(['Avg 60 Time', num(avgOf('t60'), 2)])], 'Database benchmarks')) +
@@ -504,7 +561,7 @@
 
   pages.regional = (root) => {
     const gs = groupBy(players, 'state');
-    const stats = Object.keys(gs).map((s) => { const l = gs[s]; return { state: s, n: l.length, elite: l.filter((p) => p.tier === 'Elite').length, high: l.filter((p) => p.tier === 'High-End').length, rs: avgOf('rs', l), opg: avgOf('opg', l), dpg: avgOf('dpg', l), ppg: avgOf('ppg', l), l: l }; });
+    const stats = Object.keys(gs).map((s) => { const l = gs[s]; return { state: s, n: l.length, elite: l.filter((p) => p.tier === 'Platinum').length, high: l.filter((p) => p.tier === 'Gold').length, rs: avgOf('rs', l), opg: avgOf('opg', l), dpg: avgOf('dpg', l), ppg: avgOf('ppg', l), l: l }; });
     const rank = (k, list, title) => card(title, miniTable(['Rank', 'State', 'Value', 'Players'], list.filter((s) => s[k] != null).sort((a, b) => b[k] - a[k]).map((s, i) => '<tr><th scope="row">#' + (i + 1) + ' State</th><td>' + s.state + '</td><td>' + (Number.isInteger(s[k]) ? s[k] : num(s[k])) + '</td><td>' + s.n + '</td></tr>'), title));
     const sch = schoolStats();
     const schRank = (k, title) => card(title, miniTable(['Rank', 'School', 'Value'], sch.filter((s) => s[k] != null).slice().sort((a, b) => b[k] - a[k]).map((s, i) => '<tr><th scope="row">#' + (i + 1) + ' School</th><td>' + esc(s.school) + '</td><td>' + num(s[k]) + '</td></tr>'), title));
@@ -513,10 +570,10 @@
     root.innerHTML =
       '<div class="coach-grid">' +
       rank('rs', stats, 'State Rankings By Avg Recruit Score') + rank('opg', stats, 'State Rankings By Avg OPG') + rank('dpg', stats, 'State Rankings By Avg DPG') + rank('ppg', stats, 'State Rankings By Avg PPG') +
-      rank('elite', stats, 'States With The Most Elite Players') +
+      rank('elite', stats, 'States With The Most Platinum Players') +
       schRank('rs', 'College Rankings By Avg Recruit Score') + schRank('opg', 'College Rankings By Avg OPG') + schRank('dpg', 'College Rankings By Avg DPG') + schRank('ppg', 'College Rankings By Avg PPG') +
       card('Regional Position Leaders By Avg Recruit Score', miniTable(['Best State For', 'State (Avg Recruit Score)'], POS.filter((x) => x !== 'P').map((x) => tr([x, bestState(x)])).concat([tr(['P', bestState('P')])]), 'Regional position leaders')) +
-      card('Talent Concentration', miniTable(['Measure', 'State (Value)'], [tr(['Most Players', top('n')]), tr(['Most Elite Players', top('elite')]), tr(['Most High-End Players', top('high')]), tr(['Highest Avg Recruit Score', top('rs')]), tr(['Highest Avg OPG', top('opg')]), tr(['Highest Avg DPG', top('dpg')]), tr(['Highest Avg PPG', top('ppg')])], 'Talent concentration')) +
+      card('Talent Concentration', miniTable(['Measure', 'State (Value)'], [tr(['Most Players', top('n')]), tr(['Most Platinum Players', top('elite')]), tr(['Most Gold Players', top('high')]), tr(['Highest Avg Recruit Score', top('rs')]), tr(['Highest Avg OPG', top('opg')]), tr(['Highest Avg DPG', top('dpg')]), tr(['Highest Avg PPG', top('ppg')])], 'Talent concentration')) +
       '</div>' + theRead('Regional views show where talent concentrates in the fictional sample. College rankings use the average of each school\u2019s fictional commits.');
   };
 
@@ -596,6 +653,7 @@
       card('Contact And Dead Period Reminders', '<ul class="dept-list"><li>Contact, evaluation, quiet, and dead periods differ by sport and governing body.</li><li>Check your official calendar before scheduling any visit or contact.</li><li>Add your own dates to this calendar once real scheduling is built (roadmap).</li></ul><p class="coach-note">These are reminders, not rules. THE READ does not provide compliance advice.</p>') +
       '</div>' + coachLink + deptBanner('Schedule (fictional): one calendar across programs, with reminders to confirm contact and dead periods.');
   };
+  window.TheReadCoach = { players: players, rankingRowHtml: rankingRowHtml };
   document.addEventListener('DOMContentLoaded', () => {
     const root = document.getElementById('coach-app');
     const page = document.body.dataset.coachPage;

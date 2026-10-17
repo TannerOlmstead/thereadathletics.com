@@ -97,10 +97,21 @@ This site is plain HTML/CSS/JS with no build step. There is **no backend**: form
 - [ ] Per-sport scoring formulas for sports beyond baseball
 - [ ] Real Master Database, accounts, and private team layers (shared database + private team data)
 
+## Recruit Score, Player Tier, And Confidence system
+
+- [x] Shared `classification.js` module: tier and confidence config, validation, formatting, sort and filter helpers, accessible badge renderers
+- [x] Tiers: Platinum 95.0+, Gold 85.0+, Silver 70.0+, Bronze below 70.0, Not Rated when missing; derived from the full stored score before rounding (replaces the old Elite/High-End/Target labels)
+- [x] Confidence levels: High 90.0%+, Medium 60.0%+, Low below 60.0%, Unknown when missing
+- [x] Rankings: Recruit Score | Tier | Confidence columns, multi-select filters, Reset, semantic sorting, empty state, mobile card layout
+- [x] Player Card, H2H (Confidence is never a talent winner), dashboard, board, commitments, analytics, regional insights, product preview, and scoring copy use the shared module
+- [x] `tests.html` runs all boundary, validation, color, label, sort, filter, and sample-data tests
+- [ ] Server-side derivation, persistence, and API validation of Tier and Confidence (documented for a future backend)
+
 ## Open decisions (from the owner workbook; not built)
 
 - [ ] Final weights for OPG, SOPG, DPG, SDPG, PPG and whether height is position-adjusted in Athletic Score
-- [ ] How many metrics are expected for Confidence, and the final Low/Medium/High thresholds
+- [x] Confidence thresholds decided by the owner spec: High 90.0%+, Medium 60.0%+, Low below 60.0%, Unknown when missing (see Recruit Score, Player Tier, and Confidence system)
+- [ ] How many metrics are expected for Confidence to be 100%
 - [ ] Priority Score weights (Recruit Score, Coach Fit, Confidence, Adjusted Recruit Score)
 - [ ] Two-way players: manual vs automatic detection, how OPG/DPG/PPG interact, and a future two-way ranking
 - [ ] Whether multiple versions of AI-generated summaries should exist

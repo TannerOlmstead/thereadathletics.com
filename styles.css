@@ -1848,3 +1848,45 @@ tbody th, .coach-card tbody th { background: #f1f4fa; color: var(--navy); text-t
 .h2h-avgs { border: 1px solid #cfd6e6; border-top: 4px solid var(--navy); padding: 1rem; margin-bottom: 1rem; background: #fff; }
 .h2h-avgs h3 { margin: 0 0 .4rem; color: var(--navy); }
 .h2h-avgs .h2h-ai-tag { margin: 0 0 .6rem; }
+/* Recruit Score, Player Tier, Confidence badges (shared classification.js) */
+.rd-badge { display: inline-flex; align-items: center; gap: 6px; min-height: 28px; padding: 0 10px; border-radius: 999px; border: 1px solid; font-weight: 600; font-size: .85rem; line-height: 1; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.rd-badge:focus-visible { outline: 3px solid var(--navy); outline-offset: 2px; }
+.rd-badge.rd-large { min-height: 34px; padding: 0 14px; font-size: 1rem; font-weight: 700; }
+.rd-dot { width: 9px; height: 9px; border-radius: 50%; background: currentColor; flex: none; }
+.rd-num { text-align: right; font-variant-numeric: tabular-nums; }
+.rd-multi { border: 1px solid #c9d0de; border-radius: 6px; padding: 6px 10px; margin: 0; display: flex; flex-wrap: wrap; gap: 4px 12px; align-items: center; }
+.rd-multi legend { font-weight: 700; font-size: .8rem; text-transform: uppercase; letter-spacing: .08em; color: var(--navy); padding: 0 4px; }
+.rd-check { display: inline-flex; align-items: center; gap: 4px; font-size: .9rem; min-height: 28px; }
+.rd-check input { width: 18px; height: 18px; }
+.rd-legend { margin: 1.2rem 1rem; padding: 12px 16px; border-left: 4px solid var(--scarlet); background: #f6f8fc; }
+.rd-legend h2 { font-size: 1rem; margin: 0 0 .4rem; }
+.rd-legend ul { margin: 0; padding-left: 1.1rem; font-size: .9rem; color: #3b4660; }
+.rd-empty td { text-align: center; padding: 28px 12px; }
+.rd-mobile-meta { display: none; color: #3b4660; font-size: .8rem; }
+.rd-triple .rd-badge { margin-top: 2px; }
+@media (max-width: 760px) {
+  #r-table, #r-table tbody { display: block; }
+  #r-table thead { display: none; }
+  #r-table tr { display: grid; grid-template-columns: 1fr auto; gap: 6px 10px; padding: 12px; margin: 0 0 12px; border: 1px solid #c9d0de; border-radius: 8px; background: #fff; }
+  #r-table td, #r-table th { border: 0; padding: 0; text-align: left; }
+  #r-table .c-name { grid-column: 1; font-size: 1.05rem; }
+  #r-table .c-rs { grid-column: 2; grid-row: 1; font-size: 1.2rem; font-weight: 700; text-align: right; }
+  #r-table .c-tier, #r-table .c-conf { grid-column: 1 / -1; }
+  #r-table .c-rank, #r-table .c-crank, #r-table .c-grade { grid-column: 1 / -1; font-size: .85rem; }
+  #r-table .c-rank::before, #r-table .c-crank::before, #r-table .c-grade::before { content: attr(data-label) ": "; font-weight: 700; }
+  #r-table .c-grad, #r-table .c-pos, #r-table .c-sec { display: none; }
+  #r-table .rd-mobile-meta { display: block; }
+  #r-table .rd-empty { display: block; }
+  #r-table .rd-empty td { grid-column: 1 / -1; display: block; }
+}.controls .rd-check { display: inline-flex; flex-direction: row; align-items: center; gap: 6px; text-transform: none; letter-spacing: 0; font-weight: 600; }
+.controls .rd-check input { width: 18px; height: 18px; margin: 0; flex: none; }
+.controls .rd-multi { flex-direction: row; }
+.rd-table { font-size: .88rem; }
+.rd-table th, .rd-table td { padding: 8px 8px; }
+.rd-table .c-name a { white-space: nowrap; }
+.rd-table .rd-badge { font-size: .8rem; padding: 0 8px; }.controls .rd-check { width: auto; flex: 0 0 auto; justify-content: flex-start; margin: 0; }
+.controls .rd-check span { flex: none; }
+@media (max-width: 760px) {
+  #r-table .c-name { grid-row: 1; background: transparent; }
+  #r-table .c-rs { grid-row: 1; }
+}

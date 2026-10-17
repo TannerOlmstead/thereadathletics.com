@@ -43,7 +43,22 @@ Static recruiting-intelligence website for athletes, independent recruiting prof
 - The sport guide and FAQ use native expand/collapse sections; the sport guide also has Expand all / Collapse all.
 - The header collapses to a Menu button on small screens. The footer year is filled in automatically.
 
+## Recruit Score, Player Tier, And Confidence
+
+All logic lives in one shared module, `classification.js` (`window.TheReadClassification`). Pages call it; thresholds and colors are never duplicated.
+
+- **Recruit Score** is 0.0-100.0, shown with one decimal. Missing is shown as an em dash, never 0. Out-of-range values throw (`RangeError`/`TypeError`) and are never clamped.
+- **Player Tier** uses the full stored score before rounding: 95.0+ Platinum, 85.0+ Gold, 70.0+ Silver, below 70.0 Bronze, missing = Not Rated (never Bronze). Stored 94.96 displays 95.0 but is Gold.
+- **Confidence** uses the full stored percentage: 90.0%+ High, 60.0%+ Medium, below 60.0% Low, missing = Unknown (never Low). Stored 89.96% displays 90.0% but is Medium.
+- Tier and Confidence are separate badges and columns (Recruit Score | Tier | Confidence), with visible labels, accessible names, and tooltips. Color is never the only signal and never fills a whole cell or row.
+- Tier sorts semantically (Platinum, Gold, Silver, Bronze, Not Rated last in both directions); Confidence sorts by percentage with Unknown last. Tier and Confidence filters are multi-select (OR within a group, AND across groups and search).
+- Staff Score, Coach Fit, Team Need, Adjusted Recruit Score, Priority Score, GPA, Confidence, and payment/founding status never change Tier. H2H and THE READ summaries never call a player more talented because of higher Confidence.
+- Tests: open `tests.html` in a browser (runs `classification.tests.js` plus sample-data checks). No Node or build step is needed.
+- Server-side derivation, storage rules, and API validation are documented for a future backend; this static site derives everything in the browser from sample data.
+
 ## Files
+
+- `classification.js` and `classification.tests.js` - shared Tier/Confidence/Recruit Score module and its tests (`tests.html`).
 
 - `styles.css` — bright scarlet (#E41E3F), navy, and white design system (Barlow Condensed + Inter fonts, notched-corner buttons and tiles), responsive.
 - `coach.js` — fictional sample data and rendering for the coach workspace and department pages (sorting, filters, H2H).

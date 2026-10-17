@@ -1568,3 +1568,19 @@ th { background: var(--navy); color: var(--white); text-transform: uppercase; le
 @media (max-width: 360px) {
   .wordmark-sub { display: none; }
 }
+
+/* ---------- More navy balance ---------- */
+.page-hero { background: linear-gradient(135deg, var(--navy-dark) 0%, var(--navy) 100%); border-bottom: 4px solid var(--scarlet); }
+.page-hero h1 { color: var(--white); }
+.page-hero h1 .tr, .page-hero .tr { color: #FF5A78; }
+.page-hero p { color: rgba(255, 255, 255, 0.88); }
+.page-hero .eyebrow { background: none; border-color: var(--scarlet); color: var(--white); }
+.page-hero a:not(.button) { color: var(--white); text-decoration: underline; }
+.page-hero .button-secondary { background: transparent; color: var(--white); border-color: var(--white); }
+.page-hero .button-secondary:hover { background: var(--white); color: var(--navy); }
+.page-hero :focus-visible { outline-color: var(--white); }
+.sport-strip { background: var(--navy); border-top: 4px solid var(--scarlet); padding: 2rem 0 2.4rem; }
+.section-alt { background: #E9EDF6; }
+.section-alt .card, .section-alt .feature-card, .section-alt .score-card { background: var(--white); }
+.section-dark h2, .section-dark h3 { color: var(--white); }details.expand > summary { display: block; position: relative; padding-right: 3.2rem; }
+details.expand > summary::after { position: absolute; right: 1.3rem; top: 50%; transform: translateY(-50%); }

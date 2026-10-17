@@ -73,6 +73,11 @@ This site is plain HTML/CSS/JS with no build step. There is **no backend**: form
 - [x] Homepage hero data labeled as a sample (later removed entirely, along with the homepage stats bar, so no sample numbers appear on the homepage)
 - [x] Visual redesign: bright scarlet nav bar, notched-corner buttons, bold condensed italic headings, homepage sport tiles, bold scarlet "THE READ", shared mobile nav
 
+- [x] Coach workspace preview (fictional baseball data, shared sub-navigation): dashboard, rankings (sortable/filterable), player card, H2H, team needs, coach fit, recruiting board, commitments, analytics, and regional insights
+- [x] Department Overview page for athletic directors (who is recruiting whom, recruiting schedule, program needs) with links to the coach workspace from the institution signup page, header, and footer
+- [x] Owner-only page (`owner.html`): unlinked, noindex, encrypted content behind an owner passphrase; internal reference material is kept off all public pages
+- [x] "For Coaches" header link added to every page
+
 ## Next up (not started)
 
 - [ ] Lawyer review of privacy and terms
@@ -82,3 +87,21 @@ This site is plain HTML/CSS/JS with no build step. There is **no backend**: form
 - [ ] Final scoring formulas and weights
 - [ ] Self-hosted fonts and analytics decision
 - [ ] Add a social-share image and per-page Open Graph tags
+- [ ] Data import (bulk upload of evaluations/measurables into the shared database)
+- [ ] Per-sport scoring formulas for sports beyond baseball
+- [ ] Real Master Database, accounts, and private team layers (shared database + private team data)
+
+## Open decisions (from the owner workbook; not built)
+
+- [ ] Final weights for OPG, SOPG, DPG, SDPG, PPG and whether height is position-adjusted in Athletic Score
+- [ ] How many metrics are expected for Confidence, and the final Low/Medium/High thresholds
+- [ ] Priority Score weights (Recruit Score, Coach Fit, Confidence, Adjusted Recruit Score)
+- [ ] Two-way players: manual vs automatic detection, how OPG/DPG/PPG interact, and a future two-way ranking
+- [ ] Whether multiple versions of AI-generated summaries should exist
+
+## Future ideas (not built)
+
+- [ ] AI-generated "THE READ" summaries on Player Card, H2H, Dashboard, Analytics, and Regional Insights
+- [ ] Subscription tiers: College, High School, and Summer Ball
+- [ ] Pricing model questions: free version, premium version, team subscriptions
+- [ ] Player Profiles and Coach Profiles

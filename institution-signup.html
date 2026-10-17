@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Request THE READ access for your athletic department." />
+    <title>Institution Access | THE READ Athletics</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="container nav-wrap">
+        <a class="brand" href="index.html" aria-label="THE READ Athletics home">
+          <span class="brand-mark" aria-hidden="true">TR</span>
+          <span class="wordmark"><span class="wordmark-main">THE READ</span><span class="wordmark-sub">ATHLETICS</span></span>
+        </a>
+        <nav class="main-nav" aria-label="Main navigation"><a href="index.html#platform">Platform</a><a href="sport-guide.html">Sport guide</a></nav>
+        <div class="nav-actions"><a class="button button-secondary" href="index.html">Back to home</a></div>
+      </div>
+    </header>
+    <main>
+      <section class="page-hero">
+        <div class="container">
+          <div class="eyebrow">Institution access</div>
+          <h1>Bring your athletic department into the conversation.</h1>
+          <p>Share your department’s needs or request an upgrade from an individual workspace. This form prepares an email; it does not create an account.</p>
+        </div>
+      </section>
+      <section class="content-section">
+        <div class="container">
+          <form class="form-card" data-request-form data-subject="THE READ institution access request">
+            <div class="form-grid">
+              <div class="field">
+                <label for="name">Your full name</label>
+                <input id="name" name="name" autocomplete="name" required />
+              </div>
+              <div class="field">
+                <label for="email">Work email</label>
+                <input id="email" name="email" type="email" autocomplete="email" required />
+              </div>
+              <div class="field">
+                <label for="institution">Institution</label>
+                <input id="institution" name="institution" autocomplete="organization" required />
+              </div>
+              <div class="field">
+                <label for="title">Job title</label>
+                <input id="title" name="title" required />
+              </div>
+              <div class="field">
+                <label for="role">Requested role</label>
+                <select id="role" name="role" required>
+                  <option value="">Choose a role</option>
+                  <option>School Admin</option><option>Athletic Director</option><option>Coach</option><option>Recruiting Staff</option><option>Other</option>
+                </select>
+              </div>
+              <div class="field">
+                <label for="application">Request type</label>
+                <select id="application" name="application" required>
+                  <option value="new">New institution access</option>
+                  <option value="upgrade">Upgrade an individual account</option>
+                </select>
+              </div>
+              <div class="field">
+                <label for="phone">Phone (optional)</label>
+                <input id="phone" name="phone" type="tel" autocomplete="tel" />
+              </div>
+              <div class="field field-full">
+                <fieldset data-sport-group>
+                  <legend>Sports of interest <span aria-hidden="true">*</span></legend>
+                  <label class="inline-choice"><input type="checkbox" data-select-all /> Select all sports</label>
+                  <div class="choice-grid">
+                    <label><input type="checkbox" name="sports" value="Baseball" /> Baseball</label>
+                    <label><input type="checkbox" name="sports" value="Basketball" /> Basketball</label>
+                    <label><input type="checkbox" name="sports" value="Football" /> Football</label>
+                    <label><input type="checkbox" name="sports" value="Soccer" /> Soccer</label>
+                    <label><input type="checkbox" name="sports" value="Softball" /> Softball</label>
+                    <label><input type="checkbox" name="sports" value="Volleyball" /> Volleyball</label>
+                    <label><input type="checkbox" name="sports" value="Track & Field" /> Track &amp; field</label>
+                    <label><input type="checkbox" name="sports" value="Lacrosse" /> Lacrosse</label>
+                  </div>
+                </fieldset>
+              </div>
+              <div class="field field-full">
+                <label for="details">How can THE READ support your program?</label>
+                <textarea id="details" name="details"></textarea>
+              </div>
+            </div>
+            <p class="form-note">Your request is prepared in your email app for hello@thereadathletics.com. This website does not store or submit your data.</p>
+            <button class="button button-primary" type="submit">Prepare email request</button>
+          </form>
+        </div>
+      </section>
+    </main>
+    <footer class="site-footer"><div class="container footer-inner"><p>© <span data-current-year></span> THE READ Athletics</p><a href="mailto:hello@thereadathletics.com">hello@thereadathletics.com</a></div></footer>
+    <script src="script.js"></script>
+  </body>
+</html>

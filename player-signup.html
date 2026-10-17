@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Request an athlete profile with THE READ Athletics." />
+    <title>Athlete Profile | THE READ Athletics</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="container nav-wrap">
+        <a class="brand" href="index.html" aria-label="THE READ Athletics home">
+          <span class="brand-mark" aria-hidden="true">TR</span>
+          <span class="wordmark"><span class="wordmark-main">THE READ</span><span class="wordmark-sub">ATHLETICS</span></span>
+        </a>
+        <nav class="main-nav" aria-label="Main navigation"><a href="index.html#platform">Platform</a><a href="sport-guide.html">Sport guide</a></nav>
+        <div class="nav-actions"><a class="button button-secondary" href="index.html">Back to home</a></div>
+      </div>
+    </header>
+    <main>
+      <section class="page-hero">
+        <div class="container">
+          <div class="eyebrow">Athlete profile request</div>
+          <h1>Start with the details that make your profile yours.</h1>
+          <p>Share your sport, positions, graduation year, and the college opportunities you’re interested in.</p>
+        </div>
+      </section>
+      <section class="content-section">
+        <div class="container">
+          <form class="form-card" data-request-form data-subject="THE READ athlete profile request">
+            <div class="form-grid">
+              <div class="field">
+                <label for="name">Athlete full name</label>
+                <input id="name" name="name" autocomplete="name" required />
+              </div>
+              <div class="field">
+                <label for="email">Email address</label>
+                <input id="email" name="email" type="email" autocomplete="email" required />
+              </div>
+              <div class="field">
+                <label for="graduation-year">High school graduation year</label>
+                <select id="graduation-year" name="graduation year" required>
+                  <option value="">Choose a year</option>
+                  <option>2026</option><option>2027</option><option>2028</option><option>2029</option><option>2030</option>
+                  <option>2031</option><option>2032</option><option>2033</option><option>2034</option><option>2035</option>
+                </select>
+              </div>
+              <div class="field">
+                <label for="school">High school or club (optional)</label>
+                <input id="school" name="school" />
+              </div>
+              <div class="field field-full">
+                <fieldset data-sport-group>
+                  <legend>Sports</legend>
+                  <div class="choice-grid">
+                    <label><input type="checkbox" name="sports" value="Baseball" /> Baseball</label>
+                    <label><input type="checkbox" name="sports" value="Basketball" /> Basketball</label>
+                    <label><input type="checkbox" name="sports" value="Football" /> Football</label>
+                    <label><input type="checkbox" name="sports" value="Soccer" /> Soccer</label>
+                    <label><input type="checkbox" name="sports" value="Softball" /> Softball</label>
+                    <label><input type="checkbox" name="sports" value="Volleyball" /> Volleyball</label>
+                    <label><input type="checkbox" name="sports" value="Track & Field" /> Track &amp; field</label>
+                    <label><input type="checkbox" name="sports" value="Lacrosse" /> Lacrosse</label>
+                  </div>
+                </fieldset>
+              </div>
+              <div class="field field-full">
+                <label for="positions">Positions or events</label>
+                <input id="positions" name="positions" placeholder="For example: shortstop, 100m, goalkeeper" required />
+              </div>
+              <div class="field field-full">
+                <label for="college-role">College role preferences</label>
+                <select id="college-role" name="college role preference" required>
+                  <option value="">Choose what you’re looking for</option>
+                  <option>Varsity roster opportunity</option><option>Developmental program</option><option>Any college opportunity</option><option>Still exploring</option>
+                </select>
+              </div>
+            </div>
+            <p class="form-note">This request opens a prefilled email for you to review and send. No account is created and the website does not store your information.</p>
+            <button class="button button-primary" type="submit">Prepare email request</button>
+          </form>
+        </div>
+      </section>
+    </main>
+    <footer class="site-footer"><div class="container footer-inner"><p>© <span data-current-year></span> THE READ Athletics</p><a href="mailto:hello@thereadathletics.com">hello@thereadathletics.com</a></div></footer>
+    <script src="script.js"></script>
+  </body>
+</html>

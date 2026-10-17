@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Request an individual THE READ workspace for coaches, scouts, instructors, and evaluators." />
+    <title>Individual Access | THE READ Athletics</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="container nav-wrap">
+        <a class="brand" href="index.html" aria-label="THE READ Athletics home">
+          <span class="brand-mark" aria-hidden="true">TR</span>
+          <span class="wordmark"><span class="wordmark-main">THE READ</span><span class="wordmark-sub">ATHLETICS</span></span>
+        </a>
+        <nav class="main-nav" aria-label="Main navigation">
+          <a href="index.html#platform">Platform</a><a href="sport-guide.html">Sport guide</a>
+        </nav>
+        <div class="nav-actions"><a class="button button-secondary" href="index.html">Back to home</a></div>
+      </div>
+    </header>
+    <main>
+      <section class="page-hero">
+        <div class="container">
+          <div class="eyebrow">Individual access</div>
+          <h1>A workspace built around your recruiting work.</h1>
+          <p>Tell us a little about yourself. This request opens a prefilled email for you to review and send.</p>
+        </div>
+      </section>
+      <section class="content-section">
+        <div class="container">
+          <form class="form-card" data-request-form data-subject="Individual THE READ workspace request">
+            <div class="form-grid">
+              <div class="field">
+                <label for="name">Full name</label>
+                <input id="name" name="name" autocomplete="name" required />
+              </div>
+              <div class="field">
+                <label for="email">Email address</label>
+                <input id="email" name="email" type="email" autocomplete="email" required />
+              </div>
+              <div class="field">
+                <label for="role">Your role</label>
+                <select id="role" name="role" required>
+                  <option value="">Choose a role</option>
+                  <option>Coach</option><option>Scout</option><option>Instructor</option><option>Evaluator</option>
+                </select>
+              </div>
+              <div class="field">
+                <label for="organization">Organization or affiliation</label>
+                <input id="organization" name="organization" autocomplete="organization" required />
+              </div>
+              <div class="field field-full">
+                <fieldset data-sport-group>
+                  <legend>Primary sport</legend>
+                  <div class="choice-grid">
+                    <label><input type="checkbox" name="sports" value="Baseball" /> Baseball</label>
+                    <label><input type="checkbox" name="sports" value="Basketball" /> Basketball</label>
+                    <label><input type="checkbox" name="sports" value="Football" /> Football</label>
+                    <label><input type="checkbox" name="sports" value="Soccer" /> Soccer</label>
+                    <label><input type="checkbox" name="sports" value="Softball" /> Softball</label>
+                    <label><input type="checkbox" name="sports" value="Volleyball" /> Volleyball</label>
+                    <label><input type="checkbox" name="sports" value="Track & Field" /> Track &amp; field</label>
+                    <label><input type="checkbox" name="sports" value="Lacrosse" /> Lacrosse</label>
+                  </div>
+                </fieldset>
+              </div>
+              <div class="field field-full">
+                <label for="goals">What would you like to use THE READ for?</label>
+                <textarea id="goals" name="goals" placeholder="Tell us about your recruiting or evaluation workflow."></textarea>
+              </div>
+            </div>
+            <p class="form-note">No account is created and your information is not stored on this website. Your email app will open with this request filled in.</p>
+            <button class="button button-primary" type="submit">Prepare email request</button>
+          </form>
+        </div>
+      </section>
+    </main>
+    <footer class="site-footer"><div class="container footer-inner"><p>© <span data-current-year></span> THE READ Athletics</p><a href="mailto:hello@thereadathletics.com">hello@thereadathletics.com</a></div></footer>
+    <script src="script.js"></script>
+  </body>
+</html>

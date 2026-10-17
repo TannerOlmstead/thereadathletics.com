@@ -20,12 +20,10 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     const sportChecks = Array.from(form.querySelectorAll('[name="sports"]'));
-    const sportGroup = form.querySelector('[data-sport-group]');
     const updateSportValidity = () => {
-      if (sportGroup) {
-        sportGroup.setCustomValidity(sportChecks.some((input) => input.checked)
-          ? ''
-          : 'Select at least one sport.');
+      if (sportChecks.length > 0) {
+        sportChecks[0].setCustomValidity(sportChecks.some((input) => input.checked)
+          ? '' : 'Select at least one sport.');
       }
     };
     sportChecks.forEach((input) => input.addEventListener('change', updateSportValidity));
@@ -49,7 +47,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
       const data = new FormData(form);
       const lines = Array.from(data.entries())
-        .filter(([key]) => key !== 'email')
+        .filter(([key]) => key !== 'email' && key !== 'name')
         .map(([key, value]) => `${key}: ${value}`);
       const email = String(data.get('email') || '');
       const subject = form.dataset.subject || 'THE READ access request';

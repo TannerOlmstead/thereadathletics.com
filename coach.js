@@ -80,14 +80,8 @@
     if (i % 7 === 3 && p.avgFBV != null) { p.avgFBV = null; miss++; }
     if (i % 8 === 2) { if (p.maxEV != null) { p.maxEV = null; miss++; } }
     p.conf = Math.max(48, Math.min(100, Math.round(55 + 45 * r() - miss * 11)));
-    p.hc = letter(p.rs + (r() - 0.5) * 12);
-    p.pc = letter(p.rs + (r() - 0.5) * 12);
-    p.ac = letter(p.rs + (r() - 0.5) * 12);
-    p.staff = Math.round(p.rs + (r() - 0.5) * 10);
-    p.fit = Math.round(58 + 36 * r());
-    p.need = Math.round(55 + 40 * r());
-    p.adj = Math.round((p.rs + (p.fit - 75) / 10) * 10) / 10;
-    p.pri = Math.round((p.adj + p.need + p.fit) / 3 + (r() - 0.5) * 6);
+    for (let k = 0; k < 7; k++) r(); // keeps the seeded sample values below unchanged (these 7 slots used to be random scores)
+    p.hc = null; p.pc = null; p.ac = null; p.staff = null; // coach-entered opinions: blank until a coach enters them
     p.eval = '2026-' + String(1 + (i % 9)).padStart(2, '0') + '-' + String(8 + ((i * 5) % 20)).padStart(2, '0');
     p.notes = ['Quick bat, clean actions.', 'Projectable frame; needs more live looks.', 'Strong arm, still filling out.', 'Plus runner with steady defense.', 'Impact bat; verify swing data.', 'Competes well; consistent reports.'][i % 6];
     p.coach = COACHES[i % 4].id;
@@ -97,7 +91,7 @@
   // Sample edge cases so every Tier / Confidence combination (and the 94.96 / 89.96 rounding cases) appears.
   // Values are fictional; Tier and Confidence Level are always derived from these stored numbers.
   [[94.96, 89.96], [95, 90], [97.4, 72.5], [96.1, 54], [91.3, 93], [85, 60], [87.6, 41.5], [84.99, 95], [78.2, 70], [70, 59.99], [69.99, 91], [66.4, 64], [58.7, 47], [null, null], [null, null], [88, null]]
-    .forEach((v, k) => { const p = players[k]; p.rs = v[0]; p.conf = v[1]; if (v[0] == null) p.adj = null; });
+    .forEach((v, k) => { const p = players[k]; p.rs = v[0]; p.conf = v[1]; });
   // Master Database: coach-entered demo players live in this browser's localStorage and join the sample players here,
   // so every page (rankings, player card, H2H, dashboard...) reads the same list. Real storage needs a backend.
   const STORE_KEY = 'theReadDemoMasterDb';
@@ -111,6 +105,54 @@
     players.push(p);
   });
   players.forEach((p) => { p.tier = TRC.getPlayerTier(p.rs); p.confLevel = TRC.getConfidenceLevel(p.conf); p.recruitScore = p.rs; p.confidencePercentage = p.conf; });
+  // ---------- Program scores: documented formulas, no random numbers ----------
+  const PHIL_OPTS = ['Prefer Pitching', 'Prefer Position Players', 'Balanced Approach', 'Best Player Available', 'Need-Based Recruiting'];
+  const PHIL_KEY = 'theReadDemoPhilosophy';
+  const PHIL_DEFAULT = [4, 5, 1, 2, 3];
+  const validPhil = (a) => Array.isArray(a) && a.length === 5 && [1, 2, 3, 4, 5].every((n) => a.indexOf(n) >= 0);
+  const loadPhil = () => { try { const a = JSON.parse(localStorage.getItem(PHIL_KEY) || 'null'); return validPhil(a) ? a : PHIL_DEFAULT.slice(); } catch (e) { return PHIL_DEFAULT.slice(); } };
+  const PHIL = loadPhil();
+  const RW = (rank) => 6 - rank;
+  const POS_NEED = { P: 1, C: 2, SS: 3, OF: 4, '2B': 5, '3B': 6, '1B': 7 };
+  const POS_PRI = { P: 1, C: 2, SS: 3, OF: 4, '2B': 5, '3B': 6, '1B': 7 };
+  const SKILL_PRI = [['Pitching', 1, 'ppg'], ['Defense', 3, 'dpg'], ['Athleticism', 4, 'ath'], ['Speed', 6, 't60'], ['Power', 5, 'avgEV'], ['Immediate Impact', 2, 'rs'], ['Long-Term Projection', 7, null]];
+  const posScale = (rank) => 100 - 40 * (rank - 1) / 6;
+  const skillVal = (p, key) => {
+    if (key === 't60') return p.t60 == null ? null : Math.max(0, Math.min(100, (7.6 - p.t60) / 1.2 * 100));
+    if (key === 'avgEV') return p.avgEV == null ? null : Math.max(0, Math.min(100, (p.avgEV - 70) / 30 * 100));
+    return key ? p[key] : null;
+  };
+  const computeProgramScores = (p) => {
+    let need = posScale(POS_NEED[p.pos]);
+    if (p.sec && POS_NEED[p.sec]) need = Math.max(need, posScale(POS_NEED[p.sec]) - 10);
+    p.need = Math.round(need);
+    const rP = PHIL[0], rPP = PHIL[1], rBal = PHIL[2], rBPA = PHIL[3], rNeed = PHIL[4];
+    const d = RW(rP) - RW(rPP);
+    let g = 50 + (p.pos === 'P' ? 12.5 : -12.5) * d;
+    if (rBal < Math.min(rP, rPP)) g = 50;
+    const parts = [[3, posScale(POS_PRI[p.pos])], [3, g]];
+    SKILL_PRI.forEach((s) => { const v = skillVal(p, s[2]); if (v != null) parts.push([8 - s[1], v]); });
+    const sw = parts.reduce((s, x) => s + x[0], 0);
+    p.fit = Math.round(parts.reduce((s, x) => s + x[0] * x[1], 0) / sw);
+    if (p.rs == null) { p.adj = null; p.pri = null; return; }
+    p.adj = Math.round(Math.min(100, p.rs + (p.fit - 50) / 10 + (p.need - 50) / 10) * 10) / 10;
+    const wr = RW(rBPA), wn = RW(rNeed), wf = 3;
+    p.pri = Math.round((p.rs * wr + p.fit * wf + p.need * wn) / (wr + wf + wn));
+  };
+  const adjPriority = (p) => (p.rs == null || p.fit == null || p.pri == null ? null : Math.round((p.rs + p.fit + p.pri) / 3 * 10) / 10);
+  const nv = (v) => (v == null ? '&mdash;' : v);
+  players.forEach(computeProgramScores);
+  const formulaPanel = () => {
+    const rk = (i) => PHIL[i];
+    return '<section class="card coach-card wide how-calc"><h2>How This Is Calculated</h2><p class="coach-note">SAMPLE DATA / FICTIONAL EXAMPLE. Nothing here is random. Every score comes from the inputs below. If an input is missing it is skipped or the score stays blank (&mdash;); missing is never counted as 0. None of these scores can change Player Tier or Confidence.</p><ul>' +
+      '<li><strong>Team Need Score</strong> = 100 &minus; 40 &times; (position need rank &minus; 1) &divide; 6, using this program\u2019s Positional Needs ranking (1 = biggest need = 100, 7 = 60). If the player has a secondary position, the higher of the primary score and the secondary score minus 10 is used.</li>' +
+      '<li><strong>Coach Fit Score</strong> = weighted average of: position priority (same scale as above, weight 3); philosophy alignment (weight 3); and each skill priority this program ranks, scored from the player\u2019s own data (Pitching = PPG, Defense = DPG, Athleticism = Athletic Score, Speed = 60 Time scaled 7.6 s &rarr; 0 to 6.4 s &rarr; 100, Power = Avg EV scaled 70 mph &rarr; 0 to 100 mph &rarr; 100, Immediate Impact = Recruit Score), each with weight 8 &minus; its priority rank. Skills with no data for that player are skipped. Long-Term Projection has no data input yet, so it is not used.</li>' +
+      '<li><strong>Philosophy alignment</strong> = 50 + 12.5 &times; (rank weight of Prefer Pitching &minus; rank weight of Prefer Position Players) for pitchers, the reverse for position players. If Balanced Approach is ranked above both, it is 50. Rank weights: rank 1 = 5, 2 = 4, 3 = 3, 4 = 2, 5 = 1.</li>' +
+      '<li><strong>Adjusted Recruit Score</strong> = Recruit Score + (Coach Fit &minus; 50) &divide; 10 + (Team Need &minus; 50) &divide; 10, capped at 100. Blank when there is no Recruit Score.</li>' +
+      '<li><strong>Priority Score</strong> = weighted average of Recruit Score (weight = rank weight of Best Player Available, now ' + RW(rk(3)) + '), Coach Fit (fixed weight 3) and Team Need (weight = rank weight of Need-Based Recruiting, now ' + RW(rk(4)) + '). Blank when there is no Recruit Score.</li>' +
+      '<li><strong>Adjusted Priority Score</strong> (Coach Fit tab) = simple average of Recruit Score, Coach Fit Score and Priority Score. Blank if any of the three is missing.</li>' +
+      '<li><strong>Staff Score and HC / PC / AC Grades</strong> are coach-entered opinions, so they stay blank until a coach enters them.</li></ul></section>';
+  };
   players.sort((a, b) => (a.rs == null ? 1 : b.rs == null ? -1 : b.rs - a.rs) || (a.name < b.name ? -1 : 1));
   const rated = players.filter((p) => p.rs != null);
   rated.forEach((p, i) => { p.overall = i + 1; });
@@ -227,7 +269,7 @@
       '<div class="rd-legend"><h2>How To Read Recruit Score, Tier, And Confidence</h2><ul>' +
       '<li><strong>Recruit Score:</strong> ' + TRC.TEXT.recruitScoreTooltip + '</li>' +
       '<li><strong>Tier:</strong> ' + TRC.TEXT.tierTooltip + ' Platinum 95.0&ndash;100.0, Gold 85.0&ndash;94.9, Silver 70.0&ndash;84.9, Bronze 0.0&ndash;69.9, Not Rated when no Recruit Score exists. Tier uses the full stored score before rounding, so a stored 94.96 displays as 95.0 and is Gold.</li>' +
-      '<li><strong>Confidence:</strong> ' + TRC.TEXT.confidenceTooltip + ' High 90.0%&ndash;100.0%, Medium 60.0%&ndash;89.9%, Low 0.0%&ndash;59.9%, Unknown when it cannot be calculated. A stored 89.96% displays as 90.0% and is Medium. ' + TRC.TEXT.lowConfidenceTooltip + '</li></ul></div>';
+      '<li><strong>Confidence:</strong> ' + TRC.TEXT.confidenceTooltip + ' High 90.0%&ndash;100.0%, Medium 60.0%&ndash;89.9%, Low 0.0%&ndash;59.9%, Unknown when it cannot be calculated. A stored 89.96% displays as 90.0% and is Medium. ' + TRC.TEXT.lowConfidenceTooltip + '</li></ul></div>' + formulaPanel();
     const tbl = $('#r-table', root);
     const picked = (name) => Array.from(root.querySelectorAll('input[name="' + name + '"]:checked')).map((i) => i.value);
     function draw() {
@@ -300,7 +342,7 @@
         card('Recruit Score, Player Tier, And Confidence', field('Recruit Score', '<span class="rd-num" title="' + esc(TRC.TEXT.recruitScoreTooltip) + '">' + TRC.formatRecruitScore(p.rs) + '</span>') + field('Player Tier', tierBadge(p, { focusable: true, size: 'large' })) + field('Confidence', confBadge(p, { focusable: true, size: 'large' })) +
           '<p class="coach-note">' + TRC.TEXT.cardTier + ' ' + TRC.TEXT.cardConfidence + ' Missing data lowers Confidence, not Recruit Score.</p>', 'kvs rd-triple') +
         card('Grades', field('OPG', num(p.opg)) + field('SOPG', num(p.sopg)) + field('DPG', num(p.dpg)) + field('SDPG', num(p.sdpg)) + field('PPG', num(p.ppg)), 'kvs') +
-        card('Team Evaluation', field('HC Grade', p.hc) + field('PC Grade', p.pc) + field('AC Grade', p.ac) + field('Staff Score', p.staff) + field('Coach Fit Score', p.fit) + field('Team Need Score', p.need) + field('Adjusted Recruit Score', num(p.adj)) + field('Priority Score', p.pri), 'kvs') +
+        card('Team Evaluation', field('HC Grade', nv(p.hc)) + field('PC Grade', nv(p.pc)) + field('AC Grade', nv(p.ac)) + field('Staff Score', nv(p.staff)) + field('Coach Fit Score', nv(p.fit)) + field('Team Need Score', nv(p.need)) + field('Adjusted Recruit Score', num(p.adj)) + field('Priority Score', nv(p.pri)), 'kvs') +
         card('Measurables', field('Avg EV', num(p.avgEV) + ' mph') + field('Max EV', num(p.maxEV) + ' mph') + field('Avg FBV', num(p.avgFBV) + ' mph') + field('Max FBV', num(p.maxFBV) + ' mph') + field('Throwing Velo', num(p.tv) + ' mph') + field('60 Time', num(p.t60, 2) + ' s') + field('Pop Time', num(p.pop, 2) + ' s'), 'kvs') +
         card('Database Benchmarks', field('Avg EV vs Avg', bench('avgEV', p)) + field('Max EV vs Avg', bench('maxEV', p)) + field('Avg FBV vs Avg', bench('avgFBV', p)) + field('60 Time vs Avg', bench('t60', p, true, 2)) + field('Overall Standing', stand), 'kvs') +
         card('External Profile Links', field('PBR', 'Not linked in demo') + field('PG', 'Not linked in demo') + field('NCSA', 'Not linked in demo') + field('Fieldlevel', 'Not linked in demo') + field('Video', 'Not linked in demo'), 'kvs') +
@@ -412,7 +454,7 @@
       const lead = tot.a === tot.b ? 'The comparison is even overall.' : (tot.a > tot.b ? esc(pa.name) : esc(pb.name)) + ' wins more categories overall.';
       diffs.sort((x, y) => y[1] - x[1]);
       const list = (a) => (a.length ? a.join(', ') : 'none');
-      const teamLine = team.a === team.b ? 'Team Edge is even (' + team.a + '\u2013' + team.b + ').' : 'Team Edge goes to ' + esc(team.a > team.b ? pa.name : pb.name) + ' (' + Math.max(team.a, team.b) + '\u2013' + Math.min(team.a, team.b) + (team.t ? ', ' + team.t + ' tied' : '') + '), with Priority Score ' + (pa.pri === pb.pri ? 'tied' : 'favoring ' + esc(pa.pri > pb.pri ? pa.name : pb.name)) + '.';
+      const teamLine = team.a === team.b ? 'Team Edge is even (' + team.a + '\u2013' + team.b + ').' : 'Team Edge goes to ' + esc(team.a > team.b ? pa.name : pb.name) + ' (' + Math.max(team.a, team.b) + '\u2013' + Math.min(team.a, team.b) + (team.t ? ', ' + team.t + ' tied' : '') + '), with Priority Score ' + (pa.pri == null || pb.pri == null ? 'not comparable' : pa.pri === pb.pri ? 'tied' : 'favoring ' + esc(pa.pri > pb.pri ? pa.name : pb.name)) + '.';
       return '<section class="h2h-ai" aria-label="The READ AI preview"><h3><span class="tr">THE READ</span> AI</h3><p class="h2h-ai-tag">Preview Of THE READ AI &mdash; Generated From Sample Data</p>' +
         '<p class="h2h-ai-note">Rule-based text built in your browser from the selected sample players. It is not a live AI.</p>' +
         '<div class="h2h-ai-grid"><div><h4>Category Wins</h4><ul>' + per.map((p) => '<li><strong>' + p[0] + ':</strong> ' + esc(pa.name) + ' ' + p[1].a + ' \u2013 ' + p[1].b + ' ' + esc(pb.name) + (p[1].t ? ' (' + p[1].t + ' tied)' : '') + '</li>').join('') + '<li><strong>Total:</strong> ' + tot.a + ' \u2013 ' + tot.b + (tot.t ? ' (' + tot.t + ' tied)' : '') + '. ' + lead + '</li></ul></div>' +
@@ -461,7 +503,7 @@
   };
 
   pages.needs = (root) => {
-    const needs = { P: 1, C: 2, SS: 3, OF: 4, '2B': 5, '3B': 6, '1B': 7 };
+    const needs = POS_NEED;
     const skills = [['Pitching', 1], ['Defense', 2], ['Athleticism', 3], ['Speed', 4], ['Power', 5]];
     const ours = players.filter((p) => p.committed === OUR);
     const goals = { size: 14, pitchers: 6, posPlayers: 8 };
@@ -474,13 +516,21 @@
       card('Commitment Goals', miniTable(['Goal', 'Target', 'Committed', 'Open'], [tr(['Target Class Size', goals.size, ours.length, goals.size - ours.length]), tr(['Pitchers Needed', goals.pitchers, commitP, goals.pitchers - commitP]), tr(['Position Players Needed', goals.posPlayers, ours.length - commitP, goals.posPlayers - (ours.length - commitP)])], 'Commitment goals')) +
       card('Biggest Needs', miniTable(['Rank', 'Need'], [tr(['#1 Need', 'Pitcher (Positional)']), tr(['#2 Need', 'Catcher (Positional)']), tr(['#3 Need', 'Defense (Skill)']), tr(['#4 Need', 'Shortstop (Positional)']), tr(['#5 Need', 'Long-Term Projection (Priority)'])], 'Biggest needs')) +
       card('Team Breakdown', miniTable(['Type', 'Top Item'], [tr(['Positional Need', 'P']), tr(['Skill Need', 'Pitching']), tr(['Program Priority', 'Long-Term Projection'])], 'Team breakdown')) +
-      card('Recruiting Philosophy', '<fieldset class="philo"><legend>Coaches rank 1\u20135 (sample choice)</legend>' + ['Prefer Pitching', 'Prefer Position Players', 'Balanced Approach', 'Best Player Available', 'Need-Based Recruiting'].map((x, i) => '<label><input type="radio" name="philo" ' + (i === 2 ? 'checked' : '') + ' /> ' + x + '</label>').join('') + '</fieldset><p class="coach-note">Team Needs are private to each program and are not stored in the shared Master Database.</p>') +
-      '</div>' + theRead('Sample program (fictional): ' + OUR + '. These private team settings feed Coach Fit and Team Need Score for this program only.');
+      card('Recruiting Philosophy (Rank 1\u20135)', '<form id="philo-form" class="philo" onsubmit="return false"><p class="coach-note">Rank every approach from 1 (most important) to 5. Each rank must be used once. These ranks feed Coach Fit and Priority Score (see How This Is Calculated).</p><div class="form-grid">' + PHIL_OPTS.map((x, i) => '<label>' + x + '<select name="ph' + i + '" aria-label="Rank for ' + x + '">' + [1, 2, 3, 4, 5].map((n) => '<option' + (PHIL[i] === n ? ' selected' : '') + '>' + n + '</option>').join('') + '</select></label>').join('') + '</div><ul class="md-errors" id="philo-errors" role="alert"></ul><div class="md-actions"><button type="submit" class="button button-primary">Save Rankings</button> <button type="button" class="button button-secondary" id="philo-reset">Reset To Sample Default</button></div><p class="coach-note">Sample program settings, saved only in this browser. Team Needs are private to each program and are not stored in the shared Master Database.</p></form>') +
+      '</div>' + formulaPanel() + theRead('Sample program (fictional): ' + OUR + '. These private team settings feed Coach Fit and Team Need Score for this program only.');
+    $('#philo-form', root).addEventListener('submit', (e) => {
+      e.preventDefault();
+      const v = PHIL_OPTS.map((x, i) => parseInt(e.target.elements['ph' + i].value, 10));
+      if (!validPhil(v)) { $('#philo-errors', root).innerHTML = '<li>Each rank from 1 to 5 must be used exactly once. Please remove duplicates.</li>'; return; }
+      try { localStorage.setItem(PHIL_KEY, JSON.stringify(v)); } catch (x) { $('#philo-errors', root).innerHTML = '<li>This browser blocked saving.</li>'; return; }
+      location.reload();
+    });
+    $('#philo-reset', root).addEventListener('click', () => { try { localStorage.removeItem(PHIL_KEY); } catch (x) {} location.reload(); });
   };
 
   pages.fit = (root) => {
-    const pr = [['Pitching Priority', 1], ['Defense Priority', 3], ['Athleticism Priority', 4], ['Speed Priority', 6], ['Power Priority', 5], ['Immediate Impact', 2], ['Long-Term Projection', 7]];
-    const posPr = { P: 1, C: 2, SS: 3, OF: 4, '2B': 5, '3B': 6, '1B': 7 };
+    const pr = SKILL_PRI.map((s) => [s[0] + (s[2] && s[0] !== 'Immediate Impact' ? ' Priority' : ''), s[1]]);
+    const posPr = POS_PRI;
     const top = players.filter((p) => !p.committed).sort((a, b) => (b.fit || 0) - (a.fit || 0)).slice(0, 10);
     root.innerHTML =
       '<div class="coach-grid">' +
@@ -488,7 +538,7 @@
       card('Positional Priorities', miniTable(['Position', 'Priority'], POS.map((x) => tr([x, posPr[x]])), 'Positional priorities')) +
       card('Fit Factors', '<ul class="plain-list"><li>Recruit Score</li><li>Athletic Score</li><li>Team Need Score</li><li>Primary Position Fit</li><li>Secondary Position Fit</li><li>Confidence Score</li><li>Staff Score</li><li>Adjusted Recruit Score</li><li>Priority Score</li></ul><p class="coach-note">Fit factor weights are set per program and are not published.</p>') +
       '</div>' +
-      card('Top Coach Fit', miniTable(['Fit Rank', 'Player', 'Pos', 'Class', 'Coach Fit Score', 'Recruit Score', 'Priority Score'], top.map((p, i) => '<tr><th scope="row">#' + (i + 1) + ' Fit</th><td>' + cardLink(p) + '</td><td>' + p.pos + '</td><td>' + p.grad + '</td><td>' + p.fit + '</td><td>' + num(p.rs) + '</td><td>' + p.pri + '</td></tr>'), 'Top coach fit')) +
+      card('Top Coach Fit', miniTable(['Fit Rank', 'Player', 'Pos', 'Class', 'Coach Fit Score', 'Recruit Score', 'Priority Score', '<span title="Simple average of Recruit Score, Coach Fit Score and Priority Score. Blank if any is missing." tabindex="0">Adjusted Priority Score</span>'], top.map((p, i) => '<tr><th scope="row">#' + (i + 1) + ' Fit</th><td>' + cardLink(p) + '</td><td>' + p.pos + '</td><td>' + p.grad + '</td><td>' + p.fit + '</td><td>' + num(p.rs) + '</td><td>' + nv(p.pri) + '</td><td>' + num(adjPriority(p)) + '</td></tr>'), 'Top coach fit') + '<p class="coach-note">Sample Data / Fictional Example. Adjusted Priority Score = (Recruit Score + Coach Fit Score + Priority Score) &divide; 3.</p>') + formulaPanel() +
       theRead('Coach Fit measures program fit, not talent. Recruit Score stays the same for every program; Coach Fit changes with each program\u2019s priorities.');
   };
 
@@ -512,7 +562,7 @@
       const ft = $('#b-tier', root).value, fp = $('#b-pos', root).value;
       const list = board.filter((p) => (!ft || String(p.board) === ft) && (!fp || p.pos === fp)).sort((a, b) => a.board - b.board || (b.pri || 0) - (a.pri || 0));
       $('#b-table', root).innerHTML = '<caption class="visually-hidden">Recruiting board (fictional data)</caption><thead><tr>' + ['Priority Tier', 'Player Name', 'Primary Position', 'Secondary Position', 'Class', 'State', 'Athletic Score', 'Recruit Score', 'Tier', 'Confidence', 'Adjusted Recruit Score', 'Priority Score', 'Evaluation Method', 'Player Notes'].map((h) => '<th scope="col">' + h + '</th>').join('') + '</tr></thead><tbody>' +
-        list.map((p) => '<tr><td><span class="pill pill-t' + p.board + '">' + tierName[p.board] + '</span></td><td>' + cardLink(p) + '</td><td>' + p.pos + '</td><td>' + (p.sec || '&mdash;') + '</td><td>' + p.grad + '</td><td>' + p.state + '</td><td>' + num(p.ath) + '</td><td class="rd-num">' + TRC.formatRecruitScore(p.rs) + '</td><td>' + tierBadge(p) + '</td><td>' + confBadge(p) + '</td><td>' + rk(p.adj) + '</td><td>' + p.pri + '</td><td>' + p.method + '</td><td>' + esc(p.notes) + '</td></tr>').join('') + '</tbody>';
+        list.map((p) => '<tr><td><span class="pill pill-t' + p.board + '">' + tierName[p.board] + '</span></td><td>' + cardLink(p) + '</td><td>' + p.pos + '</td><td>' + (p.sec || '&mdash;') + '</td><td>' + p.grad + '</td><td>' + p.state + '</td><td>' + num(p.ath) + '</td><td class="rd-num">' + TRC.formatRecruitScore(p.rs) + '</td><td>' + tierBadge(p) + '</td><td>' + confBadge(p) + '</td><td>' + rk(p.adj) + '</td><td>' + nv(p.pri) + '</td><td>' + p.method + '</td><td>' + esc(p.notes) + '</td></tr>').join('') + '</tbody>';
     }
     root.addEventListener('change', draw);
     draw();

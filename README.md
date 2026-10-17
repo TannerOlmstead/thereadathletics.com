@@ -60,6 +60,10 @@ All logic lives in one shared module, `classification.js` (`window.TheReadClassi
 
 `coach-master-database.html` is the first tab of the coach workspace and the single player data source: Rankings, Player Card, H2H, Dashboard and the other coach pages all read from it (via `coach.js`). It lists every sample player with the input columns from the owner workbook and has search, filters, sorting and an Add Prospect form, meant for college coaches bringing in prospects from their offline recruiting board. Those entries are the coach's private, coach-entered, unverified data (not athlete-verified), not accounts; high school coaches and private instructors creating athlete accounts use the separate athlete signup flow. Added prospects are saved in this browser's localStorage only (a labeled demo); blank values stay blank, never 0. Coaches enter only raw data; Frame Score, projection grades, OPG/SOPG/DPG/SDPG/PPG, Athletic Score, Recruit Score, Tier, Confidence and ranks are calculated fields (not editable) and show Not Rated / Unknown until the calculation service exists. Real shared storage needs a backend (see ROADMAP.md).
 
+## Team Needs, Coach Fit And Priority Scores
+
+No score in the coach workspace is random. Team Need Score, Coach Fit Score, Adjusted Recruit Score and Priority Score are computed in `coach.js` from documented formulas using the program's ranked inputs (positional needs, position and skill priorities, and the 1-5 Recruiting Philosophy ranking, which must use each rank once). The Coach Fit tab's Adjusted Priority Score is the simple average of Recruit Score, Coach Fit Score and Priority Score. Missing inputs are skipped or leave the score blank, never 0. Staff Score and HC/PC/AC grades are coach opinions and stay blank until entered. The formulas are shown on the Team Needs, Coach Fit and Rankings pages under How This Is Calculated. None of these scores change Player Tier or Confidence. Program settings are sample data saved only in the browser.
+
 ## Files
 
 - `classification.js` and `classification.tests.js` - shared Tier/Confidence/Recruit Score module and its tests (`tests.html`).

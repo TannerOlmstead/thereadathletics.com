@@ -115,6 +115,13 @@ This site is plain HTML/CSS/JS with no build step. There is **no backend**: form
 - [ ] Real storage needs a backend (accounts, shared database, per-coach private layers).
 - [ ] Data import (CSV/spreadsheet), duplicate resolution, Event ID and Fieldleve columns.
 
+## Program scores (no random numbers)
+
+- [x] Team Need, Coach Fit, Adjusted Recruit Score and Priority Score now use documented deterministic formulas (shown under How This Is Calculated); random sample scores removed.
+- [x] Recruiting Philosophy is a 1-5 ranking (unique ranks) that feeds Coach Fit and Priority Score.
+- [x] Coach Fit tab: Adjusted Priority Score column (average of Recruit Score, Coach Fit, Priority Score).
+- [ ] Owner to confirm the weights (position/skill/philosophy) and the Long-Term Projection input; Staff Score and HC/PC/AC grades need real coach entry.
+
 ## Open decisions (from the owner workbook; not built)
 
 - [ ] Final weights for OPG, SOPG, DPG, SDPG, PPG and whether height is position-adjusted in Athletic Score

@@ -66,7 +66,7 @@ This site is plain HTML/CSS/JS with no build step. There is **no backend**: form
 - [x] Mobile-responsive layout (checked at 390 px and desktop widths)
 - [x] Accessibility basics: skip link, labels, focus states, aria on forms and bars
 - [x] SEO basics: unique titles and meta descriptions, `sitemap.xml`, `robots.txt`
-- [x] `pricing.html` and index pricing section with free athlete profile and demo scheduling
+- [x] `pricing.html` and index pricing summary rebuilt from the owner pricing document (athlete, coach, provider, institution standard/founding tables, price selector); no payments live
 
 ## Added along the way
 
@@ -105,5 +105,11 @@ This site is plain HTML/CSS/JS with no build step. There is **no backend**: form
 
 - [ ] AI-generated "THE READ" summaries on Player Card, H2H, Dashboard, Analytics, and Regional Insights
 - [ ] Subscription tiers: College, High School, and Summer Ball
-- [ ] Pricing model questions: free version, premium version, team subscriptions
+- [ ] Additional user pricing per sport (undecided; shown as "to be announced")
 - [ ] Player Profiles and Coach Profiles
+
+## Internal future ideas (not public, not built)
+
+- Trading cards (evaluation is earned; the card is purchased; athletes never pay to access their score), premium reports, API access, enterprise data partnerships, education licenses, marketplace opportunities. Internal planning only; do not publish as available.
+- Document any complimentary access (demo, investor, employee, partner, founder) internally.
+

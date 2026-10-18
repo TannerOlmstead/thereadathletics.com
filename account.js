@@ -5,15 +5,14 @@
   'use strict';
   var SKEY = 'theReadSession', VKEY = 'theReadVerifiers', NKEY = 'theReadNotifPrefs', AKEY = 'theReadDemoAthletes', CUR = 'theReadDemoAthleteCurrent', DEMO_CODE = '000000';
   var ROLES = [
-    ['athlete', 'Athlete', 'athlete-profile.html'], ['guardian', 'Guardian', 'guardian-verify.html'],
-    ['hs', 'High School Coach', 'verifier-dashboard.html'], ['pi', 'Private Instructor', 'verifier-dashboard.html'], ['vdp', 'Verified Data Provider', 'verifier-dashboard.html'],
+    ['athlete', 'Athlete', 'athlete-profile.html'], ['vdp', 'Verified Data Provider', 'verifier-dashboard.html'],
     ['coach', 'College Coach', 'coach-dashboard.html'], ['ad', 'Athletic Department', 'department-overview.html']
   ];
   var esc = function (s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); };
   var rd = function (k, def) { try { var v = JSON.parse(localStorage.getItem(k) || 'null'); return v == null ? def : v; } catch (e) { return def; } };
   var wr = function (k, v) { try { localStorage.setItem(k, JSON.stringify(v)); return true; } catch (e) { return false; } };
   var roleOf = function (id) { return ROLES.filter(function (r) { return r[0] === id; })[0] || null; };
-  var session = function () { var s = rd(SKEY, null); return s && s.role && roleOf(s.role) ? s : null; };
+  var session = function () { var s = rd(SKEY, null); if (s && (s.role === 'hs' || s.role === 'pi')) s.role = 'vdp'; return s && s.role && roleOf(s.role) ? s : null; };
   var bypass = function () { try { return sessionStorage.getItem('theReadDemoBypass') === '1'; } catch (e) { return false; } };
   var setBypass = function () { try { sessionStorage.setItem('theReadDemoBypass', '1'); } catch (e) { /* ignore */ } };
   var signOut = function () { try { localStorage.removeItem(SKEY); sessionStorage.removeItem('theReadDemoBypass'); } catch (e) { /* ignore */ } };
@@ -30,7 +29,7 @@
   if (/[?&]demo=1\b/.test(location.search)) setBypass();
   var cfg = window.SITE_CONFIG || {}, b = document.body, cp = b ? b.getAttribute('data-coach-page') : '', need = b ? b.getAttribute('data-guard') || (cp === 'athprofile' || cp === 'athcal' ? 'athlete' : cp || b.getAttribute('data-dept-page') ? 'staff' : '') : '';
   if (need && cfg.REQUIRE_SIGN_IN !== false && !bypass()) {
-    var s0 = session(), okRoles = { athlete: ['athlete'], verifier: ['hs', 'pi', 'vdp'], staff: ['coach', 'ad'], any: null }[need];
+    var s0 = session(), okRoles = { athlete: ['athlete'], verifier: ['vdp'], staff: ['coach', 'ad'], any: null }[need];
     if (!s0 || (okRoles && okRoles.indexOf(s0.role) < 0)) {
       document.documentElement.style.visibility = 'hidden';
       location.replace('sign-in.html?next=' + encodeURIComponent(location.pathname.split('/').pop() || '') + (s0 ? '&wrong=' + need : ''));
@@ -98,13 +97,9 @@
         var a = athletes().filter(function (x) { return String(x.email || '').toLowerCase() === em; })[0];
         if (!a) return showErr(root, 'No athlete profile uses that email in this browser. <a href="player-signup.html">Create an athlete profile</a> first.', 'si-email');
         rec.name = a.name; rec.aid = a.id; try { localStorage.setItem(CUR, a.id); } catch (x) { /* ignore */ }
-      } else if (r === 'guardian') {
-        var g = athletes().filter(function (x) { return x.guardian && String(x.guardian.email || '').toLowerCase() === em; })[0];
-        if (!g) return showErr(root, 'No guardian request uses that email in this browser. A guardian request starts when an athlete under 18 signs up.', 'si-email');
-        rec.name = g.guardian.name; rec.aid = g.id; try { localStorage.setItem(CUR, g.id); } catch (x) { /* ignore */ }
-      } else if (r === 'hs' || r === 'pi' || r === 'vdp') {
-        var vr = verifiers().filter(function (x) { return String(x.email || '').toLowerCase() === em && x.type === r; })[0];
-        if (!vr) return showErr(root, 'No ' + roleOf(r)[1] + ' signup uses that email in this browser. <a href="verifier-signup.html">Create a verifier profile</a> first.', 'si-email');
+      } else if (r === 'vdp') {
+        var vr = verifiers().filter(function (x) { return String(x.email || '').toLowerCase() === em; })[0];
+        if (!vr) return showErr(root, 'No Verified Data Provider signup uses that email in this browser. <a href="verifier-signup.html">Create a verifier profile</a> first.', 'si-email');
         rec.name = vr.name; rec.org = vr.org; rec.vid = vr.id;
       } else {
         rec.name = v('si-name'); rec.org = v('si-org');
@@ -117,7 +112,7 @@
         }
       }
       rec.ts = new Date().toISOString(); wr(SKEY, rec);
-      var okNext = next && { athlete: /^athlete-/, hs: /^verifier-/, pi: /^verifier-/, vdp: /^verifier-/, coach: /^(coach|department)-/, ad: /^(coach|department)-/, guardian: /^guardian-/ }[r];
+      var okNext = next && { athlete: /^athlete-/, vdp: /^verifier-/, coach: /^(coach|department)-/, ad: /^(coach|department)-/ }[r];
       go(okNext && okNext.test(next) ? next : homeOf(rec));
     });
   };

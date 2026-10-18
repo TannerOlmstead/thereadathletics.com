@@ -8,7 +8,7 @@
   var LEVELS = ['High School', 'JUCO', '4-Year College / Transfer Portal', 'Other'];
   var PREF_POS = ['C', '1B', '2B', '3B', 'SS', 'LF', 'CF', 'RF', 'DH/UT'];
   var DIVS = ['NCAA Division I', 'NCAA Division II', 'NCAA Division III', 'NAIA', 'NJCAA Division I', 'NJCAA Division II', 'NJCAA Division III', 'Other'];
-  var VERIFIERS = [['hs', 'High School Coach'], ['pi', 'Private Instructor'], ['vdp', 'Verified Data Provider']];
+  var VERIFIERS = [['hs', 'High School Coach'], ['pi', 'Private Instructor / Trainer'], ['sh', 'Showcase / Event Organizer'], ['vdp', 'Other']];
   var METRICS = [['ht', 'Height (in)', 40, 96], ['wt', 'Weight (lb)', 60, 400], ['t60', '60-Yard Time (sec)', 5, 12], ['tv', 'Throwing Velocity (mph)', 30, 110], ['avgEV', 'Avg Exit Velocity (mph)', 40, 120], ['maxEV', 'Max Exit Velocity (mph)', 40, 130], ['avgFBV', 'Avg Fastball Velocity (mph)', 30, 105], ['maxFBV', 'Max Fastball Velocity (mph)', 30, 110]];
   var esc = function (s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); };
   var load = function () { try { var a = JSON.parse(localStorage.getItem(KEY) || '[]'); return Array.isArray(a) ? a : []; } catch (e) { return []; } };
@@ -329,26 +329,39 @@
   if (gv) {
     var shareDefs = [['contact', 'Athlete contact info'], ['photo', 'Athlete photo'], ['metrics', 'Athlete measurables']];
     var draw = function () {
-      var r = current();
+      var qm = (/[?&]m=([A-Za-z0-9]+)/.exec(location.search) || [])[1] || '', r = (qm && load().filter(function (x) { return x.guardian && x.guardian.token === qm; })[0]) || current();
       if (!r || !r.guardian) { gv.innerHTML = '<div class="notice red" role="status"><strong>No guardian request found in this browser.</strong> Create an athlete account under 18 on the <a href="player-signup.html">athlete signup page</a> first. (This is a demo; requests live only in this browser.)</div>'; return; }
       var g = r.guardian, s = gStatus(r);
-      var h = '<div class="notice navy" role="note"><strong>Demo &ndash; no email was sent.</strong> This page shows what a guardian would see after following a verification link. Use code <strong>' + DEMO_CODE + '</strong>. No real identity check happens.</div>' +
+      if (!g.token) { g.token = Math.random().toString(36).slice(2, 12) + Math.random().toString(36).slice(2, 8); upsert(r); }
+      var link = 'guardian-verify.html?m=' + g.token, linked = qm === g.token, locked = s === 'Verified' && !linked && !g.codeOk;
+      var mail = '<aside class="card" aria-label="Simulated email preview"><h3>Simulated Email Preview</h3><p class="coach-note">Nothing was sent. This is what the email to <strong>' + esc(g.email || 'the guardian') + '</strong> would look like.</p><div class="table-wrap"><table><tbody><tr><th scope="row">To</th><td>' + esc(g.email || '') + '</td></tr><tr><th scope="row">Subject</th><td>' + esc(r.name) + ' asked to join THE READ Athletics: please confirm</td></tr><tr><th scope="row">Link</th><td><a href="' + link + '">guardian-verify.html?m=' + esc(g.token.slice(0, 6)) + '&hellip;</a> (private link, no password)</td></tr><tr><th scope="row">One-Time Code</th><td>' + DEMO_CODE + ' (demo code; expires in 7 days)</td></tr></tbody></table></div></aside>';
+      var h = '<div class="notice navy" role="note"><strong>Demo &ndash; no email was sent and there is no account or password.</strong> Guardians use an emailed link and one-time code. Use code <strong>' + DEMO_CODE + '</strong>. No real identity check happens.</div>' + mail +
         '<div class="form-card"><h2>Guardian Request For ' + esc(r.name) + '</h2><p>Hello ' + esc(g.name) + ' (' + esc(g.rel) + '). ' + esc(r.name) + ' (age ' + esc(r.age) + ') asked to join <span class="tr">THE READ</span> Athletics. Status: ' + badge(s) + '</p>';
       if (s === 'Pending' && !g.codeOk) {
         h += '<form id="g-code" novalidate><div class="field"><label for="gcode">Verification Code <span class="req" aria-hidden="true">*</span></label><input id="gcode" inputmode="numeric" autocomplete="one-time-code" maxlength="6" /></div><div class="form-actions"><button class="button button-primary" type="submit">Verify Code</button></div></form><p class="coach-note">Demo: <button class="button button-secondary" type="button" id="g-exp">Simulate Expired Code</button></p>';
       } else if (s === 'Expired') {
         h += '<p>This code expired after 7 days (demo rule).</p><button class="button button-primary" type="button" id="g-resend">Send A New Code (Demo)</button>';
+      } else if (locked) {
+        h += '<p>Your consent is on file. To view or change it, open the private manage link from your email (shown in the preview above). There is no login.</p>';
       } else {
         var verified = s === 'Verified', stage = g.codeOk || verified;
         h += '<form id="g-consent" novalidate><fieldset><legend>What Programs Can See</legend>' + shareDefs.map(function (x) { return '<label class="check"><input type="checkbox" data-s="' + x[0] + '"' + (g.share[x[0]] ? ' checked' : '') + ' /> ' + x[1] + '</label>'; }).join('') + '</fieldset>' +
-          '<fieldset><legend>Messaging Rules</legend><label class="check"><input type="checkbox" checked disabled /> Guardian is shown all coach messages to this athlete (required for under 18)</label></fieldset>' +
+          '<fieldset><legend>Contact Rules</legend><label class="check"><input type="checkbox" id="g-msgv"' + (g.msgVisible === false ? '' : ' checked') + ' /> Let me read this athlete\u2019s messages (read-only, through my manage link)</label><label for="g-cr">Who may message my athlete</label><select id="g-cr"><option value="verified"' + (g.contactRule === 'none' ? '' : ' selected') + '>Verified college coaches (after I approve)</option><option value="none"' + (g.contactRule === 'none' ? ' selected' : '') + '>No one (introduction requests only)</option></select></fieldset>' +
           '<label class="check"><input type="checkbox" id="g-data"' + (g.dataConsent ? ' checked' : '') + ' /> I consent to my athlete\u2019s data being shared as chosen above. I confirm I am this athlete\u2019s parent or legal guardian.</label><p class="field-error" id="g-err" hidden></p>' +
           '<div class="form-actions"><button class="button button-primary" type="submit" data-act="ok">' + (verified ? 'Save Choices' : 'Approve') + '</button> ' + (verified ? '' : '<button class="button button-secondary" type="submit" data-act="no">Decline</button>') + '</div></form>' +
           (verified ? '<p><button class="button button-secondary" type="button" id="g-revoke">Revoke Access</button></p>' : s === 'Declined' ? '<p>Declined or revoked. The athlete is not listed and cannot be contacted. <button class="button button-secondary" type="button" id="g-resend">Reopen Request (Demo)</button></p>' : '');
       }
       h += '</div>';
       if (g.log && g.log.length) h += '<h3>Consent Log (Demo)</h3><ul class="intro-list">' + g.log.slice().reverse().map(function (x) { return '<li>' + esc(x.t.replace('T', ' ').slice(0, 16)) + ' &ndash; ' + esc(x.a) + '</li>'; }).join('') + '</ul>';
+      var TC = window.TheReadConnect;
+      if (TC && s === 'Verified' && !locked) {
+        var th = TC.guardianView(r.id), gi = TC.guardianInbox(r.id), nm = function (id) { var p = TC.person(id); return p ? p.name : 'Someone'; };
+        h += '<section class="form-card"><h3>' + esc(r.name) + '\u2019s Messages (Read-Only)</h3>' + (g.msgVisible === false ? '<p>You chose not to see messages.</p>' : th.length ? th.map(function (t) { return '<div class="card"><p><strong>' + esc(t.p.map(nm).join(' & ')) + '</strong></p><ul class="intro-list">' + t.messages.map(function (m) { return '<li><strong>' + esc(nm(m.from)) + ':</strong> ' + esc(m.body) + ' <small>' + esc(String(m.ts).replace('T', ' ')) + '</small></li>'; }).join('') + '</ul></div>'; }).join('') : '<p>No messages yet.</p>') +
+          '<h3>Introduction Requests Waiting For You</h3>' + (gi.intros.filter(function (i) { return i.status === 'Pending'; }).map(function (i) { return '<p><strong>' + esc(nm(i.from)) + '</strong> asks to talk with ' + esc(r.name) + (i.note ? ': \u201c' + esc(i.note) + '\u201d' : '') + ' <button class="button button-primary" type="button" data-gi="' + esc(i.id) + '" data-y="1">Approve</button> <button class="button button-secondary" type="button" data-gi="' + esc(i.id) + '">Decline</button></p>'; }).join('') || '<p>None.</p>') +
+          '<p class="coach-note">Demo: kept in this browser only. A copy of messages by email is on the roadmap.</p></section>';
+      }
       gv.innerHTML = h;
+      Array.prototype.forEach.call(gv.querySelectorAll('[data-gi]'), function (b) { b.addEventListener('click', function () { TC.respondIntro(b.getAttribute('data-gi'), !!b.getAttribute('data-y')); log('Guardian answered an introduction request'); }); });
       var log = function (a) { g.log.push({ t: new Date().toISOString(), a: a }); upsert(r); draw(); };
       var el;
       if ((el = document.getElementById('g-code'))) el.addEventListener('submit', function (e) { e.preventDefault(); var v = document.getElementById('gcode').value.trim(); var f = document.getElementById('gcode'); gv.querySelectorAll('.field-error').forEach(function (x) { x.remove(); });
@@ -356,10 +369,11 @@
         g.codeOk = true; upsert(r); draw(); });
       if ((el = document.getElementById('g-exp'))) el.addEventListener('click', function () { g.sent = Date.now() - 8 * DAY; log('Code expired (demo simulation)'); });
       if ((el = document.getElementById('g-resend'))) el.addEventListener('click', function () { g.status = 'Pending'; g.codeOk = false; g.sent = Date.now(); log('New code issued (demo, nothing sent)'); });
-      if ((el = document.getElementById('g-revoke'))) el.addEventListener('click', function () { g.status = 'Declined'; g.share = { contact: false, photo: false, metrics: false }; g.dataConsent = false; log('Guardian revoked access; athlete unlisted'); });
+      if ((el = document.getElementById('g-revoke'))) el.addEventListener('click', function () { g.status = 'Declined'; g.revoked = true; g.share = { contact: false, photo: false, metrics: false }; g.dataConsent = false; log('Guardian revoked access; athlete unlisted'); });
       if ((el = document.getElementById('g-consent'))) el.addEventListener('submit', function (e) {
         e.preventDefault(); var act = (e.submitter && e.submitter.getAttribute('data-act')) || 'ok';
         gv.querySelectorAll('[data-s]').forEach(function (c) { g.share[c.getAttribute('data-s')] = c.checked; });
+        g.msgVisible = document.getElementById('g-msgv').checked; g.contactRule = document.getElementById('g-cr').value;
         if (act === 'no') { g.status = 'Declined'; g.dataConsent = false; return log('Guardian declined'); }
         if (!document.getElementById('g-data').checked) { var er = document.getElementById('g-err'); er.hidden = false; er.textContent = 'Confirm consent to approve.'; document.getElementById('g-data').focus(); return; }
         g.dataConsent = true; var was = g.status; g.status = 'Verified'; log(was === 'Verified' ? 'Guardian updated sharing choices' : 'Guardian verified and consented (demo, identity not actually checked)');

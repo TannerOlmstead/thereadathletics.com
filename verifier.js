@@ -6,7 +6,7 @@
   var A = window.TheReadAthlete, ACC = window.TheReadAccount;
   if (!A || !ACC) return;
   var VKEY = 'theReadVerifiers', SKEY = 'theReadSession', CUR = 'theReadDemoAthleteCurrent';
-  var TYPES = [['hs', 'High School Coach'], ['pi', 'Private Instructor'], ['vdp', 'Verified Data Provider']];
+  var TYPES = [['hs', 'High School Coach'], ['pi', 'Private Instructor / Trainer'], ['sh', 'Showcase / Event Organizer'], ['vdp', 'Other']];
   var METHODS = ['Radar Gun', 'Stopwatch / Timing Gates', 'Pop-Time Timer', 'Exit-Velocity Device', 'Measured In Person (Height / Weight)', 'Combine Or Showcase Testing', 'Game Or Practice Charting', 'Other'];
   var esc = function (s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); };
   var typeName = function (id) { return (TYPES.filter(function (t) { return t[0] === id; })[0] || [id, id])[1]; };
@@ -34,7 +34,7 @@
   if (su) {
     su.innerHTML = '<form class="form-card" id="vs-form" novalidate><h2>Verifier Details</h2>' +
       '<div class="notice navy" role="note"><strong>Demo &ndash; nothing is sent or checked.</strong> Your details are saved only in this browser. On the real site, <strong>approval of verifiers is an admin step</strong> (credential and identity review) that is on the roadmap. Verified Data Providers are <strong>free</strong> (see <a href="pricing.html">Pricing</a>).</div><div class="form-grid">' +
-      fld('vs-type', 'Verifier Type', { req: 1, opts: TYPES }) + fld('vs-name', 'Full Name', { req: 1 }) + fld('vs-email', 'Email', { req: 1, type: 'email' }) + fld('vs-phone', 'Phone (Optional)', { type: 'tel' }) +
+      fld('vs-type', 'Provider Type', { req: 1, opts: TYPES }) + fld('vs-name', 'Full Name', { req: 1 }) + fld('vs-email', 'Email', { req: 1, type: 'email' }) + fld('vs-phone', 'Phone (Optional)', { type: 'tel' }) +
       fld('vs-org', 'Organization (School, Club, Facility Or Company)', { req: 1 }) + fld('vs-title', 'Your Role / Title', { req: 1 }) +
       methodsBox([]) + fld('vs-how', 'How You Verify (Describe Your Process)', { req: 1, area: 1, full: 1, hint: 'Say what equipment you use and whether you measure the athlete yourself. Athletes and coaches will see this.' }) +
       fld('vs-link', 'Website Or Credential Link (Optional)', { type: 'url', full: 1 }) +
@@ -55,10 +55,10 @@
       if (!ACC.pwOk(pw)) return showErr(su, pwRule, 'vs-pw');
       if (pw !== su.querySelector('#vs-pw2').value) return showErr(su, 'Passwords do not match.', 'vs-pw2');
       if (!su.querySelector('#vs-ok').checked) return showErr(su, 'Confirm the verification statement to continue.', 'vs-ok');
-      if (loadV().filter(function (x) { return x.email === em && x.type === v('vs-type'); })[0]) return showErr(su, 'A ' + typeName(v('vs-type')) + ' profile already uses that email in this browser. <a href="sign-in.html">Sign in</a> instead.', 'vs-email');
+      if (loadV().filter(function (x) { return x.email === em; })[0]) return showErr(su, 'A Verified Data Provider profile already uses that email in this browser. <a href="sign-in.html">Sign in</a> instead.', 'vs-email');
       var rec = { id: 'ver-' + Date.now().toString(36), type: v('vs-type'), name: v('vs-name'), email: em, phone: v('vs-phone'), org: v('vs-org'), title: v('vs-title'), methods: ms, how: v('vs-how'), link: v('vs-link'), status: 'Pending Approval', created: new Date().toISOString(), events: [] };
       putV(rec);
-      try { localStorage.setItem(SKEY, JSON.stringify({ role: rec.type, name: rec.name, email: rec.email, org: rec.org, vid: rec.id, ts: new Date().toISOString() })); } catch (x) { /* ignore */ }
+      try { localStorage.setItem(SKEY, JSON.stringify({ role: 'vdp', ptype: rec.type, name: rec.name, email: rec.email, org: rec.org, vid: rec.id, ts: new Date().toISOString() })); } catch (x) { /* ignore */ }
       su.innerHTML = '<div class="form-card"><h2>Verifier Profile Created (Demo)</h2><div class="notice navy" role="status"><strong>Status: Pending Approval.</strong> Nothing was sent. On the real site an admin would review your credentials before athletes see you as an approved verifier. In this demo you can use the workspace right away.</div><p><a class="button button-primary" href="verifier-dashboard.html">Open Verifier Workspace</a></p></div>';
     });
   }
@@ -143,8 +143,8 @@
       '<h3>Request Dates</h3>' + (rq.length ? '<ul class="intro-list">' + rq.map(function (x) { return '<li><strong>' + esc(x.q.date) + '</strong> &ndash; Request from ' + esc(x.rec.name) + ' ' + badge(x.q.status) + '</li>'; }).join('') + '</ul>' : '<p>None.</p>');
   };
   var profile = function (v) {
-    return '<h2>Profile And Credentials</h2><div class="notice navy" role="note"><strong>Approval status: ' + esc(v.status) + '.</strong> Approval of verifiers is an admin step that is on the roadmap; nothing here is checked. ' + (v.type === 'vdp' ? 'Verified Data Providers are free (see <a href="pricing.html">Pricing</a>).' : 'See <a href="pricing.html">Pricing</a> for current verifier terms.') + '</div>' + (msg ? '<p role="status"><strong>' + esc(msg) + '</strong></p>' : '') +
-      '<form id="v-prof" class="form-card" novalidate><dl class="review-list"><dt>Type</dt><dd>' + esc(typeName(v.type)) + '</dd><dt>Email</dt><dd>' + esc(v.email) + '</dd></dl><div class="form-grid">' + fld('pf-name', 'Full Name', { req: 1, val: v.name }) + fld('pf-phone', 'Phone (Optional)', { val: v.phone, type: 'tel' }) + fld('pf-org', 'Organization', { req: 1, val: v.org }) + fld('pf-title', 'Role / Title', { req: 1, val: v.title }) + methodsBox(v.methods || []) +
+    return '<h2>Profile And Credentials</h2><div class="notice navy" role="note"><strong>Approval status: ' + esc(v.status) + '.</strong> Approval of verifiers is an admin step that is on the roadmap; nothing here is checked. ' + 'Verified Data Providers are free (see <a href="pricing.html">Pricing</a>).' + '</div>' + (msg ? '<p role="status"><strong>' + esc(msg) + '</strong></p>' : '') +
+      '<form id="v-prof" class="form-card" novalidate><dl class="review-list"><dt>Provider Type</dt><dd>' + esc(typeName(v.type)) + '</dd><dt>Email</dt><dd>' + esc(v.email) + '</dd></dl><div class="form-grid">' + fld('pf-name', 'Full Name', { req: 1, val: v.name }) + fld('pf-phone', 'Phone (Optional)', { val: v.phone, type: 'tel' }) + fld('pf-org', 'Organization', { req: 1, val: v.org }) + fld('pf-title', 'Role / Title', { req: 1, val: v.title }) + methodsBox(v.methods || []) +
       fld('pf-how', 'How You Verify', { req: 1, area: 1, full: 1, val: v.how }) + fld('pf-link', 'Website Or Credential Link (Optional)', { type: 'url', full: 1, val: v.link }) + '</div><p class="field-error v-err" role="alert" hidden></p><button class="button button-primary" type="submit">Save Profile</button></form>';
   };
   var VIEWS = { queue: queue, inbox: inbox, athletes: athletes, history: history, calendar: calendar, profile: profile };
@@ -152,7 +152,7 @@
   var draw = function () {
     var v = me();
     if (!v) {
-      root.innerHTML = '<div class="form-card"><h2>Verifier Workspace</h2><p>You are not signed in as a verifier in this browser. <a href="sign-in.html">Sign in</a> as a High School Coach, Private Instructor or Verified Data Provider, or <a href="verifier-signup.html">create a verifier profile</a>.</p></div>';
+      root.innerHTML = '<div class="form-card"><h2>Verified Data Provider Workspace</h2><p>You are not signed in as a verifier in this browser. <a href="sign-in.html">Sign in</a> as a Verified Data Provider, or <a href="verifier-signup.html">create a Verified Data Provider profile</a>.</p></div>';
       return;
     }
     var pend = allReqs(v).filter(function (x) { return x.q.status === 'Requested'; }).length;

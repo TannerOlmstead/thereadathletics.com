@@ -179,3 +179,8 @@ One shared module (`connect.js` + `connect-config.js`) powers Connect for Athlet
 ## Finance Clarity
 
 Department Finances (`department-finances.html`, built in `dept.js`) now labels every figure with units and period, separates Inputs (typed by the department, with source and last-updated date) from Calculated values, and shows a 'How This Is Calculated' formula under each. Athletic aid, recruiting expense budget, program operating budget and the THE READ subscription are four separate pots and are never added together. Totals list the line items (Travel + Camps + Visits); blank inputs show Not Entered and are excluded, never counted as $0. No NCAA/NAIA/NJCAA limits are supplied. Includes a Finance Glossary; the made-up example table is kept in a collapsed 'Not Your Data' section.
+
+## Guardians And Verified Data Providers
+- Guardians have no account. A minor's signup creates a simulated email (private link + one-time code, demo code 000000). The link opens `guardian-verify.html?m=<token>`, where the guardian gives consent, sets visibility and contact rules, reads messages read-only, answers introduction requests, and can revoke. Nothing is emailed in this static demo; tokens are not real secrets.
+- Connect roles are Athlete, Verified Data Provider, College Coach, Athletic Department. Guardian consent is an attribute of the minor athlete (Verified / Pending / Declined / Revoked).
+- Verified Data Provider is one free role with a Provider Type (High School Coach, Private Instructor / Trainer, Showcase / Event Organizer, Other).

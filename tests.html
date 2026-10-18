@@ -241,8 +241,14 @@ test('Connect: AD has read-only oversight; others do not', function () {
   var r = T.send('co:sample', 'dir:c7', 'Oversight test');
   var ad = T.threadsFor({ id: 'ad:other', role: 'ad' }).filter(function (x) { return x.t.id === r.id; })[0];
   yes(ad && ad.view === 'oversight', 'oversight');
-  eq(T.threadsFor({ id: 'dir:c1', role: 'hs' }).filter(function (x) { return x.t.id === r.id; }).length, 0);
+  eq(T.threadsFor({ id: 'dir:c1', role: 'vdp' }).filter(function (x) { return x.t.id === r.id; }).length, 0);
   localStorage.removeItem('theReadConnect');
+});
+test('Guardian is not a Connect role; provider types exist', function () {
+  var C = window.TheReadConnect.config;
+  yes(Object.keys(C.ROLES).join(',').indexOf('guardian') < 0, 'no guardian role');
+  yes(JSON.stringify(C.PTYPES).indexOf('Private Instructor') > 0 && JSON.stringify(C.PTYPES).indexOf('High School Coach') > 0, 'ptypes');
+  eq(typeof window.TheReadConnect.guardianView, 'function');
 });
 test('Rankings row: Grad Class is the 4th column after Player Name', function () {
       var t = document.createElement('table'); t.innerHTML = '<tbody>' + D.rankingRowHtml(D.players[0]) + '</tbody>';

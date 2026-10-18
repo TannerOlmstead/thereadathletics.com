@@ -10,14 +10,15 @@
   var slug = function (s) { return String(s || 'x').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'x'; };
   var A = function () { return window.TheReadAthlete || { load: function () { return []; }, interests: function () { return []; }, gStatus: function () { return null; } }; };
 
+  var PT_SAMPLE = { 'dir:c1': 'hs', 'dir:c2': 'hs', 'dir:c3': 'pi', 'dir:c4': 'pi' };
   var SAMPLE = [
-    ['dir:c1', 'Coach Dana Whitlock (Fictional)', 'hs', 'Fictional Ridge High School', 'TX'], ['dir:c2', 'Coach Marcus Bell (Fictional)', 'hs', 'Fictional Lakeview Prep', 'FL'],
-    ['dir:c3', 'Alex Moreno (Fictional)', 'pi', 'Fictional Diamond Performance Lab', 'CA'], ['dir:c4', 'Priya Nair (Fictional)', 'pi', 'Fictional Catching Academy', 'GA'],
+    ['dir:c1', 'Coach Dana Whitlock (Fictional)', 'vdp', 'Fictional Ridge High School', 'TX'], ['dir:c2', 'Coach Marcus Bell (Fictional)', 'vdp', 'Fictional Lakeview Prep', 'FL'],
+    ['dir:c3', 'Alex Moreno (Fictional)', 'vdp', 'Fictional Diamond Performance Lab', 'CA'], ['dir:c4', 'Priya Nair (Fictional)', 'vdp', 'Fictional Catching Academy', 'GA'],
     ['dir:c5', 'Coach Ray Tolliver (Fictional)', 'coach', 'Fictional Prairie JUCO', 'KS'], ['dir:c6', 'Coach Elena Park (Fictional)', 'coach', 'Fictional Coastal JUCO', 'CA'],
     ['dir:c7', 'Coach Sam Okafor (Fictional)', 'coach', 'Fictional Northern State', 'OH'], ['dir:c8', 'Coach Lena Brandt (Fictional)', 'coach', 'Fictional Mountain University', 'CO'],
     ['dir:c9', 'Jordan Pike (Fictional)', 'athlete', 'Fictional Ridge High School', 'TX'], ['dir:c10', 'Casey Vega (Fictional)', 'athlete', 'Fictional Prairie JUCO', 'KS'],
     ['co:sample', 'Sample Program Coach (Fictional)', 'coach', 'Sample State University', ''], ['ad:sample', 'Sample Athletic Director (Fictional)', 'ad', 'Sample State University', '']
-  ].map(function (r) { return { id: r[0], name: r[1], role: r[2], org: r[3], state: r[4], sports: [], sample: true }; });
+  ].map(function (r) { return { id: r[0], name: r[1], role: r[2], ptype: PT_SAMPLE[r[0]] || '', org: r[3], state: r[4], sports: [], sample: true }; });
 
   var store = function () { var s = jget(KEY, null); if (!s || !Array.isArray(s.threads)) s = { threads: [], intros: [], notifs: [], seeded: false }; if (!s.seeded && !s.threads.length) { seed(s); s.seeded = true; save(s); } return s; };
   var save = function (s) { try { localStorage.setItem(KEY, JSON.stringify(s)); } catch (e) { /* demo only */ } };
@@ -37,9 +38,8 @@
     recs.forEach(function (r) {
       var minor = r.path !== 'adult';
       out.push({ id: 'ath:' + r.id, name: r.name, role: 'athlete', org: r.school || '', state: r.state || '', sports: (r.sports || []).map(function (s) { return s.name; }), rid: r.id, minor: minor, rec: r, sample: false });
-      if (r.guardian && r.guardian.name) out.push({ id: 'gd:' + r.id, name: r.guardian.name + ' (Guardian of ' + r.name + ')', role: 'guardian', org: '', state: r.state || '', sports: [], rid: r.id, sample: false });
     });
-    jget(VKEY, []).forEach(function (v) { out.push({ id: 'ver:' + v.id, name: v.name, role: v.type, org: v.org || '', state: '', sports: [], vid: v.id, email: v.email, sample: false }); });
+    jget(VKEY, []).forEach(function (v) { out.push({ id: 'ver:' + v.id, name: v.name, role: 'vdp', ptype: v.type, org: v.org || '', state: '', sports: [], vid: v.id, email: v.email, sample: false }); });
     var s = session();
     if (s && (s.role === 'coach' || s.role === 'ad')) out.push({ id: (s.role === 'ad' ? 'ad:' : 'co:') + slug(s.email || s.name), name: s.name, role: s.role, org: s.org || '', state: '', sports: [], sample: false });
     var coach = window.TheReadCoach;
@@ -53,7 +53,6 @@
     var s = session();
     if (s) {
       if (s.role === 'athlete' && s.aid) return 'ath:' + s.aid;
-      if (s.role === 'guardian' && s.aid) return 'gd:' + s.aid;
       if ((s.role === 'hs' || s.role === 'pi' || s.role === 'vdp') && s.vid) return 'ver:' + s.vid;
       if (s.role === 'coach') return 'co:' + slug(s.email || s.name);
       if (s.role === 'ad') return 'ad:' + slug(s.email || s.name);
@@ -84,14 +83,14 @@
     else if (rule === 'visible') {
       if (to.sample && !to.rec) ok = true;
       else if (to.rec) {
-        var w = extras(to).msgWho || 'verified', minorOk = !to.minor || A().gStatus(to.rec) === 'Verified';
+        var w = extras(to).msgWho || 'verified', minorOk = !to.minor || (A().gStatus(to.rec) === 'Verified' && (to.rec.guardian || {}).contactRule !== 'none');
         ok = w !== 'none' && minorOk && !!(to.rec.privacy && to.rec.privacy.contact !== false && to.rec.privacy.list);
       }
     }
     if (from.role === 'coach' && to.role === 'athlete') note = CFG.NCAA_NOTE;
     if (rule === 'deny') return { mode: 'deny', why: CFG.WHY.deny };
     if (ok) return { mode: 'direct', why: CFG.WHY[rule] || '', note: note };
-    var why = rule === 'visible' && to.minor ? 'This athlete is a minor. Direct contact needs a verified guardian and the athlete\u2019s message settings. You can request an introduction; a guardian approves it.' : (CFG.WHY[rule] || CFG.WHY.intro);
+    var why = rule === 'visible' && to.minor ? 'This athlete is a minor. Direct contact needs a verified guardian and the athlete\u2019s message settings. You can request an introduction; the guardian approves it from an emailed link (simulated in this demo).' : (CFG.WHY[rule] || CFG.WHY.intro);
     return { mode: 'intro', why: why, note: note };
   }
 
@@ -100,11 +99,6 @@
   function canSee(meP, th) {
     if (th.p.indexOf(meP.id) >= 0) return 'member';
     if (meP.role === 'ad') return 'oversight';
-    if (meP.role === 'guardian') {
-      var ps = th.p.map(person).filter(Boolean);
-      var a = ps.filter(function (p) { return p.role === 'athlete' && p.rid === meP.rid && p.minor; })[0];
-      if (a && !(a.rec && a.rec.guardian && a.rec.guardian.msgVisible === false)) return 'guardian';
-    }
     return null;
   }
   function visibleThreads(meP) { return store().threads.map(function (t) { var v = canSee(meP, t); return v ? { t: t, view: v } : null; }).filter(Boolean); }
@@ -119,7 +113,7 @@
     var other = t.p.filter(function (x) { return x !== from; })[0], fp = person(from), op = person(other);
     t.messages.push({ from: from, ts: now(), body: String(body).slice(0, 1000) });
     t.unread[other] = 1; notify(s, other, 'New message from ' + (fp ? fp.name : 'someone') + ' (demo in-app notice, no email or push sent).');
-    var g = guardianFor(op); if (g) notify(s, g, 'New message for your athlete from ' + (fp ? fp.name : 'someone') + '. You can read it in Connect.');
+    var g = guardianFor(op); if (g) notify(s, g, 'New message for your athlete from ' + (fp ? fp.name : 'someone') + '. The guardian manage link shows it read-only (simulated email, nothing is sent).');
   }
   function sendTo(from, to, body, sport) {
     var f = person(from), t = person(to), p = perm(f, t), s = store();
@@ -137,7 +131,7 @@
     var s = store(), tp = person(to);
     if (s.intros.some(function (i) { return i.from === from && i.to === to && i.status === 'Pending'; })) return { ok: false, why: 'An introduction request is already waiting.' };
     var g = guardianFor(tp), i = { id: 'i-' + Date.now().toString(36), from: from, to: to, approver: g || to, note: String(note || '').slice(0, 500), sport: sport || '', status: 'Pending', ts: now() };
-    s.intros.push(i); notify(s, i.approver, 'Introduction request from ' + (person(from) || { name: 'someone' }).name + ' (demo in-app notice).'); save(s); return { ok: true };
+    s.intros.push(i); notify(s, i.approver, 'Introduction request from ' + (person(from) || { name: 'someone' }).name + (i.approver.indexOf('gd:') === 0 ? ' (simulated email to the guardian; nothing is sent).' : ' (demo in-app notice).')); save(s); return { ok: true };
   }
   function respondIntro(id, accept) {
     var s = store(), i = s.intros.filter(function (x) { return x.id === id; })[0]; if (!i || i.status !== 'Pending') return;
@@ -160,7 +154,7 @@
     if (toParam.indexOf('pl:') === 0) { var rid = toParam.slice(3), hit = people().filter(function (p) { return p.rid === rid || p.id === 'ath:' + rid || p.id === toParam; })[0]; toParam = hit ? hit.id : toParam; }
     var sportsAll = (window.TheReadSports && window.TheReadSports.list || []).map(function (x) { return x.name; });
     function shell() {
-      var as = people().filter(function (p) { return p.id !== meId(); }).map(function (p) { return '<option value="' + esc(p.id) + '">' + esc(p.name) + ' \u2014 ' + esc(roleName(p.role)) + '</option>'; }).join('');
+      var as = people().filter(function (p) { return p.id !== meId(); }).map(function (p) { return '<option value="' + esc(p.id) + '">' + esc(p.name) + ' \u2014 ' + esc(roleName(p.role)) + (p.ptype && CFG.PTYPES ? ' (' + esc(CFG.PTYPES[p.ptype] || '') + ')' : '') + '</option>'; }).join('');
       root.innerHTML =
         '<div class="msg-banner" role="note"><strong>Demo &ndash; messages are not sent.</strong> ' + esc(CFG.HONEST_NOTE) + '</div>' +
         '<p class="coach-note" role="status" id="cn-flash">' + esc(flash) + '</p>' +
@@ -178,7 +172,7 @@
     function matrixHtml() {
       var rs = Object.keys(CFG.ROLES), label = { direct: 'Direct', deny: 'No', intro: 'Intro Request', own: 'Direct (own athlete)', mine: 'Direct (verifier link)', verifier: 'Direct (requested verifier)', interest: 'Direct (in Interests)', visible: 'Direct (athlete allows; minors need guardian)' };
       return '<div class="table-wrap"><table class="data-table"><caption class="sr-only">Messaging permissions by role</caption><thead><tr><th scope="col">From \\ To</th>' + rs.map(function (r) { return '<th scope="col">' + esc(roleName(r)) + '</th>'; }).join('') + '</tr></thead><tbody>' +
-        rs.map(function (f) { return '<tr><th scope="row">' + esc(roleName(f)) + '</th>' + rs.map(function (t) { return '<td>' + esc(label[CFG.MATRIX[f][t]] || '') + '</td>'; }).join('') + '</tr>'; }).join('') + '</tbody></table></div><p class="coach-note">Guardians read a minor\u2019s conversations (read-only) unless the athlete\u2019s guardian setting hides them. The Athletic Department can read all conversations for oversight (read-only). Anyone can block or report a conversation.</p>';
+        rs.map(function (f) { return '<tr><th scope="row">' + esc(roleName(f)) + '</th>' + rs.map(function (t) { return '<td>' + esc(label[CFG.MATRIX[f][t]] || '') + '</td>'; }).join('') + '</tr>'; }).join('') + '</tbody></table></div><p class="coach-note">Guardians have no account: they read a minor\u2019s conversations read-only through an emailed manage link unless the guardian setting hides them. The Athletic Department can read all conversations for oversight (read-only). Anyone can block or report a conversation.</p>';
     }
     function fillTo(q) {
       var sel = root.querySelector('#cn-to'), keep = sel.value || toParam; q = String(q || '').toLowerCase();
@@ -269,12 +263,21 @@
   function injectTab() {
     var bar = document.querySelector('.prof-tabs');
     if (bar && !bar.querySelector('a[href^="connect.html"]')) { var a = document.createElement('a'); a.href = 'connect.html'; a.textContent = 'Connect'; bar.appendChild(a); }
-    var g = document.getElementById('guardian-connect-link');
-    if (!g && /guardian-verify/.test(location.pathname)) { var m = document.getElementById('main'); if (m) { var p = document.createElement('p'); p.id = 'guardian-connect-link'; p.className = 'coach-note'; p.innerHTML = '<a class="button button-secondary" href="connect.html">Open Connect</a> Read your athlete\u2019s conversations (read-only) and message coaches.'; m.insertBefore(p, m.firstChild); } }
   }
   document.addEventListener('DOMContentLoaded', function () { setTimeout(function () { injectTab(); badges(); }, 50); setTimeout(badges, 400); });
 
+  // Guardians have no account: the emailed manage link (guardian-verify.html?m=...) shows a minor's threads read-only.
+  function guardianView(rid) {
+    var rec = A().load().filter(function (r) { return r.id === rid; })[0];
+    if (!rec || (rec.guardian && rec.guardian.msgVisible === false)) return [];
+    return store().threads.filter(function (t) { return t.p.indexOf('ath:' + rid) >= 0; });
+  }
+  function guardianInbox(rid) {
+    var s = store(), id = 'gd:' + rid;
+    return { notes: s.notifs.filter(function (n) { return n.to === id; }), intros: s.intros.filter(function (i) { return i.approver === id; }) };
+  }
   window.TheReadConnect = {
+    guardianView: guardianView, guardianInbox: guardianInbox,
     mode: 'demo-localStorage', encrypted: false, config: CFG, me: me, meId: meId, people: people, person: person, perm: perm,
     send: sendTo, reply: reply, requestIntro: requestIntro, respondIntro: respondIntro, block: setBlock, report: report, markRead: markRead,
     threadsFor: visibleThreads, unread: unread, intros: function () { return store().intros; }, notifs: function () { return store().notifs; },

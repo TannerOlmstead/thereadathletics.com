@@ -226,3 +226,7 @@ This site is plain HTML/CSS/JS with no build step. There is **no backend**: form
 
 - [x] Finance clarity: labeled units/periods, inputs vs calculated, formulas, line items, Not Entered handling, glossary
 - [ ] Finance: link commitments and aid dollars to the Recruiting Board / Commitments automatically; real budget-year handling
+
+- [x] Guardian without an account: emailed link + one-time code, no-password `guardian-verify.html?m=` manage page (consent, visibility, contact rules, revoke, read-only messages, intro approvals); simulated email preview (demo, nothing sent)
+- [x] One Verified Data Provider role with Provider Type (High School Coach, Private Instructor / Trainer, Showcase / Event Organizer, Other); sign-in, signup, Connect matrix, Request Verification and workflow updated
+- [ ] Guardian email (real): email service, single-use tokens with expiry, rate limits, revoke audit log, emailed copies of a minor's messages, identity/relationship checks

@@ -10,9 +10,9 @@
 
   var PLAYER_TIER_CONFIG = {
     'Platinum': { label: 'Platinum', minimumScore: 95, backgroundColor: '#A9C4E4', bgGradient: 'linear-gradient(135deg,#E3EEFA,#A9C4E4 45%,#8FB0D8 70%,#D4E4F6)', textColor: '#0B1F3A', borderColor: '#5F86B5', sortOrder: 4, rangeLabel: '95.0-100.0' },
-    'Gold': { label: 'Gold', minimumScore: 85, backgroundColor: '#D4A017', textColor: '#241A00', borderColor: '#AA7D00', sortOrder: 3, rangeLabel: '85.0-94.9' },
-    'Silver': { label: 'Silver', minimumScore: 70, backgroundColor: '#A7ADB4', textColor: '#1A1A1A', borderColor: '#7E858D', sortOrder: 2, rangeLabel: '70.0-84.9' },
-    'Bronze': { label: 'Bronze', minimumScore: 0, backgroundColor: '#A8632A', textColor: '#FFFFFF', borderColor: '#7E451C', sortOrder: 1, rangeLabel: '0.0-69.9' },
+    'Gold': { label: 'Gold', minimumScore: 85, backgroundColor: '#D4A017', bgGradient: 'linear-gradient(135deg,#FFF0B3,#E8BC40 40%,#C9971C 70%,#F6DE8B)', textColor: '#241A00', borderColor: '#AA7D00', sortOrder: 3, rangeLabel: '85.0-94.9' },
+    'Silver': { label: 'Silver', minimumScore: 70, backgroundColor: '#A7ADB4', bgGradient: 'linear-gradient(135deg,#F2F3F5,#BEC3C9 40%,#9DA3AA 70%,#E3E5E8)', textColor: '#1A1A1A', borderColor: '#7E858D', sortOrder: 2, rangeLabel: '70.0-84.9' },
+    'Bronze': { label: 'Bronze', minimumScore: 0, backgroundColor: '#A8632A', bgGradient: 'linear-gradient(135deg,#F0C9A3,#CF8D56 40%,#B87238 70%,#E5B38A)', textColor: '#2B1200', borderColor: '#7E451C', sortOrder: 1, rangeLabel: '0.0-69.9' },
     'Not Rated': { label: 'Not Rated', minimumScore: null, backgroundColor: '#E5E7EB', textColor: '#4B5563', borderColor: '#C7CBD1', sortOrder: 0, rangeLabel: 'Recruit Score unavailable' }
   };
 
@@ -76,6 +76,20 @@
   // Confidence is shown FLOORED to one decimal (89.96 -> 89.9) so the display never rounds up across a level threshold. Recruit Score keeps normal rounding.
   function floorConfidence(v) { var n = Number(v); return (Math.floor(n * 10 + 1e-9) / 10).toFixed(1); }
   function formatConfidencePercentage(v) { return isMissing(v) ? DASH : floorConfidence(v) + '%'; }
+
+  // Projection grades (OPG, SOPG, DPG, SDPG, PPG) are shown as letters; the 0-100 grade value stays in the tooltip and data-value for sorting.
+  var GRADE_TABLE = { 'A+': 98, 'A': 95, 'A-': 92, 'B+': 88, 'B': 85, 'B-': 82, 'C+': 78, 'C': 75, 'C-': 72, 'D+': 68, 'D': 65, 'D-': 62, 'F': 50 };
+  function letterGrade(v) {
+    if (isMissing(v) || v === '') return null;
+    var best = 'F', bd = Infinity, n = Number(v);
+    Object.keys(GRADE_TABLE).forEach(function (g) { var d = Math.abs(GRADE_TABLE[g] - n); if (d < bd) { bd = d; best = g; } });
+    return best;
+  }
+  function renderGrade(v) {
+    var g = letterGrade(v);
+    if (!g) return DASH;
+    return '<span class="grade-letter" data-value="' + Number(v).toFixed(1) + '" title="Grade value ' + Number(v).toFixed(1) + ' of 100">' + g + '</span>';
+  }
 
   function tierAccessibleLabel(score) {
     var t = getPlayerTier(score);
@@ -187,6 +201,9 @@
     formatRecruitScore: formatRecruitScore,
     formatConfidencePercentage: formatConfidencePercentage,
     floorConfidence: floorConfidence,
+    GRADE_TABLE: GRADE_TABLE,
+    letterGrade: letterGrade,
+    renderGrade: renderGrade,
     tierAccessibleLabel: tierAccessibleLabel,
     confidenceAccessibleLabel: confidenceAccessibleLabel,
     renderTierBadge: renderTierBadge,

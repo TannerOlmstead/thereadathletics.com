@@ -20,6 +20,8 @@
   const confLabel = (c) => TRC.getConfidenceLevel(c);
   const tierBadge = (p, o) => TRC.renderTierBadge(p.rs, o);
   const confBadge = (p, o) => TRC.renderConfidenceBadge(p.conf, o);
+  const GK = ['opg', 'sopg', 'dpg', 'sdpg', 'ppg'];
+  const gl = (v) => TRC.renderGrade(v);
   const rk = (v) => (v == null ? '&mdash;' : '#' + v);
   const letter = (s) => { let best = 'F', bd = Infinity; GRADES.forEach((g) => { const d = Math.abs(GRADE_TABLE[g] - s); if (d < bd) { bd = d; best = g; } }); return best; };
   const $ = (s, r) => (r || document).querySelector(s);
@@ -146,8 +148,26 @@
   // Master Database: coach-entered demo players live in this browser's localStorage and join the sample players here,
   // so every page (rankings, player card, H2H, dashboard...) reads the same list. Real storage needs a backend.
   const STORE_KEY = 'theReadDemoMasterDb';
-  const loadAdded = () => { try { const a = JSON.parse(localStorage.getItem(STORE_KEY) || '[]'); return Array.isArray(a) ? a : []; } catch (e) { return []; } };
-  const saveAdded = (a) => { try { localStorage.setItem(STORE_KEY, JSON.stringify(a)); return true; } catch (e) { return false; } };
+  // Each sport has its OWN stored dataset (theReadDemoMasterDb:baseball, :mensBasketball, ...). The old single key is migrated once.
+  const sportId = (n) => { const x = SPORTS.filter((y) => y.name === n)[0]; return x ? x.id : 'baseball'; };
+  const sportKey = (n) => STORE_KEY + ':' + sportId(n);
+  const readList = (k) => { try { const a = JSON.parse(localStorage.getItem(k) || '[]'); return Array.isArray(a) ? a : []; } catch (e) { return []; } };
+  const loadAdded = () => {
+    const legacy = readList(STORE_KEY);
+    if (legacy.length || localStorage.getItem(STORE_KEY) !== null) {
+      try {
+        legacy.forEach((a) => { if (!a || !a.id) return; const n = SPORT_NAMES.indexOf(a.sport) < 0 ? 'Baseball' : a.sport; a.sport = n; const k = sportKey(n), cur = readList(k); if (!cur.some((c) => c.id === a.id)) { cur.push(a); localStorage.setItem(k, JSON.stringify(cur)); } });
+        localStorage.removeItem(STORE_KEY);
+      } catch (e) { /* ignore */ }
+    }
+    return SPORT_NAMES.reduce((all, n) => all.concat(readList(sportKey(n)).map((a) => Object.assign(a, { sport: n }))), []);
+  };
+  const saveAdded = (a) => {
+    try {
+      SPORT_NAMES.forEach((n) => { const l = a.filter((x) => (SPORT_NAMES.indexOf(x.sport) < 0 ? 'Baseball' : x.sport) === n); if (l.length) localStorage.setItem(sportKey(n), JSON.stringify(l)); else localStorage.removeItem(sportKey(n)); });
+      return true;
+    } catch (e) { return false; }
+  };
   loadAdded().forEach((a) => {
     if (!a || !a.id || !a.name) return;
     if (SPORT_NAMES.indexOf(a.sport) < 0) a.sport = 'Baseball';
@@ -161,6 +181,7 @@
     players.push(p);
   });
   // Athlete-created demo profiles (athlete-signup.js). Minors appear only after guardian verification; shared fields follow athlete and guardian choices.
+  const athGpa = (aid) => { try { const x = JSON.parse(localStorage.getItem('theReadDemoAthleteExtras') || '{}')[aid]; const g = x && parseFloat(x.gpa); return isFinite(g) && g >= 0 && g <= 5 ? g : null; } catch (e) { return null; } };
   (() => {
     let recs = [];
     try { recs = JSON.parse(localStorage.getItem('theReadDemoAthletes') || '[]'); } catch (e) { recs = []; }
@@ -178,15 +199,16 @@
       if (!r || !r.id || sportPos(r.sport).indexOf(r.pos) < 0 || !window.TheReadAthlete.listed(r)) return;
       const A = window.TheReadAthlete, m = r.metrics || {}, share = (k) => A.shares(r, k), gv = r.path !== 'adult';
       const p = { id: 'ATH-' + r.id.replace(/[^a-z0-9]/gi, '').slice(-6).toUpperCase() + r._sx, sport: r.sport, athKey: 'ATH-' + r._aid.replace(/[^a-z0-9]/gi, '').slice(-6).toUpperCase(), name: r.name, grad: r.grad, pos: r.pos, sec: r.sec || '', twoWay: !!(r.rolePref && r.rolePref.twoWay === 'Yes'), state: r.state || '', hs: r.school || '',
-        method: 'Athlete-Created (Self-Reported' + (A.anyVerified(r) ? ', some metrics verified by third party (demo)' : ', Unverified') + ')', notes: 'Athlete-Created' + (gv ? '; Guardian-Verified (demo)' : '') + '. Contact info ' + (share('contact') ? 'shared by athlete.' : 'Not shared.'),
-        eval: '', links: {}, ht: null, wt: null, gpa: null, staff: null, fit: null, need: null, adj: null, pri: null, hc: null, pc: null, ac: null, committed: '', coach: '', action: '',
+        method: 'Athlete-Created (Self-Reported' + (A.anyVerified(r) ? ', some metrics verified by third party (demo)' : ', Unverified') + ')', notes: '',
+        evalTs: ((r.vlog || []).map((x) => x.ts || '').sort().pop()) || '', eval: '', links: {}, ht: null, wt: null, gpa: athGpa(r._aid), staff: null, fit: null, need: null, adj: null, pri: null, hc: null, pc: null, ac: null, committed: '', coach: '', action: '',
         level: LEVELS.indexOf(r.level) < 0 ? 'Other' : r.level, photo: share('photo') ? r.photo || '' : '', elig: r.elig == null ? null : r.elig, xfer: r.transfer || null, entered: true, athleteCreated: true, guardianVerified: gv, pref: r.rolePref || null, projRole: '' };
-      ['opg', 'sopg', 'dpg', 'sdpg', 'ppg', 'ath', 'rs', 'conf', 'pop', 'avgEV', 'maxEV', 'avgFBV', 'maxFBV', 'tv', 't60'].forEach((k) => { p[k] = share('metrics') && m[k] != null ? m[k] : null; });
+      ['opg', 'sopg', 'dpg', 'sdpg', 'ppg', 'ath', 'rs', 'conf', 'pop', 'avgEV', 'maxEV', 'avgFBV', 'maxFBV', 'tv', 't60'].forEach((k) => { p[k] = share('metrics') && m[k] != null && !/^(opg|sopg|dpg|sdpg|ppg|ath|rs|conf)$/.test(k) ? m[k] : null; });
       if (share('metrics')) { p.ht = m.ht == null ? null : m.ht; p.wt = m.wt == null ? null : m.wt; }
       ['rs', 'conf', 'ath'].forEach((k) => { p[k] = null; });
       if (r.sport === 'Baseball' && window.TheReadScore) {
-        const sr = window.TheReadScore.compute({ pos: p.pos, metrics: { ht: p.ht, wt: p.wt, t60: p.t60, tv: p.tv, avgEV: p.avgEV, maxEV: p.maxEV, avgFBV: p.avgFBV, maxFBV: p.maxFBV }, verified: r.verified }, players.filter((q) => !q.entered && (q.sport || 'Baseball') === 'Baseball'));
-        p.rs = sr.rs == null ? null : sr.rsShown; p.rsRaw = sr.rs; p.conf = sr.conf;
+        const sr = window.TheReadScore.compute({ pos: p.pos, sec: p.sec, twoWay: p.twoWay, rolePref: r.rolePref, metrics: { ht: p.ht, wt: p.wt, t60: p.t60, tv: p.tv, avgEV: p.avgEV, maxEV: p.maxEV, avgFBV: p.avgFBV, maxFBV: p.maxFBV }, verified: r.verified }, players.filter((q) => !q.entered && (q.sport || 'Baseball') === 'Baseball'));
+        p.rs = sr.rs == null ? null : sr.rsShown; p.rsRaw = sr.rs; p.conf = sr.conf; p.role = sr.role; p.scoreNeeds = sr.needed; p.gradeWhy = sr.gradeWhy; p.confBlocked = sr.inputs.filter((i) => i.blocked).map((i) => i.label);
+        ['opg', 'sopg', 'dpg', 'sdpg', 'ppg', 'ath'].forEach((k) => { p[k] = sr.grades[k] == null ? null : sr.grades[k]; });
       }
       players.push(p);
     });
@@ -237,6 +259,13 @@
   const loadGrades = () => { try { const g = JSON.parse(localStorage.getItem(GR_KEY) || '{}'); return g && typeof g === 'object' && !Array.isArray(g) ? g : {}; } catch (e) { return {}; } };
   const saveGrades = (g) => { try { localStorage.setItem(GR_KEY, JSON.stringify(g)); return true; } catch (e) { return false; } };
   const GRADE_STORE = loadGrades();
+  // Evaluation Date is automatic: the latest evaluation event (a staff grade or an athlete metric verification). It is never typed in.
+  players.forEach((p) => {
+    if (!p.entered) return;
+    const ts = [p.evalTs || ''];
+    Object.keys(GRADE_STORE[p.id] || {}).forEach((c) => { const e = GRADE_STORE[p.id][c]; ts.push((e && (e.ts || e.date)) || ''); });
+    p.eval = ts.sort().pop().slice(0, 10);
+  });
   const GROUPS = [['P', 'Pitchers', ['P']], ['C', 'Catchers', ['C']], ['IF', 'Infielders', ['1B', '2B', '3B', 'SS']], ['OF', 'Outfielders', ['OF']]];
   const groupOf = (pos) => { const g = GROUPS.filter((x) => x[2].indexOf(pos) >= 0)[0]; return g ? g[0] : null; };
   const WT_KEY = 'theReadDemoGradeWeights', SCALE_KEY = 'theReadDemoGradeScale';
@@ -568,7 +597,16 @@
   });
   // Athletic Department context: ?dsport=<sport id> scopes every coach page to one sport (read-only list filter, nothing is deleted).
   const DEPT_SPORT = (() => { try { const k = new URLSearchParams(location.search).get('dsport'); const x = window.TheReadSports && window.TheReadSports.get(k); return x ? x.name : ''; } catch (e) { return ''; } })();
-  if (DEPT_SPORT) { for (let i = players.length - 1; i >= 0; i--) { if (players[i].sport !== DEPT_SPORT) players.splice(i, 1); } }
+  // Strict sport separation: coach pages read ONE sport's dataset (?dsport= > remembered choice > Baseball). Department pages without ?dsport label data by sport instead.
+  const CTX_COACH = /ws-coach/.test((document.body && document.body.className) || '');
+  const ACTIVE_SPORT = DEPT_SPORT || (CTX_COACH ? (SPORT_NAMES.indexOf(sessionStorage.getItem('theReadActiveSport')) >= 0 ? sessionStorage.getItem('theReadActiveSport') : 'Baseball') : '');
+  if (ACTIVE_SPORT) { for (let i = players.length - 1; i >= 0; i--) { if (players[i].sport !== ACTIVE_SPORT) players.splice(i, 1); } }
+  const posList = () => (ACTIVE_SPORT ? sportPos(ACTIVE_SPORT) : ALLPOS);
+  // Sport switcher: choosing a sport reloads the page with THAT sport's own dataset only (nothing from other sports is mixed in).
+  const sportCtl = (id) => (CTX_COACH && !DEPT_SPORT
+    ? '<label>Sport<select id="' + id + '" data-sport-switch>' + SPORT_NAMES.map((x) => '<option' + (x === ACTIVE_SPORT ? ' selected' : '') + '>' + x + '</option>').join('') + '</select></label>'
+    : '<label>Sport<select id="' + id + '"><option value="">All (Labeled By Sport)</option>' + SPORT_NAMES.map((x) => '<option' + (x === ACTIVE_SPORT ? ' selected' : '') + '>' + x + '</option>').join('') + '</select></label>');
+  document.addEventListener('change', (e) => { const t = e.target; if (t && t.matches && t.matches('[data-sport-switch]')) { try { sessionStorage.setItem('theReadActiveSport', t.value); } catch (x) { /* ignore */ } location.reload(); } });
   const db = {
     total: players.length,
     avgRS: avg(players.map((p) => p.rs)),
@@ -585,7 +623,7 @@
   };
   const leader = (label, k, list, low, fmtd) => {
     const p = best(k, list, low);
-    return '<tr><th scope="row">' + label + '</th><td>' + (p ? cardLink(p) : '&mdash;') + '</td><td>' + (p ? num(p[k], fmtd == null ? 1 : fmtd) : '&mdash;') + '</td></tr>';
+    return '<tr><th scope="row">' + label + '</th><td>' + (p ? cardLink(p) : '&mdash;') + '</td><td>' + (p ? (GK.indexOf(k) >= 0 ? gl(p[k]) : num(p[k], fmtd == null ? 1 : fmtd)) : '&mdash;') + '</td></tr>';
   };
   const miniTable = (head, rows, cap) => '<div class="table-wrap"><table>' + (cap ? '<caption class="visually-hidden">' + cap + '</caption>' : '') + '<thead><tr>' + head.map((h) => '<th scope="col">' + h + '</th>').join('') + '</tr></thead><tbody>' + rows.join('') + '</tbody></table></div>';
   const card = (title, body, cls) => '<section class="card coach-card ' + (cls || '') + '"><h2>' + title + '</h2>' + body + '</section>';
@@ -679,9 +717,9 @@
     ['rs', 'Recruit Score', (p) => TRC.formatRecruitScore(p.rs), 'c-rs rd-num', TRC.TEXT.recruitScoreTooltip],
     ['tier', 'Tier', (p) => tierBadge(p), 'c-tier', TRC.TEXT.tierTooltip],
     ['conf', 'Confidence', (p) => confBadge(p), 'c-conf', TRC.TEXT.confidenceTooltip],
-    ['opg', 'OPG', (p) => num(p.opg), 'c-grade rd-num'],
-    ['dpg', 'DPG', (p) => num(p.dpg), 'c-grade rd-num'],
-    ['ppg', 'PPG', (p) => num(p.ppg), 'c-grade rd-num'],
+    ['opg', 'OPG', (p) => gl(p.opg), 'c-grade rd-num'],
+    ['dpg', 'DPG', (p) => gl(p.dpg), 'c-grade rd-num'],
+    ['ppg', 'PPG', (p) => gl(p.ppg), 'c-grade rd-num'],
     ['board', 'Board', (p) => boardBtn(p), 'c-board']
   ];
   const rankingRowHtml = (p) => '<tr>' + RK_COLS.map((c) => (c[0] === 'name'
@@ -694,11 +732,11 @@
     root.innerHTML =
       '<form class="controls" id="r-form" aria-label="Filter rankings" onsubmit="return false">' +
       '<label>Search<input type="search" id="f-q" placeholder="Name, position, class, or state" /></label>' +
-      '<label>Sport<select id="f-sport"><option value="">All</option>' + SPORT_NAMES.map((x) => '<option>' + x + '</option>').join('') + '</select></label>' +
-      '<label>Position<select id="f-pos"><option value="">All</option>' + ALLPOS.map((x) => '<option>' + x + '</option>').join('') + '</select></label>' +
+      sportCtl('f-sport') +
+      '<label>Position<select id="f-pos"><option value="">All</option>' + posList().map((x) => '<option>' + x + '</option>').join('') + '</select></label>' +
+      '<label>Secondary Position<select id="f-sec"><option value="">All</option>' + posList().map((x) => '<option>' + x + '</option>').join('') + '</select></label>' +
       '<label>Class<select id="f-class"><option value="">All</option>' + [2027, 2028, 2029, 2030].map((g) => '<option>' + g + '</option>').join('') + '</select></label>' +
       '<label>Playing Level<select id="f-level"><option value="">All</option>' + LEVELS.map((x) => '<option>' + x + '</option>').join('') + '</select></label>' +
-      '<label>Role Preference<select id="f-pref"><option value="">All</option>' + PREF_CATS.map((x) => '<option>' + x + '</option>').join('') + '</select></label>' +
       checks('tier', 'Tier', TRC.TIER_NAMES) + checks('conf', 'Confidence', TRC.CONFIDENCE_NAMES) +
       '<button type="button" class="button button-secondary" id="r-reset">Reset</button>' +
       LVL_LEGEND + '</form><p class="coach-count" id="r-count" role="status"></p><div class="table-wrap"><table id="r-table" class="rd-table"></table></div>' +
@@ -709,10 +747,10 @@
     const tbl = $('#r-table', root);
     const picked = (name) => Array.from(root.querySelectorAll('input[name="' + name + '"]:checked')).map((i) => i.value);
     function draw() {
-      const fp = $('#f-pos', root).value, fc = $('#f-class', root).value, fl = $('#f-level', root).value, fr = $('#f-pref', root).value, fsp = $('#f-sport', root).value;
+      const fp = $('#f-pos', root).value, fc = $('#f-class', root).value, fl = $('#f-level', root).value, fsec = $('#f-sec', root).value, fsp = ACTIVE_SPORT || $('#f-sport', root).value;
       let list = TRC.filterAthletes(players, {
         search: $('#f-q', root).value, tiers: picked('tier'), confidences: picked('conf'),
-        extra: (p) => (!fsp || p.sport === fsp) && (!fp || p.pos === fp) && (!fc || String(p.grad) === fc) && (!fl || p.level === fl) && (!fr || prefCat(p) === fr)
+        extra: (p) => (!fsp || p.sport === fsp) && (!fp || p.pos === fp) && (!fsec || p.sec === fsec) && (!fc || String(p.grad) === fc) && (!fl || p.level === fl)
       });
       const k = state.key, dir = state.dir === 1 ? 'asc' : 'desc';
       if (k === 'rs') list = TRC.sortAthletes(list, 'recruitScore', dir);
@@ -768,11 +806,11 @@
     const stand = p.overall == null ? 'Not ranked (Not Rated)' : p.overall <= 5 ? 'Top 5 overall' : p.overall <= 15 ? 'Top 15 overall' : 'Rank ' + p.overall + ' of ' + players.filter((x) => x.rs != null).length;
       return photoHead(p) + '<p class="pc-board-row">' + boardBtn(p) + '</p>' +
         '<div class="coach-grid">' +
-        card(esc(p.name), field('Grad Year', p.grad) + field('Primary Position', p.pos) + field('Secondary Position', p.sec || '&mdash;') + field('Bats/Throws', p.bats + '/' + p.throws) + field('Height', ftin(p.ht)) + field('Weight', p.wt + ' lb') + field('GPA', p.gpa.toFixed(2)) + field('State', p.state) + field('Current Playing Level', esc(p.level)), 'kvs') +
+        card(esc(p.name), field('Grad Year', p.grad) + field('Primary Position', p.pos) + field('Secondary Position', p.sec || '&mdash;') + field('Bats/Throws', p.bats + '/' + p.throws) + field('Height', ftin(p.ht)) + field('Weight', p.wt + ' lb') + field('GPA', p.gpa == null ? 'Not Provided' : p.gpa.toFixed(2)) + field('State', p.state) + field('Current Playing Level', esc(p.level)), 'kvs') +
         card('Rankings', field('Overall Rank', rk(p.overall)) + field('Class Rank', rk(p.classRank)) + field('Athletic Score', num(p.ath)), 'kvs') +
         card('Recruit Score, Player Tier, And Confidence', field('Recruit Score', '<span class="rd-num" title="' + esc(TRC.TEXT.recruitScoreTooltip) + '">' + TRC.formatRecruitScore(p.rs) + '</span>') + field('Player Tier', tierBadge(p, { focusable: true, size: 'large' })) + field('Confidence', confBadge(p, { focusable: true, size: 'large' })) +
           '<p class="coach-note">' + TRC.TEXT.cardTier + ' ' + TRC.TEXT.cardConfidence + ' Missing data lowers Confidence, not Recruit Score.</p>', 'kvs rd-triple') +
-        card('Grades', field('OPG', num(p.opg)) + field('SOPG', num(p.sopg)) + field('DPG', num(p.dpg)) + field('SDPG', num(p.sdpg)) + field('PPG', num(p.ppg)), 'kvs') +
+        card('Grades', field('OPG', gl(p.opg)) + field('SOPG', gl(p.sopg)) + field('DPG', gl(p.dpg)) + field('SDPG', gl(p.sdpg)) + field('PPG', gl(p.ppg)), 'kvs') +
         card('Team Evaluation', field('HC Grade', nv(p.hc)) + field('PC Grade', nv(p.pc)) + field('AC Grade', nv(p.ac)) + field('Staff Score', staffTxt(p)) + field('Coach Fit Score', nv(p.fit)) + field('Team Need Score', nv(p.need)) + field('Adjusted Recruit Score', num(p.adj)) + field('Priority Score', nv(p.pri)), 'kvs') +
         pcActCard(p.id) +
         card('Measurables', field('Avg EV', num(p.avgEV) + ' mph') + field('Max EV', num(p.maxEV) + ' mph') + field('Avg FBV', num(p.avgFBV) + ' mph') + field('Max FBV', num(p.maxFBV) + ' mph') + field('Throwing Velo', num(p.tv) + ' mph') + field('60 Time', num(p.t60, 2) + ' s') + field('Pop Time', num(p.pop, 2) + ' s'), 'kvs') +
@@ -899,9 +937,8 @@
     const open = panel.hidden; panel.hidden = !open; b.setAttribute('aria-expanded', open ? 'true' : 'false');
   });  const scoreNote = (p) => { const x = SPORTS.filter((y) => y.name === p.sport)[0]; return x && !x.scoring ? '<p class="coach-note"><strong>Scoring Not Yet Available</strong> for ' + esc(p.sport) + '. Recruit Score is Not Rated and Confidence is Unknown until its tables exist (Coming Soon).</p>' : ''; };
   const sportSwitch = (p) => {
-    const sibs = players.filter((q) => p.athKey && q.athKey === p.athKey);
-    if (sibs.length < 2) return scoreNote(p);
-    return '<div class="pc-sub pc-sports" role="group" aria-label="Sports for ' + esc(p.name) + '"><strong>Sports:</strong> ' + sibs.map((q) => '<button type="button" class="button ' + (q.id === p.id ? 'button-primary' : 'button-secondary') + '" data-sport-card="' + q.id + '"' + (q.id === p.id ? ' aria-pressed="true"' : ' aria-pressed="false"') + '>' + esc(q.sport) + ' (' + esc(q.pos) + ')</button>').join(' ') + '</div>' + scoreNote(p);
+    const others = Object.keys(byId).map((k) => byId[k]).filter((q) => p.athKey && q.athKey === p.athKey && q.sport !== p.sport).map((q) => q.sport);
+    return (others.length ? '<p class="pc-sub pc-sports"><span class="pill navy">Multi-Sport Athlete</span> Multi-Sport Athlete: also plays ' + others.map(esc).join(', ') + '. Only ' + esc(p.sport) + ' data is shown here.</p>' : '') + scoreNote(p);
   };
   document.addEventListener('click', (e) => { const b = e.target.closest && e.target.closest('[data-sport-card]'); if (b && byId[b.getAttribute('data-sport-card')]) openCardModal(b.getAttribute('data-sport-card'), b); });
   document.addEventListener('change', (e) => {
@@ -957,8 +994,8 @@
     root.innerHTML = '<div id="h-out"></div>';
     const SIDES = ['a', 'b'];
     const T = { rank: [['Overall Rank', 'overall', 'low', (v) => '#' + v], ['Class Rank', 'classRank', 'low', (v) => '#' + v], ['Athletic Score', 'ath', 'high'], ['Recruit Score', 'rs', 'high', (v) => TRC.formatRecruitScore(v)], ['Player Tier', 'rs', 'tier'], ['Confidence', 'conf', 'data']],
-      info: [['Player Name', 'name'], ['Primary Position', 'pos'], ['Secondary Position', 'sec'], ['Grad Year', 'grad', null, (v) => String(v)], ['Height', 'ht', null, (v) => ftin(v)], ['Weight', 'wt', null, (v) => v + ' lb'], ['GPA', 'gpa', null, (v) => v.toFixed(2)]],
-      grades: [['OPG', 'opg', 'high'], ['SOPG', 'sopg', 'high'], ['DPG', 'dpg', 'high'], ['SDPG', 'sdpg', 'high'], ['PPG', 'ppg', 'high']],
+      info: [['Player Name', 'name'], ['Primary Position', 'pos'], ['Secondary Position', 'sec'], ['Grad Year', 'grad', null, (v) => String(v)], ['Height', 'ht', null, (v) => ftin(v)], ['Weight', 'wt', null, (v) => v + ' lb'], ['GPA', 'gpa', null, (v) => Number(v).toFixed(2)]],
+      grades: [['OPG', 'opg', 'high', gl], ['SOPG', 'sopg', 'high', gl], ['DPG', 'dpg', 'high', gl], ['SDPG', 'sdpg', 'high', gl], ['PPG', 'ppg', 'high', gl]],
       meas: [['Avg EV', 'avgEV', 'high'], ['Max EV', 'maxEV', 'high'], ['Avg FBV', 'avgFBV', 'high'], ['Max FBV', 'maxFBV', 'high'], ['Throwing Velo', 'tv', 'high'], ['60 Time', 't60', 'low', (v) => v.toFixed(2)], ['Pop Time', 'pop', 'low', (v) => v.toFixed(2)]],
       team: [['HC Grade', 'hc', 'grade'], ['PC Grade', 'pc', 'grade'], ['AC Grade', 'ac', 'grade'], ['Staff Score', 'staff', 'high'], ['Coach Fit Score', 'fit', 'high'], ['Team Need Score', 'need', 'high'], ['Adjusted Recruit Score', 'adj', 'high'], ['Priority Score', 'pri', 'high']] };
 
@@ -1199,13 +1236,13 @@
       '<div class="kpi-row">' + kpi('On Your Board', board.length) + kpi('Priority 1 Targets', t(1).length) + kpi('Priority 2 Targets', t(2).length) + kpi('Priority 3 Targets', t(3).length) + kpi('Committed Players', ours.length) + kpi('Open Spots', 14 - ours.length) + '</div>' +
       '<h2 class="coach-h2">Your Board</h2>' +
       '<form class="controls" onsubmit="return false"><label>Priority Tier<select id="b-tier"><option value="">All</option><option value="1">Priority 1</option><option value="2">Priority 2</option><option value="3">Priority 3</option><option value="0">Not Enough Data</option></select></label><label>Stage<select id="b-stage"><option value="">All</option>' + STAGE_ORDER.concat(['Declined']).map((x) => '<option>' + x + '</option>').join('') + '</select></label>' +
-      '<label>Playing Level<select id="b-level"><option value="">All</option>' + LEVELS.map((x) => '<option>' + x + '</option>').join('') + '</select></label><label>Position<select id="b-pos"><option value="">All</option>' + POS.map((x) => '<option>' + x + '</option>').join('') + '</select></label></form>' +
+      '<label>Playing Level<select id="b-level"><option value="">All</option>' + LEVELS.map((x) => '<option>' + x + '</option>').join('') + '</select></label><label>Position<select id="b-pos"><option value="">All</option>' + posList().map((x) => '<option>' + x + '</option>').join('') + '</select></label><label>Secondary Position<select id="b-sec"><option value="">All</option>' + posList().map((x) => '<option>' + x + '</option>').join('') + '</select></label></form>' +
       LVL_LEGEND + '<div class="table-wrap"><table id="b-table"></table></div>' +
       '<div class="coach-grid">' + snap + '</div>' + boardFormula() +
       '<div id="b-read">' + boardRead() + '</div>';
     function draw() {
-      const fs = $('#b-stage', root).value, ft = $('#b-tier', root).value, fp = $('#b-pos', root).value, fl = $('#b-level', root).value;
-      const list = board.filter((p) => (!ft || String(tierOf(p) || 0) === ft) && (!fs || Act.stage(p.id) === fs) && (!fp || p.pos === fp) && (!fl || p.level === fl)).sort((a, b) => (tierOf(a) || 9) - (tierOf(b) || 9) || (b.pri || 0) - (a.pri || 0));
+      const fs = $('#b-stage', root).value, ft = $('#b-tier', root).value, fp = $('#b-pos', root).value, fsc = $('#b-sec', root).value, fl = $('#b-level', root).value;
+      const list = board.filter((p) => (!ft || String(tierOf(p) || 0) === ft) && (!fs || Act.stage(p.id) === fs) && (!fp || p.pos === fp) && (!fsc || p.sec === fsc) && (!fl || p.level === fl)).sort((a, b) => (tierOf(a) || 9) - (tierOf(b) || 9) || (b.pri || 0) - (a.pri || 0));
       $('#b-table', root).innerHTML = '<caption class="visually-hidden">Recruiting board (fictional data)</caption><thead><tr>' + ['Priority Tier', 'Stage', 'Player Name', 'Primary Position', 'Secondary Position', 'Level / Class', 'Eligibility Left', 'State', 'Athletic Score', 'Recruit Score', 'Tier', 'Confidence', 'Adjusted Recruit Score', 'Priority Score', 'Evaluation Method', 'Player Notes', 'Staff Notes', 'Remove'].map((h) => '<th scope="col">' + h + '</th>').join('') + '</tr></thead><tbody>' +
         (list.length ? list.map((p) => {
           const e = Board.get(p.id);
@@ -1258,7 +1295,7 @@
       const rows = x === 'P'
         ? [['Avg FBV', avgOf('avgFBV', l), 1], ['Avg Max FBV', avgOf('maxFBV', l), 1], ['Avg PPG', avgOf('ppg', l), 1], ['Highest FBV', (best('avgFBV', l) || {}).avgFBV, 1], ['Highest Max FBV', (best('maxFBV', l) || {}).maxFBV, 1]]
         : [['Avg 60 Time', avgOf('t60', l), 2], ['Avg Throwing Velo', avgOf('tv', l), 1], ['Avg EV', avgOf('avgEV', l), 1], ['Avg Max EV', avgOf('maxEV', l), 1], ['Avg OPG', avgOf('opg', l), 1], ['Avg DPG', avgOf('dpg', l), 1]].concat(x === 'C' ? [['Avg Pop Time', avgOf('pop', l), 2], ['Best Pop Time', (best('pop', l, true) || {}).pop, 2]] : []);
-      return card(x + ' Benchmarks', miniTable(['Metric', 'Value'], rows.map((q) => tr([q[0], num(q[1], q[2])])), x + ' benchmarks'));
+      return card(x + ' Benchmarks', miniTable(['Metric', 'Value'], rows.map((q) => tr([q[0], /\b(OPG|DPG|PPG)\b/.test(q[0]) ? gl(q[1]) : num(q[1], q[2])])), x + ' benchmarks'));
     }).join('');
     const leaders = POS.map((x) => {
       const l = gp[x] || [];
@@ -1271,7 +1308,7 @@
       '<div class="kpi-row">' + kpi('Total Players', db.total) + kpi('Avg Recruit Score', num(db.avgRS)) + kpi('Avg Confidence %', num(db.avgConf) + '%') + kpi('Platinum Players', players.filter((p) => p.tier === 'Platinum').length) + kpi('Gold Players', players.filter((p) => p.tier === 'Gold').length) + kpi('Not Rated Players', players.filter((p) => p.tier === 'Not Rated').length) + '</div>' +
       '<h2 class="coach-h2">Top Performers</h2><div class="coach-grid">' +
       card('Top Performers', miniTable(['Leader', 'Player', 'Value'], [leader('Highest Recruit Score', 'rs'), leader('Highest Athletic Score', 'ath'), leader('Highest OPG', 'opg'), leader('Highest DPG', 'dpg'), leader('Highest SOPG', 'sopg'), leader('Highest SDPG', 'sdpg'), leader('Highest PPG', 'ppg'), leader('Highest Avg EV', 'avgEV'), leader('Highest Max EV', 'maxEV'), leader('Highest Avg FBV', 'avgFBV'), leader('Highest Max FBV', 'maxFBV'), leader('Fastest 60 Time', 't60', null, true, 2)], 'Top performers')) +
-      card('Database Benchmarks', miniTable(['Metric', 'Value'], [tr(['Avg Recruit Score', num(db.avgRS)]), tr(['Avg Athletic Score', num(db.avgAth)]), tr(['Avg DPG', num(avgOf('dpg'))]), tr(['Avg PPG', num(avgOf('ppg'))]), tr(['Avg EV', num(avgOf('avgEV'))]), tr(['Avg Max EV', num(avgOf('maxEV'))]), tr(['Avg FBV', num(avgOf('avgFBV'))]), tr(['Avg Max FBV', num(avgOf('maxFBV'))]), tr(['Avg 60 Time', num(avgOf('t60'), 2)])], 'Database benchmarks')) +
+      card('Database Benchmarks', miniTable(['Metric', 'Value'], [tr(['Avg Recruit Score', num(db.avgRS)]), tr(['Avg Athletic Score', num(db.avgAth)]), tr(['Avg DPG', gl(avgOf('dpg'))]), tr(['Avg PPG', gl(avgOf('ppg'))]), tr(['Avg EV', num(avgOf('avgEV'))]), tr(['Avg Max EV', num(avgOf('maxEV'))]), tr(['Avg FBV', num(avgOf('avgFBV'))]), tr(['Avg Max FBV', num(avgOf('maxFBV'))]), tr(['Avg 60 Time', num(avgOf('t60'), 2)])], 'Database benchmarks')) +
       card('School Rankings', miniTable(['Rank', 'School', 'Commits', 'Avg Recruit Score'], schoolRows(schoolStats()), 'School rankings')) + '</div>' +
       '<h2 class="coach-h2">Position Benchmarks</h2><div class="coach-grid">' + posBlocks + '</div>' +
       '<h2 class="coach-h2">Position Leaders By Metric</h2>' + bl(['<strong>Position Leaders:</strong> for each position, the one player with the best value in each measure.', '<strong>Who is included:</strong> all ' + players.length + ' players in the shared database (sample data), not only your board.', '<strong>Direction:</strong> Recruit Score and Athletic Score show the highest value; Pop Time shows the lowest (faster) time.', '<strong>Missing values are skipped,</strong> never counted as 0.']) + '<div class="coach-grid">' + leaders + '</div>' +
@@ -1281,11 +1318,11 @@
   pages.regional = (root) => {
     const gs = groupBy(players, 'state');
     const stats = Object.keys(gs).map((s) => { const l = gs[s]; return { state: s, n: l.length, elite: l.filter((p) => p.tier === 'Platinum').length, high: l.filter((p) => p.tier === 'Gold').length, rs: avgOf('rs', l), opg: avgOf('opg', l), dpg: avgOf('dpg', l), ppg: avgOf('ppg', l), l: l }; });
-    const rank = (k, list, title) => card(title, miniTable(['Rank', 'State', 'Value', 'Players'], list.filter((s) => s[k] != null).sort((a, b) => b[k] - a[k]).map((s, i) => '<tr><th scope="row">#' + (i + 1) + ' State</th><td>' + s.state + '</td><td>' + (Number.isInteger(s[k]) ? s[k] : num(s[k])) + '</td><td>' + s.n + '</td></tr>'), title));
+    const rank = (k, list, title) => card(title, miniTable(['Rank', 'State', 'Value', 'Players'], list.filter((s) => s[k] != null).sort((a, b) => b[k] - a[k]).map((s, i) => '<tr><th scope="row">#' + (i + 1) + ' State</th><td>' + s.state + '</td><td>' + (GK.indexOf(k) >= 0 ? gl(s[k]) : Number.isInteger(s[k]) ? s[k] : num(s[k])) + '</td><td>' + esc(String(s.n)) + '</td></tr>'), title));
     const sch = schoolStats();
-    const schRank = (k, title) => card(title, miniTable(['Rank', 'School', 'Value'], sch.filter((s) => s[k] != null).slice().sort((a, b) => b[k] - a[k]).map((s, i) => '<tr><th scope="row">#' + (i + 1) + ' School</th><td>' + esc(s.school) + '</td><td>' + num(s[k]) + '</td></tr>'), title));
+    const schRank = (k, title) => card(title, miniTable(['Rank', 'School', 'Value'], sch.filter((s) => s[k] != null).slice().sort((a, b) => b[k] - a[k]).map((s, i) => '<tr><th scope="row">#' + (i + 1) + ' School</th><td>' + esc(s.school) + '</td><td>' + (GK.indexOf(k) >= 0 ? gl(s[k]) : num(s[k])) + '</td></tr>'), title));
     const bestState = (x) => { const c = stats.map((s) => ({ s: s.state, v: avgOf('rs', s.l.filter((p) => p.pos === x)) })).filter((q) => q.v != null).sort((a, b) => b.v - a.v)[0]; return c ? c.s + ' (' + num(c.v) + ')' : '&mdash;'; };
-    const top = (k) => { const c = stats.filter((s) => s[k] != null).sort((a, b) => b[k] - a[k])[0]; return c ? c.state + ' (' + (Number.isInteger(c[k]) ? c[k] : num(c[k])) + ')' : '&mdash;'; };
+    const top = (k) => { const c = stats.filter((s) => s[k] != null).sort((a, b) => b[k] - a[k])[0]; return c ? c.state + ' (' + (GK.indexOf(k) >= 0 ? TRC.letterGrade(c[k]) : Number.isInteger(c[k]) ? c[k] : num(c[k])) + ')' : '&mdash;'; };
     root.innerHTML =
       '<div class="coach-grid">' +
       rank('rs', stats, 'State Rankings By Avg Recruit Score') + rank('opg', stats, 'State Rankings By Avg OPG') + rank('dpg', stats, 'State Rankings By Avg DPG') + rank('ppg', stats, 'State Rankings By Avg PPG') +
@@ -1343,8 +1380,6 @@
       ['pos', 'Primary Position', (p) => p.pos, (p) => p.pos],
       ['sec', 'Secondary Position', (p) => p.sec, (p) => p.sec || '&mdash;'],
       ['twoWay', 'Two Way', (p) => (p.twoWay ? 1 : 0), (p) => (p.twoWay ? 'Yes' : 'No')],
-      ['pref', 'Role Preference (Athlete)', (p) => prefTxt(p), (p) => esc(prefTxt(p))],
-      ['proj', 'Projected College Role (Coach)', (p) => projTxt(p), (p) => esc(projTxt(p))],
       ['hs', 'High School', (p) => p.hs, (p) => (p.hs ? esc(p.hs) : '&mdash;')],
       ['state', 'State', (p) => p.state, (p) => p.state || '&mdash;'],
       ['gpa', 'GPA', (p) => p.gpa, n2('gpa', 2)],
@@ -1354,7 +1389,7 @@
       ['avgFBV', 'Avg FBV', (p) => p.avgFBV, n2('avgFBV')], ['maxFBV', 'Max FBV', (p) => p.maxFBV, n2('maxFBV')],
       ['tv', 'Throwing Velo', (p) => p.tv, n2('tv')],
       ['t60', '60 Time', (p) => p.t60, n2('t60', 2)], ['pop', 'Pop Time', (p) => p.pop, n2('pop', 2)],
-      ['opg', 'OPG', (p) => p.opg, n2('opg')], ['sopg', 'SOPG', (p) => p.sopg, n2('sopg')], ['dpg', 'DPG', (p) => p.dpg, n2('dpg')], ['sdpg', 'SDPG', (p) => p.sdpg, n2('sdpg')], ['ppg', 'PPG', (p) => p.ppg, n2('ppg')],
+      ['opg', 'OPG', (p) => p.opg, (p) => gl(p.opg)], ['sopg', 'SOPG', (p) => p.sopg, (p) => gl(p.sopg)], ['dpg', 'DPG', (p) => p.dpg, (p) => gl(p.dpg)], ['sdpg', 'SDPG', (p) => p.sdpg, (p) => gl(p.sdpg)], ['ppg', 'PPG', (p) => p.ppg, (p) => gl(p.ppg)],
       ['ath', 'Athletic Score', (p) => p.ath, n2('ath')],
       ['rs', 'Recruit Score', (p) => p.rs, (p) => TRC.formatRecruitScore(p.rs)],
       ['tier', 'Tier', (p) => (p.rs == null ? null : TRC.PLAYER_TIER_CONFIG[p.tier].sortOrder), (p) => tierBadge(p)],
@@ -1378,7 +1413,7 @@
       '<div class="md-grid">' +
       '<label>Player Name *<input name="name" type="text" maxlength="80" required /></label>' +
       '<label>Grad Year *<select name="grad" required>' + opt([2026, 2027, 2028, 2029, 2030, 2031], 'Select') + '</select></label>' +
-      '<label>Sport *<select name="sport" required>' + opt(SPORT_NAMES, 'Select') + '</select></label>' +
+      '<label>Sport *<select name="sport" required>' + opt(SPORT_NAMES, 'Select').replace('<option>' + ACTIVE_SPORT + '</option>', '<option selected>' + ACTIVE_SPORT + '</option>') + '</select></label>' +
       '<label>Primary Position *<select name="pos" required>' + opt(POS, 'Select') + '</select></label>' +
       '<label>Current Playing Level<select name="level">' + opt(LEVELS) + '</select></label>' +
       '<label>Years Of Eligibility Left (JUCO / college; leave blank if unknown)<input name="elig" type="number" min="0" max="6" step="1" inputmode="numeric" /></label>' +
@@ -1387,11 +1422,9 @@
       '<label>Bats<select name="bats">' + opt(['R', 'L', 'S'], 'Unknown') + '</select></label>' +
       '<label>Throws<select name="throws">' + opt(['R', 'L'], 'Unknown') + '</select></label>' +
       '<label class="md-check"><input name="twoWay" type="checkbox" /> Two Way Player</label>' +
-      '<label>Projected College Role (your evaluation, coach-entered)<select name="projRole">' + opt(PROJ_ROLES, 'Not Provided') + '</select></label>' +
       '<label>High School<input name="hs" type="text" maxlength="80" /></label>' +
       '<label>State (2 letters)<input name="state" type="text" maxlength="2" pattern="[A-Za-z]{2}" /></label>' +
       NUMS.map((n) => '<label>' + n[1] + '<input name="' + n[0] + '" type="text" inputmode="decimal" /></label>').join('') +
-      '<label>Evaluation Date<input name="eval" type="date" /></label>' +
       '<label>Evaluation Method<select name="method">' + opt(METHODS.concat(['Coach Entry (Unverified)']), 'Not Set') + '</select></label>' +
       LINKS.map((l) => '<label>' + l[1] + '<input name="' + l[0] + '" type="url" placeholder="https://" /></label>').join('') +
       '<label class="md-wide">Player Notes<textarea name="notes" rows="2" maxlength="300"></textarea></label></div>' +
@@ -1400,12 +1433,12 @@
       '<div class="md-actions"><button type="submit" class="button button-primary">Add Prospect</button> <button type="button" class="button button-secondary" id="md-clear">Remove All Added Prospects</button></div></form></details>' +
       '<form class="controls" id="md-filters" aria-label="Filter master database" onsubmit="return false">' +
       '<label>Search<input type="search" id="md-q" placeholder="Name, school, state, notes" /></label>' +
-      '<label>Sport<select id="md-sport">' + opt(SPORT_NAMES, 'All') + '</select></label>' +
-      '<label>Position<select id="md-pos">' + opt(ALLPOS, 'All') + '</select></label>' +
+      sportCtl('md-sport') +
+      '<label>Position<select id="md-pos">' + opt(posList(), 'All') + '</select></label>' +
+      '<label>Secondary Position<select id="md-sec">' + opt(posList(), 'All') + '</select></label>' +
       '<label>Grad Year<select id="md-grad">' + opt([2026, 2027, 2028, 2029, 2030, 2031], 'All') + '</select></label>' +
       '<label>Current Playing Level<select id="md-level">' + opt(LEVELS, 'All') + '</select></label>' +
       '<label>Source<select id="md-src"><option value="">All</option><option value="s">Sample</option><option value="a">Coach-Entered (Demo)</option><option value="x">Athlete-Created</option></select></label>' +
-      '<label>Role Preference<select id="md-pref">' + opt(PREF_CATS, 'All') + '</select></label>' +
       '<button type="button" class="button button-secondary" id="md-reset">Reset</button></form>' +
       LVL_LEGEND + '<p class="coach-count" id="md-count" role="status"></p><div class="table-wrap md-wrap"><table id="md-table" class="rd-table md-table"></table></div>' +
       '<p class="coach-note">SAMPLE DATA / FICTIONAL EXAMPLE. Helper columns from the owner workbook are calculated, not stored.</p>' + theRead('This is the single list behind every other tab: ' + players.length + ' players, ' + players.filter((p) => p.entered).length + ' of them added by you. Added prospects show Not Rated and Unknown until the calculation service exists, so they sort last and are never scored 0. The Possible Duplicate column flags the same name and class appearing twice.');
@@ -1415,8 +1448,8 @@
       k.innerHTML = kpi('Total Players', players.length) + kpi('Sample Players', players.filter((p) => !p.entered).length) + kpi('Coach-Entered (Demo)', players.filter((p) => p.entered && !p.athleteCreated).length) + kpi('Athlete-Created (Demo)', players.filter((p) => p.athleteCreated).length) + kpi('Possible Duplicates', players.filter((p) => dupCount[dupKey(p)] > 1).length) + kpi('Missing 60 Time (Position Players)', players.filter((p) => p.pos !== 'P' && p.t60 == null).length);
     }
     function draw() {
-      const q = $('#md-q', root).value.trim().toLowerCase(), fp = $('#md-pos', root).value, fg = $('#md-grad', root).value, fs = $('#md-src', root).value, fl = $('#md-level', root).value, fr = $('#md-pref', root).value, fsp = $('#md-sport', root).value;
-      let list = players.filter((p) => (!fsp || p.sport === fsp) && (!fp || p.pos === fp) && (!fg || String(p.grad) === fg) && (!fl || p.level === fl) && (!fr || prefCat(p) === fr) && (!fs || (fs === 'x' ? !!p.athleteCreated : fs === 'a' ? !!p.entered && !p.athleteCreated : !p.entered)) &&
+      const q = $('#md-q', root).value.trim().toLowerCase(), fp = $('#md-pos', root).value, fg = $('#md-grad', root).value, fs = $('#md-src', root).value, fl = $('#md-level', root).value, fsec = $('#md-sec', root).value, fsp = ACTIVE_SPORT || $('#md-sport', root).value;
+      let list = players.filter((p) => (!fsp || p.sport === fsp) && (!fp || p.pos === fp) && (!fg || String(p.grad) === fg) && (!fl || p.level === fl) && (!fsec || p.sec === fsec) && (!fs || (fs === 'x' ? !!p.athleteCreated : fs === 'a' ? !!p.entered && !p.athleteCreated : !p.entered)) &&
         (!q || [p.name, p.id, p.sport, p.hs, p.state, p.pos, p.sec, p.notes, p.method].join(' ').toLowerCase().indexOf(q) >= 0));
       const col = COLS.filter((c) => c[0] === state.key)[0];
       list = list.slice().sort((a, b) => {
@@ -1457,8 +1490,8 @@
       rec.elig = null;
       if (v('elig') !== '' && rec.level !== 'High School') { const ev = Number(v('elig')); if (!Number.isInteger(ev) || ev < 0 || ev > 6) errs.push('Years Of Eligibility Left must be a whole number from 0 to 6.'); else rec.elig = ev; }
       if (rec.photo && !/^https?:\/\/\S+$/i.test(rec.photo)) errs.push('Profile Photo URL must start with http:// or https://.');
-      rec.bats = v('bats'); rec.throws = v('throws'); rec.twoWay = f.elements.twoWay.checked; rec.projRole = v('projRole');
-      rec.hs = v('hs'); rec.state = v('state').toUpperCase(); rec.eval = v('eval'); rec.method = v('method') || 'Coach Entry (Unverified)'; rec.notes = v('notes');
+      rec.bats = v('bats'); rec.throws = v('throws'); rec.twoWay = f.elements.twoWay.checked;
+      rec.hs = v('hs'); rec.state = v('state').toUpperCase(); rec.evalTs = new Date().toISOString(); rec.method = v('method') || 'Coach Entry (Unverified)'; rec.notes = v('notes');
       if (rec.sec && rec.sec === rec.pos) errs.push('Secondary Position must differ from Primary Position.');
       if (rec.state && !/^[A-Z]{2}$/.test(rec.state)) errs.push('State must be two letters.');
       NUMS.forEach((n) => {
@@ -1476,6 +1509,14 @@
       const ul = $('#md-errors', root);
       ul.innerHTML = errs.map((m) => '<li>' + esc(m) + '</li>').join('');
       if (errs.length) return;
+      const allSame = Object.keys(byId).map((k) => byId[k]);
+      const dm = window.TheReadAthlete && window.TheReadAthlete.match ? window.TheReadAthlete.match({ name: rec.name, grad: rec.grad, state: rec.state, sport: rec.sport, school: rec.hs }, allSame) : { exact: [], possible: [] };
+      const dupList = dm.exact.concat(dm.possible);
+      if (dupList.length && f.dataset.dupOk !== dupList.map((d) => d.id).join(',')) {
+        f.dataset.dupOk = dupList.map((d) => d.id).join(',');
+        ul.innerHTML = '<li><strong>' + (dm.exact.length ? 'This looks like a player already in the ' + esc(rec.sport) + ' Master Database' : 'Possible match in the ' + esc(rec.sport) + ' Master Database') + ':</strong> ' + dupList.slice(0, 3).map((d) => cardLink(d) + ' (' + esc(d.id) + ', ' + d.grad + ', ' + esc(d.state) + ')').join('; ') + '. Open the existing player and use Add To My Board instead, or press Add Player again to add a separate record anyway.</li>';
+        return;
+      }
       const cur = loadAdded();
       const max = cur.concat(players.filter((p) => p.entered)).reduce((m, a) => Math.max(m, parseInt(String(a.id).replace(/\D/g, ''), 10) || 0), 0);
       rec.id = 'E' + String(max + 1).padStart(3, '0');

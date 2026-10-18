@@ -72,7 +72,37 @@
   };
   var removeInterest = function (id) { saveI(loadI().filter(function (i) { return i.id !== id; })); };
   var markSeen = function (id, by) { var a = loadI(); a.forEach(function (i) { if (i.id === id && !i.seen) i.seen = { by: by, ts: new Date().toISOString() }; }); saveI(a); };
-  window.TheReadAthlete = { load: load, current: current, upsert: upsert, gStatus: gStatus, listed: listed, shares: shares, anyVerified: anyVerified, metricStatus: metricStatus, verifyMetric: verifyMetric, interests: loadI, addInterest: addInterest, removeInterest: removeInterest, markSeen: markSeen, ageOf: ageOf, POS: POS, METRICS: METRICS };
+  /* Duplicate matching (shared by athlete signup, Add Prospect and board import). Sports never match each other.
+     Exact = same normalized name + grad year + state + sport (and same school/DOB when both are present). Possible = close name or partial match to review. */
+  var normName = function (n) { return String(n || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\b(jr|sr|ii|iii|iv)\b/g, ' ').replace(/[^a-z ]/g, ' ').replace(/\s+/g, ' ').trim(); };
+  var lev = function (a, b) {
+    var d = [], i, j;
+    for (i = 0; i <= a.length; i++) d[i] = [i];
+    for (j = 1; j <= b.length; j++) d[0][j] = j;
+    for (i = 1; i <= a.length; i++) for (j = 1; j <= b.length; j++) d[i][j] = Math.min(d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+    return d[a.length][b.length];
+  };
+  var matchLevel = function (rec, c) {
+    if (rec.sport && c.sport && rec.sport !== c.sport) return null;
+    var n1 = normName(rec.name), n2 = normName(c.name);
+    if (!n1 || !n2) return null;
+    var nameEq = n1 === n2, lastEq = n1.split(' ').pop() === n2.split(' ').pop(), nameNear = !nameEq && lastEq && lev(n1, n2) <= 2;
+    if (!nameEq && !nameNear) return null;
+    var gradEq = !!(rec.grad && c.grad && Number(rec.grad) === Number(c.grad));
+    var stEq = !!(rec.state && c.state && String(rec.state).toUpperCase() === String(c.state).toUpperCase());
+    var schoolBad = !!(rec.school && c.school && normName(rec.school) !== normName(c.school));
+    if (rec.dob && c.dob && rec.dob !== c.dob) return null;
+    if (nameEq && gradEq && stEq && !schoolBad) return 'exact';
+    if (nameEq || gradEq || stEq) return 'possible';
+    return null;
+  };
+  var matchPlayers = function (rec, list) {
+    var out = { exact: [], possible: [] };
+    (list || []).forEach(function (c) { var l = matchLevel(rec, c); if (l) out[l].push(c); });
+    return out;
+  };
+
+  window.TheReadAthlete = { normName: normName, match: matchPlayers, load: load, current: current, upsert: upsert, gStatus: gStatus, listed: listed, shares: shares, anyVerified: anyVerified, metricStatus: metricStatus, verifyMetric: verifyMetric, interests: loadI, addInterest: addInterest, removeInterest: removeInterest, markSeen: markSeen, ageOf: ageOf, POS: POS, METRICS: METRICS };
 
   var getPath = function (o, p) { return p.split('.').reduce(function (a, k) { return a == null ? '' : a[k]; }, o); };
   var setPath = function (o, p, v) { var ks = p.split('.'), c = o; ks.slice(0, -1).forEach(function (k) { if (typeof c[k] !== 'object' || c[k] == null) c[k] = {}; c = c[k]; }); c[ks[ks.length - 1]] = v; };

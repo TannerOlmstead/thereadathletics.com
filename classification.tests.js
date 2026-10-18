@@ -61,7 +61,12 @@
   test('Platinum colors', function () { colors(T.Platinum, '#A9C4E4', '#0B1F3A', '#5F86B5'); yes(/^linear-gradient\(135deg,#E3EEFA/.test(T.Platinum.bgGradient), 'gradient'); yes(T.Platinum.backgroundColor !== T.Silver.backgroundColor, 'distinct from silver'); });
   test('Gold colors', function () { colors(T.Gold, '#D4A017', '#241A00', '#AA7D00'); });
   test('Silver colors', function () { colors(T.Silver, '#A7ADB4', '#1A1A1A', '#7E858D'); });
-  test('Bronze colors (white text)', function () { colors(T.Bronze, '#A8632A', '#FFFFFF', '#7E451C'); });
+  test('Bronze colors (dark text on metallic gradient)', function () { colors(T.Bronze, '#A8632A', '#2B1200', '#7E451C'); });
+  var lum = function (h) { var c = [1, 3, 5].map(function (i) { var v = parseInt(h.substr(i, 2), 16) / 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); }); return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2]; };
+  var ratio = function (a, b) { var x = lum(a), y = lum(b); return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05); };
+  test('Platinum, Gold, Silver and Bronze all use a metallic gradient', function () { ['Platinum', 'Gold', 'Silver', 'Bronze'].forEach(function (n) { yes(/^linear-gradient\(/.test(T[n].bgGradient || ''), n + ' has a gradient'); }); });
+  test('Metallic tier text has at least 4.5:1 contrast on every gradient stop', function () { ['Platinum', 'Gold', 'Silver', 'Bronze'].forEach(function (n) { (T[n].bgGradient.match(/#[0-9A-Fa-f]{6}/g) || []).forEach(function (stop) { yes(ratio(T[n].textColor, stop) >= 4.5, n + ' ' + stop + ' ' + ratio(T[n].textColor, stop).toFixed(2)); }); }); });
+  test('Platinum (blue tinted) and Silver (neutral gray) stay distinct', function () { var blue = function (h) { return parseInt(h.substr(5, 2), 16) - parseInt(h.substr(1, 2), 16); }; yes(blue(T.Platinum.backgroundColor) >= 40, 'Platinum is blue tinted'); yes(Math.abs(blue(T.Silver.backgroundColor)) <= 16, 'Silver is neutral'); });
   test('Not Rated is neutral gray', function () { colors(T['Not Rated'], '#E5E7EB', '#4B5563', '#C7CBD1'); });
   test('High confidence is approved green', function () { colors(F.High, '#DCFCE7', '#166534', '#22C55E'); eq(F.High.indicatorColor, '#16A34A'); });
   test('Medium confidence is approved amber', function () { colors(F.Medium, '#FEF3C7', '#92400E', '#D97706'); eq(F.Medium.indicatorColor, '#D97706'); });

@@ -3,7 +3,6 @@
   var sel = document.getElementById('ps-sports');
   if (!sel) return;
   var billing = document.getElementById('ps-billing');
-  var program = document.getElementById('ps-program');
   var out = document.getElementById('ps-out');
   var MAX = 20;
 
@@ -17,7 +16,7 @@
     });
     return t;
   }
-  var tables = { standard: readTable('tbl-standard'), founding: readTable('tbl-founding') };
+  var tables = { standard: readTable('tbl-standard') };
   var fmt = function (n) { return '$' + n.toLocaleString('en-US'); };
 
   for (var i = 1; i <= MAX; i++) {
@@ -28,17 +27,16 @@
   }
 
   function update() {
-    var n = Number(sel.value), key = billing.value, t = tables[program.value];
+    var n = Number(sel.value), key = billing.value, t = tables.standard;
     var price;
     if (n <= 8) price = t.rows[n][key];
     else price = t.rows[8][key] + (n - 8) * t.extra[key];
     var per = key === 'm' ? '/month' : '/year';
     var note = key === 'a' ? ' Annual billing equals 10 monthly payments.' : '';
     var extra = n > 8 ? ' Includes ' + (n - 8) + ' additional sport' + (n - 8 > 1 ? 's' : '') + ' beyond 8.' : '';
-    var fnd = program.value === 'founding' ? ' Founding pricing is available only to approved applicants (first 25 approved institutions).' : '';
-    out.innerHTML = '<strong>' + fmt(price) + per + '</strong> for ' + n + (n === 1 ? ' sport' : ' sports') + ', up to 6 users per sport.' + extra + note + fnd +
+    out.innerHTML = '<strong>' + fmt(price) + per + '</strong> for ' + n + (n === 1 ? ' sport' : ' sports') + ', up to 6 users per sport.' + extra + note +
       ' Payments are not live; billing is handled after approval. <a href="institution-signup.html">Request institution access</a>.';
   }
-  [sel, billing, program].forEach(function (el) { el.addEventListener('change', update); });
+  [sel, billing].forEach(function (el) { el.addEventListener('change', update); });
   update();
 })();

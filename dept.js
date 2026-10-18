@@ -62,6 +62,10 @@
     } else return;
     var wrap = document.createElement('div'); wrap.className = 'ad-nav'; wrap.innerHTML = html;
     old.parentNode.replaceChild(wrap, old);
+    if (CTX && !CTX.scoring && SP.stub) {
+      var stubBox = document.createElement('details'); stubBox.className = 'expand'; stubBox.innerHTML = '<summary>Sport Setup (Stub): ' + esc(CTX.name) + '</summary><div class="expand-body">' + SP.stub(CTX) + '</div>';
+      wrap.appendChild(stubBox);
+    }
     var dsel = document.getElementById('ad-div');
     if (dsel) dsel.addEventListener('change', function () { DV.set(dsel.value, ''); location.reload(); });
     var sw = document.getElementById('ad-switch');
@@ -204,12 +208,21 @@
     });
   };
 
+  // Founding rates are private: shown only to an account the owner granted one (owner-rates.html), never in public copy.
+  function rateCard(d) {
+    var g = []; try { g = JSON.parse(localStorage.getItem('theReadFoundingGrants') || '[]'); } catch (e) { g = []; }
+    var me = []; try { var ss = JSON.parse(localStorage.getItem('theReadSession') || 'null') || {}; me = [ss.org, ss.name, (d.school || {}).name]; } catch (e) { me = [(d.school || {}).name]; }
+    me = me.filter(Boolean).map(function (x) { return String(x).trim().toLowerCase(); });
+    var m = g.filter(function (x) { return me.indexOf(String(x.name).trim().toLowerCase()) >= 0; })[0];
+    return m ? '<p><span class="pill red">Founding Rate</span> <strong>' + esc(m.rate) + '</strong> granted ' + esc(m.date) + '.</p><p class="coach-note">Arranged directly with THE READ. Demo only: no payment is processed.</p>' : '<p>Standard plan. See <a href="pricing.html">Pricing</a>.</p>';
+  }
+
   P.billing = function (root, d) {
     var nOn = SP.list.filter(function (s) { return subscribed(d, s); }).length;
     root.innerHTML = '<div class="coach-grid">' + card('Active Sports', '<p><strong>' + nOn + '</strong> Of ' + SP.list.length + ' Launch Sports Active. Pricing is per active sport. See <a href="pricing.html">Pricing</a>.</p>' + table(['Sport', 'Active'], SP.list.map(function (s) { return '<tr><th scope="row">' + esc(s.name) + '</th><td><label class="inline-check"><input type="checkbox" data-sub="' + s.id + '"' + (subscribed(d, s) ? ' checked' : '') + '> Active</label></td></tr>'; }), 'Active sports'), 'wide') +
-      card('Founding Status', '<label class="inline-check"><input type="checkbox" id="bl-f"' + (d.perms.founding ? ' checked' : '') + '> Founding Institution (As Defined In The Pricing Plan)</label>') +
+      card('Your Rate', rateCard(d)) +
       card('Payments', '<p class="coach-note">No payments are processed on this site. Subscription changes here only decide which sports appear in your workspace. Real billing is on the roadmap.</p>') + '</div>';
-    on(root, 'change', function (e) { var dd = load(); if (e.target.dataset.sub) { dd.subs[e.target.dataset.sub] = e.target.checked; save(dd); P.billing(root, dd); } else if (e.target.id === 'bl-f') { dd.perms.founding = e.target.checked; save(dd); } });
+    on(root, 'change', function (e) { var dd = load(); if (e.target.dataset.sub) { dd.subs[e.target.dataset.sub] = e.target.checked; save(dd); P.billing(root, dd); } });
   };
 
   P.settings = function (root, d) {

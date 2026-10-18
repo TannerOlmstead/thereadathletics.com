@@ -70,7 +70,7 @@ This site is plain HTML/CSS/JS with no build step. There is **no backend**: form
 - [x] Mobile-responsive layout (checked at 390 px and desktop widths)
 - [x] Accessibility basics: skip link, labels, focus states, aria on forms and bars
 - [x] SEO basics: unique titles and meta descriptions, `sitemap.xml`, `robots.txt`
-- [x] `pricing.html` and index pricing summary rebuilt from the owner pricing document (athlete, coach, provider, institution standard/founding tables, price selector); no payments live
+- [x] `pricing.html` and index pricing summary rebuilt from the owner pricing document (athlete, coach, provider, institution standard table, price selector); no payments live
 
 ## Added along the way
 
@@ -230,3 +230,20 @@ This site is plain HTML/CSS/JS with no build step. There is **no backend**: form
 - [x] Guardian without an account: emailed link + one-time code, no-password `guardian-verify.html?m=` manage page (consent, visibility, contact rules, revoke, read-only messages, intro approvals); simulated email preview (demo, nothing sent)
 - [x] One Verified Data Provider role with Provider Type (High School Coach, Private Instructor / Trainer, Showcase / Event Organizer, Other); sign-in, signup, Connect matrix, Request Verification and workflow updated
 - [ ] Guardian email (real): email service, single-use tokens with expiry, rate limits, revoke audit log, emailed copies of a minor's messages, identity/relationship checks
+
+## Sport Pages, Verifier Notation, Private Founding Rates
+- [x] Verifier notation: High School Coaches and Private Instructors are Verified Data Providers, across signup, sign-in, workflow, FAQ, pricing and Request Verification
+- [x] Stub pages for all 8 launch sports (`sport-<id>.html`), uniform structure from `sports-config.js`, Department Sports tab stub panel, sitemap entries
+- [x] Public founding pricing removed (pricing, FAQ, home, signup, billing copy); private owner-only grant page `owner-rates.html`; Billing shows "Founding Rate" only to a granted account
+- [ ] Real owner sign-in and server-side rate grants (today: in-page passphrase check, browser storage)
+
+### Sport TODO / Details Needed (per sport: Men's Basketball, Women's Basketball, Football, Men's Soccer, Women's Soccer, Softball, Women's Volleyball; Baseball has scoring)
+- [ ] Confirm positions and metric names/units (current names are placeholders)
+- [ ] Owner grade tables (letter and value per metric)
+- [ ] Recruit Score component weights and Confidence weights
+- [ ] Team Needs depth rules; level/class labels
+- [ ] THE READ blurb wording; Rankings/H2H rows; athlete profile inputs
+
+### Internal Notes (Not Public Marketing)
+- Founding status never buys rankings, Recruit Score, visibility, search placement or AI recommendations. It is a private pricing arrangement between the owner and a specific institution or coach.
+- Do not reintroduce "first 100 / first 25" or founding tables in public pages; terms-internal notes stay internal.

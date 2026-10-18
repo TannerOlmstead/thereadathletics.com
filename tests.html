@@ -250,6 +250,16 @@ test('Guardian is not a Connect role; provider types exist', function () {
   yes(JSON.stringify(C.PTYPES).indexOf('Private Instructor') > 0 && JSON.stringify(C.PTYPES).indexOf('High School Coach') > 0, 'ptypes');
   eq(typeof window.TheReadConnect.guardianView, 'function');
 });
+test('Every sport has the same stub structure and no public founding wording', function () {
+  var SP = window.TheReadSports;
+  eq(SP.list.length, 8);
+  SP.list.forEach(function (x) {
+    var h = SP.stub(x);
+    yes(x.metrics.length > 0 && x.positions.length > 0, x.name + ' config');
+    yes(h.indexOf('TODO / Details Needed') > 0 && h.indexOf('Team Needs Positions') > 0, x.name + ' stub');
+    yes(x.scoring ? h.indexOf('Scoring Available') > 0 : h.indexOf('Scoring Not Yet Available') > 0, x.name + ' scoring note');
+  });
+});
 test('Rankings row: Grad Class is the 4th column after Player Name', function () {
       var t = document.createElement('table'); t.innerHTML = '<tbody>' + D.rankingRowHtml(D.players[0]) + '</tbody>';
       var cells = t.querySelectorAll('tr > *');

@@ -5,7 +5,7 @@
   'use strict';
   var SKEY = 'theReadSession', VKEY = 'theReadVerifiers', NKEY = 'theReadNotifPrefs', AKEY = 'theReadDemoAthletes', CUR = 'theReadDemoAthleteCurrent', DEMO_CODE = '000000';
   var ROLES = [
-    ['athlete', 'Athlete', 'athlete-profile.html'], ['vdp', 'Verified Data Provider', 'verifier-dashboard.html'],
+    ['athlete', 'Athlete', 'athlete-profile.html'], ['vdp', 'Verified Data Provider (Verifier)', 'verifier-dashboard.html'],
     ['coach', 'College Coach', 'coach-dashboard.html'], ['ad', 'Athletic Department', 'department-overview.html']
   ];
   var esc = function (s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); };

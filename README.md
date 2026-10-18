@@ -40,7 +40,7 @@ Static recruiting-intelligence website for athletes, independent recruiting prof
 | `department-programs.html` | Every program: needs by position/class, targets, commitments, open spots, assigned coach (fictional). |
 | `department-finances.html` | Sample scholarship, travel, camp/visit budget vs spend, cost per commitment, plus a try-your-own-numbers calculator (fictional). |
 | `department-schedule.html` | Sample recruiting calendar and contact/dead-period reminders (fictional; confirm real dates with your compliance office). |
-| `pricing.html` | Plans from the owner pricing document: Athlete Basic/Verified, Individual Coach, Verified Data Providers, institution tables (standard and founding) with a price selector (`pricing.js`, reads the visible tables). No payments are live. |
+| `pricing.html` | Plans from the owner pricing document: Athlete Basic/Verified, Individual Coach, Verified Data Providers, institution table (standard) with a price selector (`pricing.js`, reads the visible tables). No payments are live. |
 | `faq.html` | FAQ plus comparison against spreadsheets and other tools. |
 | `security.html` | Roles, minors' data protection, FERPA awareness, visibility controls. |
 | `resources.html` + `article-*.html` | Resource index and three starter articles. |
@@ -184,3 +184,9 @@ Department Finances (`department-finances.html`, built in `dept.js`) now labels 
 - Guardians have no account. A minor's signup creates a simulated email (private link + one-time code, demo code 000000). The link opens `guardian-verify.html?m=<token>`, where the guardian gives consent, sets visibility and contact rules, reads messages read-only, answers introduction requests, and can revoke. Nothing is emailed in this static demo; tokens are not real secrets.
 - Connect roles are Athlete, Verified Data Provider, College Coach, Athletic Department. Guardian consent is an attribute of the minor athlete (Verified / Pending / Declined / Revoked).
 - Verified Data Provider is one free role with a Provider Type (High School Coach, Private Instructor / Trainer, Showcase / Event Organizer, Other).
+
+## Sport Pages, Verifiers And Private Founding Rates
+- `sport-<id>.html` (all 8 launch sports) are rendered by `sport-page.js` from `sports-config.js`: positions, placeholder metric names, grade-table and blurb stubs, and a TODO checklist. Fill each sport in by editing its entry in `sports-config.js` (metrics) and the scoring tables later. Home tiles link to these pages; the sport guide stays at `sport-guide.html`.
+- In the Athletic Department sport view, a collapsed "Sport Setup (Stub)" panel shows the same structure for sports without scoring.
+- High School Coaches and Private Instructors are Verified Data Providers (verifiers); the note appears on signup, sign-in, workflow, FAQ, pricing and the athlete Request Verification form.
+- Founding rates are not public. `owner-rates.html` (linked from the owner page, passphrase check, demo only) lets the owner grant a rate to one institution or coach; only that account sees "Founding Rate" on its Billing page. Grants live in localStorage (`theReadFoundingGrants`).

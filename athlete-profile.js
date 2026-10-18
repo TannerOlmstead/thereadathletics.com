@@ -105,9 +105,11 @@
   };
 
   var messages = function () {
-    var th = []; try { th = (JSON.parse(localStorage.getItem('theReadDemoMessages') || '[]') || []).filter(function (t) { return String(t.cid).indexOf('pl:' + rec.id) === 0; }); } catch (e) { th = []; }
-    return sec('Messages (Connect)', 0, 'Messages coaches send you through Connect. Messaging here is a local sandbox, not encrypted and not delivered anywhere.',
-      th.length ? '<ul>' + th.map(function (t) { var l = t.messages[t.messages.length - 1]; return '<li><strong>' + esc(l.ts.replace('T', ' ')) + '</strong> &ndash; ' + esc(l.body) + '</li>'; }).join('') + '</ul>' : '<p>No messages yet.</p>') + '<p><a href="connect.html">Open Connect</a></p>';
+    var C = window.TheReadConnect, th = [];
+    if (C) { var id = 'ath:' + rec.id; th = C.threadsFor(C.person(id) || { id: id, role: 'athlete' }).filter(function (x) { return x.view === 'member'; }); }
+    var nm = function (t) { return t.t.p.filter(function (q) { return q !== 'ath:' + rec.id; }).map(function (q) { var P = C.person(q); return P ? P.name : 'Unknown'; }).join(', '); };
+    return sec('Messages (Connect)', 0, 'Messages with coaches, verifiers and your guardian through Connect. Messaging here is a local sandbox, not encrypted and not delivered anywhere.',
+      th.length ? '<ul>' + th.map(function (t) { var l = t.t.messages[t.t.messages.length - 1]; return '<li><strong>' + esc(nm(t)) + '</strong>' + (t.t.unread['ath:' + rec.id] ? ' (new)' : '') + (l ? ' &ndash; ' + esc(l.ts.replace('T', ' ')) + ': ' + esc(l.body) : '') + '</li>'; }).join('') + '</ul>' : '<p>No messages yet.</p>') + '<p><a class="button button-primary" href="connect.html">Open Connect</a></p>';
   };
 
   var calendar = function () {
@@ -159,7 +161,7 @@
   var TABS = [['overview', 'Overview', overview], ['scores', 'Scores', scores], ['metrics', 'Metrics', metrics], ['guardian', 'Guardian', guardian], ['privacy', 'Privacy', privacy], ['messages', 'Messages', messages], ['calendar', 'Calendar', calendar], ['interest', 'Interest', interest], ['academics', 'Academics', academics], ['media', 'Media', media], ['account', 'Account', account]];
 
   var render = function () {
-    root.innerHTML = '<nav class="coach-subnav prof-tabs" aria-label="Athlete profile sections"><span class="ws-label">Athlete Profile</span>' + TABS.map(function (t) { return '<a href="#' + t[0] + '"' + (t[0] === tab ? ' aria-current="page"' : '') + ' data-tab="' + t[0] + '">' + t[1] + '</a>'; }).join('') + '</nav>' +
+    root.innerHTML = '<nav class="coach-subnav prof-tabs" aria-label="Athlete profile sections"><span class="ws-label">Athlete Profile</span>' + TABS.map(function (t) { return '<a href="#' + t[0] + '"' + (t[0] === tab ? ' aria-current="page"' : '') + ' data-tab="' + t[0] + '">' + t[1] + '</a>'; }).join('') + '<a href="connect.html">Connect</a></nav>' +
       '<div class="prof-body">' + TABS.filter(function (t) { return t[0] === tab; })[0][2]() + '</div>';
     wire();
   };

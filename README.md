@@ -170,3 +170,8 @@ The Max FBV lookup is `TheReadScore.getMaxFBVGrade(maxFBV)`, a port of the owner
 
 - Choosing JUCO or 4-Year College / Transfer Portal as Current Playing Level adds a Transfer Details step in `player-signup.html`: current college, association/division, eligibility left, seasons played, redshirt/medical hardship, portal status and date, graduation and credits, academic standing, release to contact, college stats, coach reference, intended transfer year and NCAA/NAIA/NJCAA statuses. All entered by the athlete and unchecked.
 - Feeds Master Database (Current College, Transfer Portal Status), the coach Transfer Portal / JUCO view and the department Transfer Portal / JUCO Watch.
+
+## Connect For All Roles
+
+One shared module (`connect.js` + `connect-config.js`) powers Connect for Athlete, Guardian, HS Coach, Private Instructor, Verified Data Provider, College Coach and Athletic Department (`connect.html`, `coach-connect.html`, `department-connect.html`). The permission matrix lives only in `connect-config.js` (direct / intro / interest / visible / verifier rules); unmet conditions fall back to Request Introduction. Threads are keyed by participant ids so both sides see the same conversation; guardians see a minor's threads read-only unless turned off; the Athletic Department has read-only oversight. Includes unread badges, role/sport/search filters, block/report and in-app notifications. Demo only: stored in localStorage, no encryption, delivery, email or push is claimed. Use the View-As switcher to preview other roles.
+

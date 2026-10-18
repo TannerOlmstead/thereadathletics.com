@@ -43,7 +43,7 @@
     var s = session(), act = document.querySelector('.nav-actions');
     if (s && act) {
       var ini = (s.name || '?').split(/\s+/).map(function (x) { return x.charAt(0); }).join('').slice(0, 2).toUpperCase();
-      act.innerHTML = '<details class="acct-menu"><summary aria-label="Account menu for ' + esc(s.name) + '"><span class="acct-ava" aria-hidden="true">' + esc(ini) + '</span><span class="acct-name">' + esc(s.name) + '</span></summary><div class="acct-pop"><p><strong>' + esc(s.name) + '</strong><br>' + esc(roleOf(s.role)[1]) + (s.org ? ' &middot; ' + esc(s.org) : '') + '</p><a href="' + homeOf(s) + '">My Workspace</a><a href="account-settings.html">Account Settings</a><button type="button" data-signout>Sign Out</button></div></details>';
+      act.innerHTML = '<details class="acct-menu"><summary aria-label="Account menu for ' + esc(s.name) + '"><span class="acct-ava" aria-hidden="true">' + esc(ini) + '</span><span class="acct-name">' + esc(s.name) + '</span></summary><div class="acct-pop"><p><strong>' + esc(s.name) + '</strong><br>' + esc(roleOf(s.role)[1]) + (s.org ? ' &middot; ' + esc(s.org) : '') + '</p><a href="' + homeOf(s) + '">My Workspace</a><a href="connect.html">Connect</a><a href="account-settings.html">Account Settings</a><button type="button" data-signout>Sign Out</button></div></details>';
       var nar = document.querySelectorAll('.narrow-only');
       if (nar.length) {
         nar[0].outerHTML = '<a class="narrow-only" href="' + homeOf(s) + '">My Workspace</a><a class="narrow-only" href="account-settings.html">Account Settings</a>';

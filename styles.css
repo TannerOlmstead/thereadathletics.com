@@ -2054,3 +2054,5 @@ html.hide-sample-labels [data-sample-label] { display: none !important; }
 .acct-pop a, .acct-pop button { display: block; text-align: left; padding: 8px 10px; background: #fff; color: #14284B; border: 1px solid #d9deea; font: inherit; font-weight: 700; text-decoration: none; cursor: pointer; }
 .acct-pop a:hover, .acct-pop button:hover, .acct-pop a:focus-visible, .acct-pop button:focus-visible { background: #14284B; color: #fff; }
 @media (max-width: 900px) { .acct-menu { display: none; } }
+.cn-badge{display:inline-block;min-width:1.3em;margin-left:.35em;padding:0 .4em;border-radius:999px;background:#E41E3F;color:#fff;font-size:.75rem;font-weight:800;line-height:1.5;text-align:center}
+.coach-subnav .cn-badge,.dept-subnav .cn-badge{background:#fff;color:#E41E3F}

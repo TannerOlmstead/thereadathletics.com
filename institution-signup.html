@@ -96,6 +96,8 @@
     </footer>
 
     <script src="account.js"></script>
+<script src="connect-config.js"></script>
+<script src="connect.js"></script>
 
     <script src="script.js"></script>
     <script>(function(){var l=document.getElementById("level"),s=document.getElementById("subdiv"),D=window.TheReadDivisions;if(!l||!D)return;function fill(){var x=D.get(l.value);s.innerHTML='<option value="">Not applicable</option>'+(x?x.subs:[]).map(function(y){return"<option>"+y+"</option>"}).join("");s.disabled=!x||!x.subs.length}l.addEventListener("change",function(){fill();if(l.value)D.set(l.value,"")});s.addEventListener("change",function(){if(l.value)D.set(l.value,s.value)});fill();})();</script>

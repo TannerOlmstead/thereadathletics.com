@@ -1604,6 +1604,7 @@
     });
   };
   pages.connect = (root) => {
+    if (window.TheReadConnect) { window.TheReadConnect.render(root, { layout: 'coach' }); return; }
     const MS = MessageService, me = MS.me;
     const ROLES = ['High School Coach', 'Private Instructor', 'Showcase/Event Staff', 'JUCO Coach', '4-Year Coach', 'Player'];
     const msg = sessionStorage.getItem('theReadConMsg') || ''; sessionStorage.removeItem('theReadConMsg');

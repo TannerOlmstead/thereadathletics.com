@@ -29,7 +29,7 @@
   var DEPT_TABS = [
     ['Overview', 'department-overview.html'], ['Sports', 'department-sports.html'], ['Finances', 'department-finances.html'],
     ['Roster & Scholarships', 'department-roster.html'], ['Compliance', 'department-compliance.html'], ['Staff & Permissions', 'department-staff.html'],
-    ['Calendar', 'department-calendar.html'], ['Reports & Data', 'department-reports.html'], ['Billing', 'department-billing.html'], ['Settings', 'department-settings.html']
+    ['Calendar', 'department-calendar.html'], ['Reports & Data', 'department-reports.html'], ['Connect', 'department-connect.html'], ['Billing', 'department-billing.html'], ['Settings', 'department-settings.html']
   ];
   if (DIV.tabs) DEPT_TABS.forEach(function (t) { if (DIV.tabs[t[0]]) t[0] = DIV.tabs[t[0]]; });
   var SCOPED_DEPT = ['department-overview.html', 'department-finances.html', 'department-roster.html', 'department-compliance.html', 'department-staff.html', 'department-calendar.html', 'department-reports.html'];
@@ -149,6 +149,8 @@
   };
 
   var ROLES = ['Athletic Director', 'Head Coach', 'Assistant Coach', 'Compliance', 'Admin'];
+  P.connect = function (root) { if (window.TheReadConnect) window.TheReadConnect.render(root, { layout: 'dept' }); else root.innerHTML = '<p class="coach-note">Connect could not load.</p>'; };
+
   P.staff = function (root, d) {
     var seat = SP.list.filter(function (s) { return subscribed(d, s); }).map(function (s) { var n = d.staff.filter(function (x) { return x.sports.indexOf(s.id) >= 0; }).length; return '<tr><th scope="row">' + esc(s.name) + '</th><td>' + n + ' Of 6</td><td>' + (n > 6 ? 'Over Limit' : 'OK') + '</td></tr>'; });
     root.innerHTML = '<div class="coach-grid">' +

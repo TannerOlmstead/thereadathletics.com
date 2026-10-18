@@ -220,3 +220,6 @@ This site is plain HTML/CSS/JS with no build step. There is **no backend**: form
 - [ ] Server-enforced role and permission checks (the current guard is browser-only and can be bypassed).
 - [ ] Admin approval and credential checks for verifiers; a dedicated College/JUCO Coach verifier type (currently uses High School Coach as a stand-in).
 - [ ] Real notifications (email/push) and official eligibility-center checks (NCAA/NAIA/NJCAA).
+
+- [x] Connect for all roles (shared module, permission matrix, introductions, guardian and department oversight, unread badges, block/report, in-app notifications; demo localStorage)
+- [ ] Real messaging backend: server-enforced permissions, encryption, real notifications, report moderation, retention and audit logs

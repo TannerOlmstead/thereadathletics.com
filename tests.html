@@ -24,6 +24,8 @@ ul { list-style: none; padding: 0; }
 <ul id="results"></ul>
 <script src="classification.js"></script>
 <script src="classification.tests.js"></script>
+<script src="connect-config.js"></script>
+<script src="connect.js"></script>
 <script src="account.js"></script>
 <script src="athlete-signup.js"></script>
 <script src="verifier.js"></script>
@@ -211,6 +213,36 @@ test('Account: sign out clears the demo session', function () {
 test('Account: every role has a home page', function () {
   var A = window.TheReadAccount;
   Object.keys(A.roles).forEach(function (k) { yes(/\.html$/.test(A.homeOf({ role: k })), k); });
+});
+test('Connect: every role pair in the matrix has a rule', function () {
+  var C = window.CONNECT_CONFIG, ok = true;
+  Object.keys(C.ROLES).forEach(function (a) { Object.keys(C.ROLES).forEach(function (b) { if (!C.MATRIX[a] || !C.MATRIX[a][b]) ok = false; }); });
+  yes(ok, 'matrix complete');
+});
+test('Connect: athletes cannot message athletes; AD to athlete needs an introduction', function () {
+  var T = window.TheReadConnect, a = { id: 'x1', role: 'athlete' }, b = { id: 'x2', role: 'athlete' }, ad = { id: 'ad1', role: 'ad' };
+  eq(T.perm(a, b).mode, 'deny'); eq(T.perm(ad, a).mode, 'intro');
+});
+test('Connect: coach to a minor without a verified guardian needs an introduction', function () {
+  var T = window.TheReadConnect, co = { id: 'co1', role: 'coach' }, m = { id: 'ath:m', role: 'athlete', minor: true, rid: 'm', rec: { path: 'minor', privacy: { list: true, contact: true }, guardian: { status: 'Pending', sent: Date.now() } } };
+  eq(T.perm(co, m).mode, 'intro');
+});
+test('Connect: a sent message is stored once and seen by both sides', function () {
+  localStorage.removeItem('theReadConnect');
+  var T = window.TheReadConnect, r = T.send('co:sample', 'dir:c7', 'Hello from the test');
+  yes(r.ok, 'sent');
+  var mine = T.threadsFor({ id: 'co:sample', role: 'coach' }), theirs = T.threadsFor({ id: 'dir:c7', role: 'coach' });
+  yes(mine.some(function (x) { return x.t.id === r.id; }) && theirs.some(function (x) { return x.t.id === r.id; }), 'both sides');
+  eq(T.unread('dir:c7') > 0, true);
+  localStorage.removeItem('theReadConnect');
+});
+test('Connect: AD has read-only oversight; others do not', function () {
+  var T = window.TheReadConnect; localStorage.removeItem('theReadConnect');
+  var r = T.send('co:sample', 'dir:c7', 'Oversight test');
+  var ad = T.threadsFor({ id: 'ad:other', role: 'ad' }).filter(function (x) { return x.t.id === r.id; })[0];
+  yes(ad && ad.view === 'oversight', 'oversight');
+  eq(T.threadsFor({ id: 'dir:c1', role: 'hs' }).filter(function (x) { return x.t.id === r.id; }).length, 0);
+  localStorage.removeItem('theReadConnect');
 });
 test('Rankings row: Grad Class is the 4th column after Player Name', function () {
       var t = document.createElement('table'); t.innerHTML = '<tbody>' + D.rankingRowHtml(D.players[0]) + '</tbody>';

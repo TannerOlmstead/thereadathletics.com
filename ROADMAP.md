@@ -223,3 +223,6 @@ This site is plain HTML/CSS/JS with no build step. There is **no backend**: form
 
 - [x] Connect for all roles (shared module, permission matrix, introductions, guardian and department oversight, unread badges, block/report, in-app notifications; demo localStorage)
 - [ ] Real messaging backend: server-enforced permissions, encryption, real notifications, report moderation, retention and audit logs
+
+- [x] Finance clarity: labeled units/periods, inputs vs calculated, formulas, line items, Not Entered handling, glossary
+- [ ] Finance: link commitments and aid dollars to the Recruiting Board / Commitments automatically; real budget-year handling

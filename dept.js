@@ -223,6 +223,61 @@
     });
   };
 
+  /* ---------- Finances: every number labeled, with inputs vs calculated, formulas and line items ---------- */
+  var fm = function (n) { return '$' + Math.round(n).toLocaleString('en-US'); };
+  var NE = '<span class="fin-ne">Not Entered</span>';
+  var tag = function (k) { return k === 'in' ? '<span class="fin-tag fin-in">Input</span>' : '<span class="fin-tag fin-calc">Calculated</span>'; };
+  var how = function (formula, inputs, note) { return '<details class="fin-how"><summary>How This Is Calculated</summary><p><strong>Formula:</strong> ' + formula + '</p><p><strong>Inputs Used:</strong> ' + inputs + '</p>' + (note ? '<p>' + note + '</p>' : '') + '</details>'; };
+  var finances = function (root, d) {
+    var sample = '', ex = root._finEx = root._finEx || (root.querySelector('.table-wrap') || {}).outerHTML || '';
+    if (ex && DIV.aid !== 'none') sample = '<details class="card coach-card fin-example"><summary><h2>Example Budget Vs Spend (Not Your Data)</h2></summary><p class="coach-note">Made-up example figures showing the layout only. They are not your numbers, not real budgets, and not rule limits. Your own figures are above.</p>' + ex + '</details>';
+    var F = d.fin = d.fin || {}, list = sportsShown(d), aid = DIV.aid !== 'none';
+    var g = function (id, k) { var v = (F[id] || {})[k]; return v == null ? null : v; };
+    var sums = function (id) {
+      var items = [['Travel', g(id, 'rt')], ['Camps', g(id, 'rc')], ['Visits', g(id, 'rv')]], got = items.filter(function (x) { return x[1] != null; });
+      return { got: got, missing: items.filter(function (x) { return x[1] == null; }).map(function (x) { return x[0]; }), total: got.length ? got.reduce(function (a, x) { return a + x[1]; }, 0) : null };
+    };
+    var money = function (v) { return v == null ? NE : fm(v); };
+    var inp = function (id, k, lab, step) { var v = g(id, k); return '<td><input type="number" min="0" step="' + step + '" data-fs="' + id + '" data-fk="' + k + '" value="' + (v == null ? '' : v) + '" aria-label="' + esc(lab) + '"></td>'; };
+    var inCols = [['rb', 'Annual Recruiting Budget ($ Per Sport)', 100], ['rt', 'Recruiting Travel Spent To Date ($)', 100], ['rc', 'Camp Costs Spent To Date ($)', 100], ['rv', 'Visit Costs Spent To Date ($)', 100], ['ro', 'Program Operating Budget ($ Per Year)', 100]];
+    if (aid) inCols.push(['ab', 'Athletic Aid Budget ($ Per Year)', 100], ['ac', '$ Committed (Scholarship Offers)', 100]);
+    inCols.push(['cm', 'Commitments (Count)', 1]);
+    var inRows = list.map(function (s) { return '<tr><th scope="row">' + esc(s.name) + '</th>' + inCols.map(function (c) { return inp(s.id, c[0], s.name + ' ' + c[1], c[2]); }).join('') + '<td><input type="text" maxlength="80" data-fs="' + s.id + '" data-fk="src" value="' + esc(g(s.id, 'src') || '') + '" aria-label="' + esc(s.name + ' Source Of Numbers') + '"></td><td>' + (g(s.id, 'upd') ? esc(g(s.id, 'upd')) : NE) + '</td></tr>'; });
+    var T = { rb: 0, spent: 0, ro: 0, ab: 0, ac: 0, cm: 0, rem: 0 }, inc = { rb: [], spent: [], ro: [], ab: [], ac: [], cm: [], rem: [] };
+    var calcRows = list.map(function (s) {
+      var id = s.id, sp = sums(id), rb = g(id, 'rb'), ro = g(id, 'ro'), ab = g(id, 'ab'), ac = g(id, 'ac'), cm = g(id, 'cm');
+      var rem = rb != null && sp.total != null ? rb - sp.total : null, cpc = sp.total != null && cm ? sp.total / cm : null;
+      var arem = aid && ab != null && ac != null ? ab - ac : null;
+      if (rb != null) { T.rb += rb; inc.rb.push(s.name); } if (sp.total != null) { T.spent += sp.total; inc.spent.push(s.name); } if (ro != null) { T.ro += ro; inc.ro.push(s.name); }
+      if (ab != null) { T.ab += ab; inc.ab.push(s.name); } if (ac != null) { T.ac += ac; inc.ac.push(s.name); } if (cm != null) { T.cm += cm; inc.cm.push(s.name); } if (rem != null) { T.rem += rem; inc.rem.push(s.name); }
+      var items = sp.got.length ? sp.got.map(function (x) { return x[0] + ' ' + fm(x[1]); }).join(' + ') + ' = ' + fm(sp.total) + (sp.missing.length ? ' <small>(' + sp.missing.join(', ') + ' not entered)</small>' : '') : NE;
+      return '<tr><th scope="row">' + esc(s.name) + '</th><td>' + money(rb) + '</td><td>' + items + '</td><td>' + money(rem) + '</td><td>' + money(ro) + '</td>' + (aid ? '<td>' + money(ab) + '</td><td>' + money(ac) + '</td><td>' + money(arem) + '</td>' : '') + '<td>' + (cm == null ? NE : cm) + '</td><td>' + (cpc == null ? NE : fm(cpc)) + '</td></tr>';
+    });
+    var uniq = function (a) { return a.length ? a.length + ' of ' + list.length + ' sports' : 'No sports entered'; };
+    var tt = function (k, f) { return inc[k].length ? f(T[k]) : NE; };
+    var totCpc = inc.spent.length && T.cm > 0 ? fm(T.spent / T.cm) : NE;
+    var totRow = '<tr class="fin-total"><th scope="row">Department Total</th><td>' + tt('rb', fm) + '</td><td>' + tt('spent', fm) + '</td><td>' + tt('rem', fm) + '</td><td>' + tt('ro', fm) + '</td>' + (aid ? '<td>' + tt('ab', fm) + '</td><td>' + tt('ac', fm) + '</td><td>' + (inc.ab.length && inc.ac.length ? fm(T.ab - T.ac) : NE) + '</td>' : '') + '<td>' + tt('cm', String) + '</td><td>' + totCpc + '</td></tr>';
+    var head = ['Sport', 'Annual Recruiting Budget ($)', 'Recruiting Spent To Date ($) = Line Items', '$ Remaining (Recruiting)', 'Program Operating Budget ($)'].concat(aid ? ['Athletic Aid Budget ($)', '$ Committed (Scholarship Offers)', '$ Aid Remaining'] : [], ['Commitments (Count)', 'Cost Per Commitment ($)']);
+    var sub = d.fin._dept || {}, subN = SP.list.filter(function (s) { return subscribed(d, s); }).length;
+    var kpis = '<div class="kpi-row">' + [['Annual Recruiting Budget (All Sports, $)', tt('rb', fm), 'in'], ['$ Spent To Date (Travel + Camps + Visits)', tt('spent', fm), 'calc'], ['$ Remaining (Budget - Spent)', tt('rem', fm), 'calc'], ['Cost Per Commitment ($ Spent / Commitments)', totCpc, 'calc']].map(function (k) { return '<div class="kpi"><span>' + k[0] + '</span><strong>' + k[1] + '</strong></div>'; }).join('') + '</div><p class="coach-note">Totals include only sports with numbers entered (budget: ' + uniq(inc.rb) + '; spent: ' + uniq(inc.spent) + '). Blank entries are shown as Not Entered and are never counted as $0. All amounts are in US dollars for the current budget year, rounded to the nearest whole dollar.</p>';
+    var legend = card('How To Read This Page', '<ul class="dept-list"><li>' + tag('in') + ' Numbers you type in. Each row keeps a source and the date you last changed it.</li><li>' + tag('calc') + ' Numbers the page works out from your inputs. Open &ldquo;How This Is Calculated&rdquo; under any of them.</li><li><strong>Four different pots of money are kept apart:</strong> (1) Athletic Aid / Scholarships, (2) Recruiting Expense Budget, (3) Program Operating Budget, and (4) THE READ Subscription. They are never added together.</li><li>' + NE + ' means blank. It is left out of totals and never treated as $0.</li><li>THE READ does not supply NCAA, NAIA or NJCAA limits. Every limit is a number you enter; check with your compliance office.</li></ul>');
+    var subCard = card('THE READ Subscription Cost (Separate From Your Budgets)', '<div class="form-grid"><div class="field"><label for="fin-sub">Annual THE READ Subscription ($ Per Year)</label><input id="fin-sub" type="number" min="0" step="100" data-fd="sub" value="' + (sub.sub == null ? '' : sub.sub) + '"></div><div class="field"><label for="fin-subsrc">Source (Invoice / Quote)</label><input id="fin-subsrc" type="text" maxlength="80" data-fd="src" value="' + esc(sub.src || '') + '"></div></div><p><strong>Active Sports:</strong> ' + subN + ' of ' + SP.list.length + ' &middot; <strong>Annual Subscription:</strong> ' + (sub.sub == null ? NE : fm(sub.sub)) + ' ' + tag('in') + '</p><p class="coach-note">Pricing is per active sport. See <a href="pricing.html">Pricing</a> and <a href="department-billing.html">Billing &amp; Subscription</a>. Not part of the recruiting budget or program operating budget above.</p>');
+    var how1 = '<h3>How The Calculated Numbers Work</h3>' +
+      how('$ Spent To Date = Travel + Camps + Visits', 'Recruiting Travel Spent, Camp Costs Spent and Visit Costs Spent for that sport.', 'Line items are shown in the row. If one is blank, the total uses only the ones you entered and says which were not entered.') +
+      how('$ Remaining (Recruiting) = Annual Recruiting Budget - $ Spent To Date', 'Annual Recruiting Budget and the $ Spent To Date line items.', 'Shown only when both a budget and at least one spend item are entered. Scholarship aid is not part of this.') +
+      (aid ? how('$ Aid Remaining = Athletic Aid Budget - $ Committed (Scholarship Offers)', 'Athletic Aid Budget and $ Committed (Scholarship Offers).', 'Aid is tracked separately from recruiting expenses. It is not deducted from the recruiting budget.') : '') +
+      how('Cost Per Commitment = $ Spent To Date / Commitments', 'Recruiting spend (Travel + Camps + Visits) and the number of commitments.', 'Not shown when Commitments is blank or 0. It does not include scholarship aid or operating costs.') +
+      how('Department Total = sum of the sports that have a number entered', 'The sport rows above.', 'Department Cost Per Commitment = total spent / total commitments, using the same sports.');
+    var out = '<div class="coach-grid">' + card('Finance Model Notes', '<p class="coach-note">' + esc(DIV.financeNote) + '</p>' + refLinks(), 'wide') + legend + card('Department-Wide Rollup (All Sports Shown)', kpis, 'wide') +
+      card('Your Inputs By Sport ' + tag('in'), '<p class="coach-note">Type your own figures. Leave blank if unknown. Saved in this browser only.</p>' + table(['Sport'].concat(inCols.map(function (c) { return c[1]; }), ['Source Of Numbers', 'Last Updated']), inRows, 'Finance inputs by sport'), 'wide') +
+      card('Per-Sport Results ' + tag('calc'), table(head, calcRows.concat([totRow]), 'Finance results by sport and department total') + how1, 'wide') + subCard + card('Finance Glossary', '<dl class="dept-dl fin-gloss"><div><dt>Athletic Aid / Scholarship Equivalency</dt><dd>Aid given to athletes. A count of equivalencies lives in Roster &amp; Scholarships; dollars live here. Rules vary by division.</dd></div><div><dt>Recruiting Expense Budget</dt><dd>Money for travel, camps and visits to find athletes. Excludes aid.</dd></div><div><dt>Program Operating Budget</dt><dd>Day-to-day cost of running a team (equipment, travel to games). Excludes recruiting and aid.</dd></div><div><dt>$ Committed (Scholarship Offers)</dt><dd>Aid dollars promised in offers, even if not yet paid.</dd></div><div><dt>$ Spent To Date</dt><dd>Money already spent this budget year.</dd></div><div><dt>$ Remaining</dt><dd>Budget minus spent (and minus committed, for aid).</dd></div><div><dt>Cost Per Commitment</dt><dd>Recruiting dollars spent for each athlete who committed.</dd></div><div><dt>Not Entered</dt><dd>You have not typed a number. It is skipped, not $0.</dd></div></dl>') + '</div>' + sample;
+    root.innerHTML = out;
+    on(root, 'change', function (e) {
+      var i = e.target, dd = load(); dd.fin = dd.fin || {}; var today = new Date().toISOString().slice(0, 10);
+      if (i.dataset.fs) { var r = dd.fin[i.dataset.fs] = dd.fin[i.dataset.fs] || {}; r[i.dataset.fk] = i.dataset.fk === 'src' ? i.value.trim() : num(i.value); r.upd = today; save(dd); finances(root, dd); }
+      else if (i.dataset.fd) { var s2 = dd.fin._dept = dd.fin._dept || {}; s2[i.dataset.fd] = i.dataset.fd === 'src' ? i.value.trim() : num(i.value); save(dd); finances(root, dd); }
+    });
+  };
   var divExtras = function (root) {
     if (!root) return;
     var d = load(), list = sportsShown(d), tot = function (k) { var n = 0, any = false; list.forEach(function (s) { var v = (d.lim[s.id] || {})[k]; if (v != null) { n += v; any = true; } }); return any ? n : null; };
@@ -236,15 +291,7 @@
       var kp = '<section class="card coach-card"><h2>' + esc(DIV.short) + ' Key Numbers</h2><div class="kpi-row">' + DIV.kpis.map(function (k) { return '<div class="kpi"><span>' + esc(k[0]) + '</span><strong>' + K[k[1]]() + '</strong></div>'; }).join('') + '</div><p class="coach-note">From numbers you enter in Roster &amp; Scholarships and prospect statuses. Division: ' + esc(divName()) + (DIVC.chosen ? '' : ' (default until you choose one in Settings)') + '.</p></section>';
       var g = root.querySelector('.coach-grid'); if (g) g.insertAdjacentHTML('afterbegin', kp); else root.insertAdjacentHTML('afterbegin', kp);
     }
-    if (body.dataset.coachPage === 'finances') {
-      var note = '<section class="card coach-card"><h2>' + esc(DIV.short) + ' Finance Model</h2><p class="coach-note">' + esc(DIV.financeNote) + '</p></section>';
-      if (DIV.aid === 'none') {
-        root.innerHTML = note + '<section class="card coach-card"><h2>Recruiting Budget</h2><form class="calc" onsubmit="return false"><div class="form-grid"><div class="field"><label for="f-tb">Recruiting Travel Budget ($)</label><input id="f-tb" type="number" min="0" step="100"></div><div class="field"><label for="f-sp">Recruiting Spend So Far ($)</label><input id="f-sp" type="number" min="0" step="100"></div></div><div id="f-out" class="callout" role="status" aria-live="polite">Enter your numbers.</div><p class="coach-note">Division III does not award athletic scholarships, so no scholarship equivalency fields appear. Nothing is saved or sent.</p></form></section>';
-        var fo = function () { var tb = num(root.querySelector('#f-tb').value), sp = num(root.querySelector('#f-sp').value); root.querySelector('#f-out').innerHTML = tb != null && sp != null ? '<strong>Travel Budget Remaining:</strong> $' + (tb - sp).toLocaleString() : 'Enter your numbers.'; };
-        root.querySelectorAll('input').forEach(function (i) { i.addEventListener('input', fo); });
-      } else root.insertAdjacentHTML('afterbegin', note);
-    }
-    var banner = root.querySelector('.dept-note'); if (banner) banner.insertAdjacentHTML('beforeend', '<p class="coach-note">Reminder: ' + esc(DIV.reminder) + '</p>');
+    if (body.dataset.coachPage === 'finances') finances(root, d);    var banner = root.querySelector('.dept-note'); if (banner) banner.insertAdjacentHTML('beforeend', '<p class="coach-note">Reminder: ' + esc(DIV.reminder) + '</p>');
   };
 
   /* ---------- init ---------- */

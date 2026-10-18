@@ -2056,3 +2056,13 @@ html.hide-sample-labels [data-sample-label] { display: none !important; }
 @media (max-width: 900px) { .acct-menu { display: none; } }
 .cn-badge{display:inline-block;min-width:1.3em;margin-left:.35em;padding:0 .4em;border-radius:999px;background:#E41E3F;color:#fff;font-size:.75rem;font-weight:800;line-height:1.5;text-align:center}
 .coach-subnav .cn-badge,.dept-subnav .cn-badge{background:#fff;color:#E41E3F}
+
+.fin-tag { display: inline-block; font-size: .7rem; font-weight: 800; text-transform: uppercase; letter-spacing: .06em; padding: .1rem .45rem; vertical-align: middle; }
+.fin-in { background: var(--navy); color: #fff; }
+.fin-calc { background: #fff; color: var(--scarlet); border: 1px solid var(--scarlet); }
+.fin-ne { color: #5a6275; font-style: italic; }
+.fin-total th, .fin-total td { font-weight: 800; border-top: 2px solid var(--navy); }
+.fin-how { margin: .4rem 0; border-left: 4px solid var(--scarlet); padding: .2rem .7rem; background: #f6f7fa; }
+.fin-how summary { cursor: pointer; font-weight: 700; color: var(--navy); }
+.fin-example > summary h2 { display: inline; }
+.fin-gloss dd { margin: 0; }

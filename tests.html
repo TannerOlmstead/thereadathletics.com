@@ -183,6 +183,15 @@ test('Recruit Score calculator: frame grade, reweighting, Not Rated, confidence'
   eq(n.rs, null, 'no velocity = Not Rated, not zero');
   var p = S.compute({ pos: 'P', metrics: {}, verified: {} }, bench); eq(p.rs, null, 'empty pitcher Not Rated'); eq(p.conf, null, 'no metrics = Unknown confidence');
 });
+test('Verifier bulk-entry validators and CSV', function () {
+  var T = window.TheReadVerifierTools;
+  eq(T.validate('avgEV', '').blank, true, 'blank stays blank'); eq(T.validate('avgEV', '').value, null, 'blank is never 0');
+  eq(T.validate('avgEV', '85.5').value, 85.5, 'valid number'); eq(T.validate('avgEV', '300').ok, false, 'out of range rejected');
+  eq(T.validate('t60', 'fast').ok, false, 'non-number rejected'); eq(T.validate('pop', '1.95').ok, true, 'pop time accepted'); eq(T.validate('pop', '9').ok, false, 'pop out of range');
+  var rows = T.parseCSV('email,name\r\na@x.com,"Doe, Jo"\r\n\r\nb@x.com,Al\r\n'); eq(rows.length, 3, 'blank lines skipped'); eq(rows[1][1], 'Doe, Jo', 'quoted comma kept');
+  eq(T.parseCSV('a\tb\n1\t2')[1][1], '2', 'tab paste parsed'); eq(T.template('baseball').indexOf('pop') > 0, true, 'baseball template has pop time');
+  eq(T.templateKeys('mens-soccer').join(','), 'ht,wt', 'other sports use stub template'); eq(/^READ-[A-Z0-9]{1,6}$/.test(T.shareCode({ id: 'ath-abc123xyz' })), true, 'share code format');
+});
 test('Per-metric verification and interests API', function () {
   var A = window.TheReadAthlete, r = { id: 'ath-t1', metrics: { avgEV: 85, maxEV: 95 }, verified: {}, verifiers: [{ type: 'High School Coach', name: 'C', status: 'Requested', keys: ['avgEV'] }] };
   eq(A.metricStatus(r, 'avgEV').status, 'Pending', 'requested metric pending');

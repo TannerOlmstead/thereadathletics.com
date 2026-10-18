@@ -52,7 +52,33 @@
       Array.prototype.forEach.call(document.querySelectorAll('[data-signout]'), function (el) { el.addEventListener('click', function (e) { e.preventDefault(); signOut(); go('index.html'); }); });
     }
     pages();
+    nextStep();
   });
+
+  // ------------------------------------------------------------ "Next Step" prompt on each role home (workflow standard)
+  var nextStep = function () {
+    var b = document.body, cp = b && b.getAttribute('data-coach-page'), dp = b && b.getAttribute('data-dept-page'), A = window.TheReadAthlete, anchor = document.querySelector('.prof-tabs, .coach-subnav, .dept-subnav');
+    var has = function (k) { try { var v = localStorage.getItem(k); return !!v && v !== '[]' && v !== '{}' && v !== 'null'; } catch (e) { return false; } };
+    var steps = null, title = '';
+    if (cp === 'athprofile' && A) {
+      var r = A.current && A.current();
+      if (!r) return;
+      var ints = ((A.interests && A.interests()) || []).filter(function (i) { return i.aid === r.id; });
+      steps = [['Add Your Metrics', Object.keys(r.metrics || {}).length > 0, 'athlete-profile.html#metrics'], ['Request Verification', (r.verifiers || []).length > 0, 'athlete-profile.html#metrics'], ['Add Schools To Interests', ints.length > 0, 'athlete-profile.html#interests']];
+      title = 'Your Next Step';
+    } else if (cp === 'dashboard') {
+      steps = [['Add A Prospect', has('theReadDemoMasterDb') || has('theReadDemoAthletes'), 'coach-master-database.html'], ['Put Them On The Board', has('theReadDemoBoard'), 'coach-recruiting-board.html'], ['Grade Them', has('theReadDemoCoachGrades'), 'coach-grading.html'], ['Schedule A Visit', has('theReadDemoCalendar'), 'coach-calendar.html']];
+      title = 'Recruiting Flow';
+    } else if ((cp === 'department' || dp === 'sports') && !/[?&]dsport=/.test(location.search)) {
+      steps = [['Pick A Sport', false, 'department-sports.html'], ['Review Its Overview', false, 'department-overview.html']];
+      title = 'Department Flow';
+    }
+    if (!steps || !anchor || document.querySelector('.next-step')) return;
+    var nx = steps.filter(function (x) { return !x[1]; })[0];
+    var d = document.createElement('div'); d.className = 'next-step'; d.setAttribute('role', 'region'); d.setAttribute('aria-label', title);
+    d.innerHTML = '<strong>' + title + ':</strong> ' + (nx ? '<a href="' + nx[2] + '">' + esc(nx[0]) + '</a>' : 'All set. Keep your data current.') + ' <small>(' + steps.map(function (x) { return (x[1] ? '&#10003; ' : '&#9675; ') + esc(x[0]); }).join(' &rarr; ') + ')</small>';
+    anchor.parentNode.insertBefore(d, anchor.nextSibling);
+  };
 
   // ------------------------------------------------------------ account pages
   var field = function (id, label, o) {

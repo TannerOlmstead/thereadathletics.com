@@ -247,3 +247,12 @@ This site is plain HTML/CSS/JS with no build step. There is **no backend**: form
 ### Internal Notes (Not Public Marketing)
 - Founding status never buys rankings, Recruit Score, visibility, search placement or AI recommendations. It is a private pricing arrangement between the owner and a specific institution or coach.
 - Do not reintroduce "first 100 / first 25" or founding tables in public pages; terms-internal notes stay internal.
+
+## Verifier Workspace Redesign And Workflow Audit (done in this PR)
+
+- [x] Verifier workspace cut to 4 tabs (Queue, Bulk Entry, My Athletes, History & Profile) plus Connect and Calendar; sticky summary bar (pending metrics, new requests, verified today); Undo Last; remembered defaults (method, event, filters); bulk grid with Session Details, paste, CSV template/import/export and shared range validators; Add Athlete by share code or search with athlete approval.
+- [x] "Next Step" prompt on the athlete, college coach, department and verifier homes; empty states with a next action.
+- Friction found and fixed: Verifier (separate Requests/Queue trips, retyping method per metric, no batch path) -> one queue + one method field + bulk grid. Athlete (no clear order) -> Add Metrics, Request Verification, Add Interests prompt; share code so verifiers do not retype profiles. College coach (flow unclear) -> Add Prospect, Board, Grade, Visit prompt. AD (landing without a sport) -> Pick A Sport, Review Overview prompt.
+- Real build still needed: server-side athlete approval and share codes (demo stores everything in this browser), email notice to athletes, device-data import (Trackman / Rapsodo files), per-sport metric templates beyond the baseball set, pop time / infield / outfield velo as first-class Recruit Score inputs.
+- Open questions for the owner: should verifiers also see athletes who never requested them (search only, approval required, as built)? Should a showcase organizer be allowed to enter for a whole event without per-athlete acceptance?
+

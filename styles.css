@@ -2066,3 +2066,28 @@ html.hide-sample-labels [data-sample-label] { display: none !important; }
 .fin-how summary { cursor: pointer; font-weight: 700; color: var(--navy); }
 .fin-example > summary h2 { display: inline; }
 .fin-gloss dd { margin: 0; }
+
+/* Verifier workspace (queue, bulk grid, sticky summary) */
+.v-tabs .v-util { margin-left: auto; display: flex; gap: 6px; }
+.v-tabs .v-util a { background: rgba(255,255,255,.12); }
+.v-sticky { position: sticky; top: 0; z-index: 20; display: flex; flex-wrap: wrap; align-items: center; gap: .4rem 1.2rem; padding: .6rem .9rem; margin: 0 0 1rem; background: var(--white); border: 1px solid rgba(26,26,26,.15); border-left: 5px solid var(--scarlet); box-shadow: 0 2px 6px rgba(20,40,75,.12); color: var(--navy); }
+.v-sticky strong { color: var(--scarlet); font-size: 1.2rem; }
+.v-sticky .v-msg { flex: 1 1 14rem; font-weight: 700; }
+.v-reqlist { list-style: none; margin: 0 0 .8rem; padding: 0; }
+.v-reqlist li { display: flex; flex-wrap: wrap; justify-content: space-between; gap: .5rem; padding: .6rem 0; border-bottom: 1px solid rgba(26,26,26,.12); }
+.v-exp td { background: #f7f8fb; }
+.v-mrow:focus { outline: 3px solid var(--navy); outline-offset: -3px; }
+.v-obs, .v-cell { min-height: 44px; width: 100%; min-width: 5.5rem; padding: .4rem .5rem; font-size: 1rem; border: 1px solid rgba(20,40,75,.4); }
+.v-cell[aria-invalid="true"] { border-color: var(--scarlet); background: #fff1f3; }
+.v-acts .button { margin: 2px 2px 2px 0; }
+.v-grid th, .v-grid td { white-space: nowrap; }
+.v-grid thead th, .v-grid tbody th { position: sticky; left: 0; background: var(--white); }
+.v-grid thead th:not(:first-child) { position: static; }
+.v-filters { display: flex; flex-wrap: wrap; gap: .8rem; margin: 1rem 0; }
+.v-filters label { display: grid; gap: 4px; font-weight: 700; color: var(--navy); }
+.v-filters input, .v-filters select { min-height: 44px; padding: .3rem .5rem; }
+kbd { border: 1px solid rgba(20,40,75,.4); border-bottom-width: 2px; padding: 0 .3rem; background: #fff; font-size: .9em; }
+.empty-state { padding: 1rem 1.2rem; border: 2px dashed rgba(20,40,75,.35); background: #f7f8fb; }
+.next-step { margin: 0 0 1rem; padding: .8rem 1rem; border-left: 5px solid var(--scarlet); background: #fff; border: 1px solid rgba(26,26,26,.15); border-left: 5px solid var(--scarlet); color: var(--navy); }
+.next-step strong:first-child { text-transform: uppercase; letter-spacing: .05em; color: var(--scarlet); margin-right: .4rem; }
+@media (max-width: 720px) { .v-tabs .v-util { margin-left: 0; } .v-sticky { gap: .3rem .8rem; font-size: .9rem; } .v-acts .button { width: 100%; } }

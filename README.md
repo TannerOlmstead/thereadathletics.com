@@ -164,7 +164,7 @@ The Max FBV lookup is `TheReadScore.getMaxFBVGrade(maxFBV)`, a port of the owner
 ## Verifier Signup And Workspace
 
 - `verifier-signup.html`: High School Coach, Private Instructor or Verified Data Provider (free for providers per pricing). Approval of verifiers is an admin step on the roadmap; profiles show Pending Approval and nothing is checked.
-- `verifier-dashboard.html` (`verifier.js`): Athletes Awaiting Verification, Requests (accept/decline), My Athletes, Verification History audit log (who, what, when, method), Calendar, Profile And Credentials. Every metric is confirmed or declined individually with a method; statuses feed Confidence. Athletes reach it from Request Verification.
+- `verifier-dashboard.html` (`verifier.js`): four tabs (Verification Queue, Bulk Entry, My Athletes, History & Profile) plus Connect and Calendar in a utility area. The queue has new requests with inline Accept/Decline, expandable athlete rows with Confirm / Confirm With Edit / Decline per metric (keyboard Y / E / N), a reported-vs-observed view, remembered method defaults, Undo Last and a sticky summary bar. Bulk Entry is a spreadsheet-style grid with one Session Details header (event, date, device, location), paste from Excel, CSV template / import / export with range validation (blank is never 0) and autosave. Add Athlete uses a share code or name search and the athlete approves from their profile. History is collapsed on the same page as Profile. Every metric is confirmed or declined individually with a method; statuses feed Confidence. Athletes reach it from Request Verification.
 
 ## JUCO / Transfer Signup Path
 

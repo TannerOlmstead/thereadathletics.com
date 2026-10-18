@@ -40,11 +40,14 @@
   const BASE = { P: [72, 78, 175, 240], C: [68, 74, 180, 225], '1B': [72, 78, 195, 245], '2B': [67, 73, 155, 195], '3B': [70, 76, 175, 225], SS: [68, 74, 160, 200], OF: [69, 76, 165, 225] };
   const METHODS = ['Live Evaluation', 'Showcase Data', 'Video Review', 'Verified Event Data'];
   const COACHES = [
-    { id: 'A', name: 'Head Coach A. Reyes', role: 'Head Baseball Coach' },
-    { id: 'B', name: 'Assoc. Head Coach D. Lindgren', role: 'Associate Head Coach' },
-    { id: 'C', name: 'Pitching Coach M. Oyelaran', role: 'Pitching Coach' },
-    { id: 'D', name: 'Recruiting Coordinator S. Park', role: 'Recruiting Coordinator' }
+    { id: 'A', name: 'Head Coach A. Reyes', role: 'Head Baseball Coach', ini: 'AR', bg: '#FDE3E8', bd: '#B3122F' },
+    { id: 'B', name: 'Assoc. Head Coach D. Lindgren', role: 'Associate Head Coach', ini: 'DL', bg: '#DCE9FB', bd: '#1F5FBF' },
+    { id: 'C', name: 'Pitching Coach M. Oyelaran', role: 'Pitching Coach', ini: 'MO', bg: '#DDF3E4', bd: '#1E7B3A' },
+    { id: 'D', name: 'Recruiting Coordinator S. Park', role: 'Recruiting Coordinator', ini: 'SP', bg: '#FFF0C2', bd: '#8A5A00' }
   ];
+  // Each staff member has a fixed highlight color for evaluator notes (dark navy text on a light tint, 4.5:1 or better). Color is never the only signal: notes also show initials, name, role and time.
+  const coachOf = (id) => COACHES.filter((c) => c.id === id)[0] || { id: id, name: 'Staff', role: '', ini: '?', bg: '#EEE', bd: '#666' };
+  const noteHtml = (c, e) => '<div class="ev-note" style="background:' + c.bg + ';border-left:6px solid ' + c.bd + '"><strong class="ev-who"><span class="ev-ini" style="background:' + c.bd + '">' + esc(c.ini) + '</span> ' + esc(c.name) + '</strong> <small>' + esc(c.role) + ' &middot; ' + esc(String(e.ts ? e.ts.replace('T', ' ').slice(0, 16) + ' UTC' : (e.date || 'Date Not Recorded'))) + '</small><span class="ev-text">' + esc(e.note) + '</span></div>';
   const ACTIONS = ['Schedule Live Evaluation', 'Verify Final Metrics', 'Send Program Questionnaire', 'Plan Campus Visit', 'Review New Video'];
 
   const players = [];
@@ -1366,7 +1369,7 @@
     const n2 = (k, d) => (p) => num(p[k], d);
     const COLS = [
       ['board', 'Recruiting Board', (p) => (Board.has(p.id) ? 1 : 0), (p) => boardBtn(p)],
-      ['src', 'Source', (p) => (p.athleteCreated ? 'Athlete-Created' : p.entered ? 'Coach-Entered (Demo)' : 'Sample'), (p) => (p.athleteCreated ? '<span class="pill navy">Athlete-Created</span>' + (p.guardianVerified ? ' <span class="pill green">Guardian-Verified (Demo)</span>' : '') : p.entered ? '<span class="pill amber">Coach-Entered (Demo)</span> <button type="button" class="md-del" data-del="' + esc(p.id) + '" aria-label="Remove ' + esc(p.name) + '">Remove</button>' : '<span class="pill gray">Sample</span>')],
+      ['src', 'Source', (p) => (p.athleteCreated ? 'Athlete-Created' : p.entered ? 'Coach-Entered (Demo)' : 'Sample'), (p) => (p.athleteCreated ? '<span class="pill navy">Athlete-Created</span>' + (p.guardianVerified ? ' <span class="pill green">Guardian-Verified (Demo)</span>' : '') : p.entered ? '<span class="pill amber">' + (p.imported ? 'Coach-Entered (Imported)' : 'Coach-Entered (Demo)') + '</span> <button type="button" class="md-del" data-del="' + esc(p.id) + '" aria-label="Remove ' + esc(p.name) + '">Remove</button>' : '<span class="pill gray">Sample</span>')],
       ['id', 'Player ID', (p) => p.id, (p) => esc(p.id)],
       ['name', 'Player Name', (p) => p.name, (p) => cardLink(p)],
       ['grad', 'Grad Year', (p) => p.grad, (p) => p.grad],
@@ -1431,6 +1434,11 @@
       bl(['<strong>Calculated by THE READ, not entered by coaches:</strong> Frame Score, projection grades, OPG/SOPG/DPG/SDPG/PPG, Athletic Score, Recruit Score, Tier, Confidence and ranks.', '<strong>Coaches enter only raw, verifiable data.</strong>', '<strong>Until the calculation service exists,</strong> added players show Blank / Not Rated / Unknown (never 0).', '<strong>The owner\u2019s grade tables and formulas</strong> are not published in this public demo.']) +
       '<ul class="md-errors" id="md-errors" role="alert"></ul>' +
       '<div class="md-actions"><button type="submit" class="button button-primary">Add Prospect</button> <button type="button" class="button button-secondary" id="md-clear">Remove All Added Prospects</button></div></form></details>' +
+      '<details class="card md-add" id="imp-card"><summary>Import A Board Or Prospect List (CSV)</summary><div id="imp-body">' +
+      '<p class="coach-note">Paste rows or choose a .csv file. First row must be headers: <strong>Name, Grad Year, State</strong> and optionally <strong>Position, School, DOB, Sport</strong>. Each row is checked against the ' + esc(ACTIVE_SPORT || 'Baseball') + ' Master Database (name + class + state + sport, and school/DOB when present) <strong>before anything is saved</strong>, so duplicates are never created silently. Imported players who are not already here are coach-entered and unverified.</p>' +
+      '<label>CSV File<input type="file" id="imp-file" accept=".csv,text/csv" /></label><label class="md-wide">Or Paste CSV<textarea id="imp-text" rows="4" placeholder="Name,Grad Year,State,Position,School"></textarea></label>' +
+      '<div class="md-actions"><button type="button" class="button button-primary" id="imp-check">Review Matches</button></div>' +
+      '<div id="imp-review"></div><h3>Import Log</h3><div id="imp-log"></div></div></details>' +
       '<form class="controls" id="md-filters" aria-label="Filter master database" onsubmit="return false">' +
       '<label>Search<input type="search" id="md-q" placeholder="Name, school, state, notes" /></label>' +
       sportCtl('md-sport') +
@@ -1475,6 +1483,88 @@
       const d = e.target.closest('[data-del]');
       if (d) { saveAdded(loadAdded().filter((a) => a.id !== d.dataset.del)); sessionStorage.setItem('theReadMdMsg', 'Player removed.'); location.reload(); return; }
       if (e.target.closest('#md-clear')) { if (window.confirm('Remove all players you added in this browser? Sample players stay.')) { saveAdded([]); sessionStorage.setItem('theReadMdMsg', 'All added players removed.'); location.reload(); } }
+    });
+    // ---- Board/prospect import with duplicate review and undo ----
+    const IMP_LOG = 'theReadDemoImportLog';
+    const impLog = () => { try { const l = JSON.parse(localStorage.getItem(IMP_LOG) || '[]'); return Array.isArray(l) ? l : []; } catch (x) { return []; } };
+    const parseCsv = (text) => {
+      const rows = []; let row = [], cur = '', q = false;
+      for (let i = 0; i < text.length; i++) {
+        const ch = text[i];
+        if (q) { if (ch === '"') { if (text[i + 1] === '"') { cur += '"'; i++; } else q = false; } else cur += ch; }
+        else if (ch === '"') q = true;
+        else if (ch === ',') { row.push(cur); cur = ''; }
+        else if (ch === '\n' || ch === '\r') { if (ch === '\r' && text[i + 1] === '\n') i++; row.push(cur); cur = ''; if (row.some((c) => c.trim() !== '')) rows.push(row); row = []; }
+        else cur += ch;
+      }
+      row.push(cur); if (row.some((c) => c.trim() !== '')) rows.push(row);
+      return rows;
+    };
+    const HDR = { name: ['name', 'player', 'player name'], grad: ['grad year', 'grad', 'class', 'graduation year'], state: ['state'], pos: ['position', 'pos'], school: ['school', 'high school', 'hs'], dob: ['dob', 'birth date', 'date of birth'], sport: ['sport'] };
+    let impRows = [];
+    const drawImpLog = () => {
+      const l = impLog();
+      $('#imp-log', root).innerHTML = l.length ? '<ul>' + l.slice().reverse().map((e) => '<li>' + esc(e.ts.slice(0, 16).replace('T', ' ')) + ' UTC \u2014 ' + esc(e.file) + ': ' + e.created.length + ' created, ' + e.linked + ' linked, ' + e.skipped + ' skipped. ' + (e.undone ? '<em>Undone.</em>' : '<button type="button" class="md-del" data-imp-undo="' + esc(e.id) + '">Undo This Import</button>') + '</li>').join('') + '</ul>' : '<p class="coach-note">No imports yet.</p>';
+    };
+    drawImpLog();
+    const reviewImport = (text, fname) => {
+      const rows = parseCsv(text).slice(0, 501);
+      const out = $('#imp-review', root);
+      if (rows.length < 2) { out.innerHTML = '<p class="md-errors" role="alert">Add a header row and at least one player row.</p>'; return; }
+      const head = rows[0].map((h) => h.trim().toLowerCase()), idx = {};
+      Object.keys(HDR).forEach((k) => { idx[k] = head.findIndex((h) => HDR[k].indexOf(h) >= 0); });
+      if (idx.name < 0 || idx.grad < 0 || idx.state < 0) { out.innerHTML = '<p class="md-errors" role="alert">Headers must include Name, Grad Year and State.</p>'; return; }
+      const dflt = ACTIVE_SPORT || 'Baseball';
+      impRows = rows.slice(1).map((r, n) => {
+        const g = (k) => (idx[k] >= 0 ? String(r[idx[k]] || '').trim() : '');
+        const rec = { name: g('name'), grad: Number(g('grad')), state: g('state').toUpperCase(), pos: g('pos').toUpperCase(), hs: g('school'), school: g('school'), dob: g('dob'), sport: g('sport') ? (SPORT_NAMES.filter((x) => x.toLowerCase() === g('sport').toLowerCase())[0] || '') : dflt };
+        const errs = [];
+        if (!rec.name) errs.push('Name missing'); if (!(rec.grad >= 2000 && rec.grad <= 2040)) errs.push('Grad Year invalid'); if (!/^[A-Z]{2}$/.test(rec.state)) errs.push('State must be 2 letters'); if (!rec.sport) errs.push('Sport not recognized');
+        if (rec.sport && rec.sport !== (ACTIVE_SPORT || 'Baseball')) errs.push('Row is for ' + rec.sport + '; switch the sport selector to import it there');
+        if (rec.pos && rec.sport && sportPos(rec.sport).indexOf(rec.pos) < 0) rec.pos = '';
+        const m = errs.length ? { exact: [], possible: [] } : window.TheReadAthlete.match(rec, Object.keys(byId).map((k) => byId[k]).filter((p) => p.sport === rec.sport));
+        return { n: n + 2, rec: rec, errs: errs, m: m, kind: errs.length ? 'bad' : m.exact.length ? 'exact' : m.possible.length ? 'possible' : 'new' };
+      });
+      impRows.fname = fname;
+      const cnt = (k) => impRows.filter((r) => r.kind === k).length;
+      out.innerHTML = '<p class="coach-count" role="status"><strong>Review:</strong> ' + cnt('exact') + ' Exact Match, ' + cnt('possible') + ' Possible Match, ' + cnt('new') + ' New, ' + cnt('bad') + ' Need Fixing (skipped). Nothing is saved until you press Apply Import.</p>' +
+        '<div class="table-wrap"><table class="rd-table"><caption class="visually-hidden">Import review</caption><thead><tr><th scope="col">Row</th><th scope="col">Player</th><th scope="col">Result</th><th scope="col">What To Do</th></tr></thead><tbody>' +
+        impRows.map((r, i) => {
+          const who = esc(r.rec.name) + '<small class="rd-mobile-meta">' + r.rec.grad + ' \u00b7 ' + esc(r.rec.state) + (r.rec.hs ? ' \u00b7 ' + esc(r.rec.hs) : '') + '</small>';
+          const cands = r.m.exact.concat(r.m.possible);
+          const sel = r.kind === 'bad' ? '<em>' + esc(r.errs.join('; ')) + '</em>'
+            : r.kind === 'new' ? '<select data-imp="' + i + '"><option value="new">Create As Coach-Entered (Imported)</option><option value="skip">Skip</option></select>'
+            : '<select data-imp="' + i + '">' + cands.map((c) => '<option value="link:' + esc(c.id) + '">Use Existing: ' + esc(c.name) + ' (' + esc(c.id) + ', ' + c.grad + ', ' + esc(c.state) + ') And Add To My Board</option>').join('') + '<option value="' + (r.kind === 'exact' ? 'new' : 'new') + '">Create A Separate New Player</option><option value="skip">Skip</option></select>';
+          return '<tr><td data-label="Row">' + r.n + '</td><th scope="row">' + who + '</th><td data-label="Result">' + ({ exact: '<span class="pill green">Exact Match</span>', possible: '<span class="pill amber">Possible Match</span>', new: '<span class="pill gray">New</span>', bad: '<span class="pill red">Needs Fixing</span>' })[r.kind] + '</td><td data-label="What To Do">' + sel + '</td></tr>';
+        }).join('') + '</tbody></table></div><div class="md-actions"><button type="button" class="button button-primary" id="imp-apply">Apply Import</button></div>';
+    };
+    $('#imp-check', root).addEventListener('click', () => {
+      const f = $('#imp-file', root).files[0], t = $('#imp-text', root).value;
+      if (f) { const fr = new FileReader(); fr.onload = () => reviewImport(String(fr.result || ''), f.name); fr.readAsText(f); } else reviewImport(t, 'Pasted rows');
+    });
+    root.addEventListener('click', (e) => {
+      const u = e.target.closest && e.target.closest('[data-imp-undo]');
+      if (u) {
+        const log = impLog(), ent = log.filter((x) => x.id === u.dataset.impUndo)[0]; if (!ent) return;
+        saveAdded(loadAdded().filter((a) => ent.created.indexOf(a.id) < 0));
+        try { const b = JSON.parse(localStorage.getItem(BOARD_KEY) || '{}'); ent.boarded.forEach((id) => { delete b[id]; }); localStorage.setItem(BOARD_KEY, JSON.stringify(b)); localStorage.setItem(IMP_LOG, JSON.stringify(log.map((x) => (x.id === ent.id ? Object.assign(x, { undone: true }) : x)))); } catch (x) { /* ignore */ }
+        sessionStorage.setItem('theReadMdMsg', 'Import undone: ' + ent.created.length + ' created players and ' + ent.boarded.length + ' board additions were removed.'); location.reload(); return;
+      }
+      if (!(e.target.id === 'imp-apply')) return;
+      const cur = loadAdded(); let max = cur.concat(players.filter((p) => p.entered)).reduce((m, a) => Math.max(m, parseInt(String(a.id).replace(/\D/g, ''), 10) || 0), 0);
+      const created = [], boarded = []; let linked = 0, skipped = 0; const batch = 'IMP' + Date.now();
+      let board = {}; try { board = JSON.parse(localStorage.getItem(BOARD_KEY) || 'null') || {}; } catch (x) { board = {}; }
+      impRows.forEach((r, i) => {
+        const sel = r.kind === 'bad' ? 'skip' : ($('[data-imp="' + i + '"]', root) || {}).value || 'skip';
+        if (sel === 'skip') { skipped++; return; }
+        if (sel.indexOf('link:') === 0) { const id = sel.slice(5); linked++; if (!board[id]) { board[id] = { notes: '', staffNotes: '' }; boarded.push(id); } return; }
+        max++; const id = 'E' + String(max).padStart(3, '0');
+        cur.push({ id: id, name: r.rec.name, grad: r.rec.grad, state: r.rec.state, pos: r.rec.pos || (sportPos(r.rec.sport)[0] || ''), sport: r.rec.sport, hs: r.rec.hs, dob: r.rec.dob || '', level: 'High School', method: 'Coach Entry (Unverified)', notes: '', evalTs: new Date().toISOString(), links: {}, imported: true, importId: batch });
+        created.push(id); board[id] = { notes: '', staffNotes: '' }; boarded.push(id);
+      });
+      if (!saveAdded(cur)) { $('#imp-review', root).innerHTML = '<p class="md-errors" role="alert">This browser blocked saving. Nothing was imported.</p>'; return; }
+      try { localStorage.setItem(BOARD_KEY, JSON.stringify(board)); const log = impLog(); log.push({ id: batch, ts: new Date().toISOString(), file: impRows.fname || 'Import', created: created, boarded: boarded, linked: linked, skipped: skipped }); localStorage.setItem(IMP_LOG, JSON.stringify(log)); } catch (x) { /* ignore */ }
+      sessionStorage.setItem('theReadMdMsg', 'Import applied: ' + created.length + ' new Coach-Entered (Imported) players, ' + linked + ' matched to existing players, ' + skipped + ' skipped. Matched and new players were added to My Board. Use Undo in the Import Log if needed.'); location.reload();
     });
     $('#md-form', root).addEventListener('submit', (e) => {
       e.preventDefault();
@@ -1566,15 +1656,17 @@
       '<li><strong>Staff Score</strong> = &Sigma;(grade number &times; weight) &divide; &Sigma;(weight), over only the coaches who graded that player. The weights used depend on the player\u2019s position group (Pitchers, Catchers, Infielders, Outfielders), falling back to the Default column. If every graded coach has weight 0, they count equally. Blank when nobody has graded.</li>' +
       '<li><strong>Adjusted Recruit Score</strong> = Recruit Score + fit/need adjustment (&minus;2.5 to +2.5, see Team Needs) + staff adjustment, kept between 0 and 100. Staff adjustment = (Staff Score &minus; ' + STAFF_BASELINE + ') &divide; ' + STAFF_DIVISOR + ', limited to &minus;' + STAFF_CAP + ' to +' + STAFF_CAP + ' points (' + STAFF_BASELINE + ' is a neutral, about B-, grade). With no staff grades the staff adjustment is 0 and the score is marked &ldquo;No staff grades yet&rdquo;. It updates on every grade added, changed or removed, and flows to Rankings, Recruiting Board, Coach Fit, Commitments and the Player Card pop-up.</li>' +
       '<li><strong>Never changes Tier or Confidence.</strong> Those come only from the Recruit Score and the data confidence.</li></ul></section>' +
-      '<form class="controls" id="gr-filters" onsubmit="return false"><label>Search<input type="search" id="gr-q" placeholder="Player name" /></label><label>Show<select id="gr-show"><option value="">All players</option><option value="g">Players with grades</option></select></label></form>' +
+      '<form class="controls" id="gr-filters" onsubmit="return false"><label>Search<input type="search" id="gr-q" placeholder="Player name" /></label><label>Show<select id="gr-show"><option value="">All players</option><option value="g">Players with grades</option></select></label><label>Notes By<select id="gr-coach"><option value="">All staff</option>' + COACHES.map((c) => '<option value="' + c.id + '">' + esc(c.name) + '</option>').join('') + '</select></label></form>' +
+      '<div class="ev-legend" role="group" aria-label="Evaluator note colors"><strong>Evaluator Colors:</strong> ' + COACHES.map((c) => '<span class="ev-key" style="background:' + c.bg + ';border-left:6px solid ' + c.bd + '"><span class="ev-ini" style="background:' + c.bd + '">' + esc(c.ini) + '</span> ' + esc(c.name) + '</span>').join(' ') + ' <small>Each note also shows the coach\u2019s initials, name, role and time, so color is never the only clue.</small></div>' +
       LVL_LEGEND + '<div class="table-wrap"><table id="gr-table" class="rd-table"></table></div>' +
       '<p class="coach-note">SAMPLE DATA / FICTIONAL EXAMPLE. No grades exist until a staff member enters them.</p>' +
       theRead('Grades are opinions entered by your staff, not calculated by THE READ. Each player\u2019s Staff Score is a weighted average using the Head Coach\u2019s weights, so a pitcher can lean on the pitching coach. The Adjusted Recruit Score nudges the Recruit Score by at most ' + STAFF_CAP + ' points for staff grades, so a few opinions can sharpen the ranking without replacing the data. A missing grade means no one has graded yet, not a low grade.');
     const tbl = $('#gr-table', root);
     function draw() {
       const q = $('#gr-q', root).value.trim().toLowerCase(), only = $('#gr-show', root).value === 'g';
-      const list = players.filter((p) => (!q || p.name.toLowerCase().indexOf(q) >= 0) && (!only || store[p.id] && Object.keys(store[p.id]).length));
-      tbl.innerHTML = '<caption class="visually-hidden">Staff grades by player (sample data, fictional)</caption><thead><tr><th scope="col">Player</th><th scope="col">Level / Class</th><th scope="col">Eligibility Left</th>' + COACHES.map((c) => '<th scope="col">' + esc(c.name) + '<small class="rd-mobile-meta">' + esc(c.role) + '</small></th>').join('') + '<th scope="col">Staff Score</th><th scope="col">Recruit Score</th><th scope="col">Adjusted Recruit Score</th></tr></thead><tbody>' +
+      const fco = $('#gr-coach', root).value;
+      const list = players.filter((p) => (!q || p.name.toLowerCase().indexOf(q) >= 0) && (!only || store[p.id] && Object.keys(store[p.id]).length) && (!fco || (store[p.id] && store[p.id][fco])));
+      tbl.innerHTML = '<caption class="visually-hidden">Staff grades by player (sample data, fictional)</caption><thead><tr><th scope="col">Player</th><th scope="col">Level / Class</th><th scope="col">Eligibility Left</th>' + COACHES.map((c) => '<th scope="col"><span class="ev-ini" style="background:' + c.bd + '">' + esc(c.ini) + '</span> ' + esc(c.name) + '<small class="rd-mobile-meta">' + esc(c.role) + '</small></th>').join('') + '<th scope="col">Staff Score</th><th scope="col">Recruit Score</th><th scope="col">Adjusted Recruit Score</th></tr></thead><tbody>' +
         (list.length ? list.map((p) => {
           const g = store[p.id] || {}, calc = staffCalc(g, p.pos, W), shareOf = {};
           calc.rows.forEach((r) => { shareOf[r.id] = r.share; });
@@ -1582,7 +1674,7 @@
           const adj = live.rs == null ? null : Math.round(Math.max(0, Math.min(100, live.rs + Math.max(-2.5, Math.min(2.5, ((live.fit + live.need) / 2 - 50) / 20)) + sd)) * 10) / 10;
           return '<tr><th scope="row">' + cardLink(p) + '<small class="rd-mobile-meta">' + p.pos + '</small></th><td data-label="Level / Class">' + lvlCell(p) + '</td><td data-label="Eligibility Left">' + esc(eligTxt(p)) + '</td>' + COACHES.map((c) => {
             const e = g[c.id];
-            return '<td data-label="' + esc(c.name) + '">' + (e ? '<strong>' + esc(gShow(Number(e.score))) + '</strong><small class="rd-mobile-meta">Counts ' + Math.round((shareOf[c.id] || 0) * 100) + '%</small>' + (e.date ? '<small class="rd-mobile-meta">' + esc(e.date) + '</small>' : '') + (e.note ? '<small class="rd-mobile-meta">' + esc(e.note) + '</small>' : '') + ' <button type="button" class="md-del" data-pl="' + esc(p.id) + '" data-co="' + c.id + '" aria-label="Remove grade by ' + esc(c.name) + ' for ' + esc(p.name) + '">Remove</button>' : '&mdash;') + '</td>';
+            return '<td data-label="' + esc(c.name) + '">' + (e ? '<strong>' + esc(gShow(Number(e.score))) + '</strong><small class="rd-mobile-meta">Counts ' + Math.round((shareOf[c.id] || 0) * 100) + '%</small>' + (e.date ? '<small class="rd-mobile-meta">' + esc(e.date) + '</small>' : '') + (e.note && (!fco || fco === c.id) ? noteHtml(c, e) : '') + ' <button type="button" class="md-del" data-pl="' + esc(p.id) + '" data-co="' + c.id + '" aria-label="Remove grade by ' + esc(c.name) + ' for ' + esc(p.name) + '">Remove</button>' : '&mdash;') + '</td>';
           }).join('') + '<td data-label="Staff Score">' + (calc.score == null ? 'No staff grades yet' : '<strong>' + gAvg(calc.score) + '</strong>') + '</td><td data-label="Recruit Score">' + (live.rs == null ? 'Not Rated' : live.rs.toFixed(1)) + '</td><td data-label="Adjusted Recruit Score">' + (adj == null ? '&mdash;' : '<strong>' + adj.toFixed(1) + '</strong>') + '</td></tr>';
         }).join('') : '<tr class="rd-empty"><td colspan="' + (COACHES.length + 4) + '">No players match.</td></tr>') + '</tbody>';
     }
@@ -1637,7 +1729,7 @@
       if (errs.length) return;
       const pid = f.elements.player.value, cid = me.id;
       store[pid] = store[pid] || {};
-      store[pid][cid] = { score: score, note: f.elements.note.value.trim().slice(0, 300), date: date };
+      store[pid][cid] = { score: score, note: f.elements.note.value.trim().slice(0, 300), date: date, ts: new Date().toISOString() };
       if (!saveGrades(store)) { $('#gr-errors', root).innerHTML = '<li>This browser blocked saving. The grade was not saved.</li>'; return; }
       if (Board.has(pid)) Act.log(pid, 'grade', 'Staff grade entered');
       sessionStorage.setItem('theReadGrMsg', 'Grade saved for ' + byId[pid].name + ' (demo, this browser only). Staff Score and Adjusted Recruit Score were recalculated.');
@@ -1869,7 +1961,7 @@
     const b = document.getElementById('notif-bell'); if (!b) return;
     const n = Interest.unseen();
     b.setAttribute('aria-label', 'Notifications: ' + n + ' new interested athlete' + (n === 1 ? '' : 's'));
-    b.innerHTML = 'Notifications' + (n ? ' <span class="pill notif-count">' + n + '</span>' : '');
+    b.innerHTML = '<span aria-hidden="true">&#128276;</span> Notifications' + (n ? ' <span class="pill notif-count">' + n + '</span>' : '');
   };
   document.addEventListener('DOMContentLoaded', () => {
     const cls = document.body.className || '';
@@ -1877,7 +1969,7 @@
       const sub = document.querySelector('.coach-subnav');
       if (sub && !sub.querySelector('a[href="coach-interested.html"]')) { const a = document.createElement('a'); a.href = 'coach-interested.html'; a.textContent = 'Interested'; if (document.body.dataset.coachPage === 'interested') a.setAttribute('aria-current', 'page'); sub.appendChild(a); }
       const acts = document.querySelector('.ws-actions');
-      if (acts && !document.getElementById('notif-bell')) { const b = document.createElement('a'); b.id = 'notif-bell'; b.className = 'notif-bell'; b.href = 'coach-interested.html'; acts.insertBefore(b, acts.firstChild); refreshBell(); }
+      if (acts && !document.getElementById('notif-bell')) { const b = document.createElement('a'); b.id = 'notif-bell'; b.className = 'notif-bell'; b.href = 'coach-interested.html'; const old = acts.querySelector('.ws-bell'); if (old) { old.parentNode.replaceChild(b, old); } else { acts.insertBefore(b, acts.firstChild); } refreshBell(); }
     }
     const root = document.getElementById('coach-app');
     const page = document.body.dataset.coachPage;

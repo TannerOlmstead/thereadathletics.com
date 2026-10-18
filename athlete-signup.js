@@ -86,11 +86,11 @@
     if (rec.sport && c.sport && rec.sport !== c.sport) return null;
     var n1 = normName(rec.name), n2 = normName(c.name);
     if (!n1 || !n2) return null;
-    var nameEq = n1 === n2, lastEq = n1.split(' ').pop() === n2.split(' ').pop(), nameNear = !nameEq && lastEq && lev(n1, n2) <= 2;
+    var nameEq = n1 === n2, lastEq = n1.split(' ').pop() === n2.split(' ').pop(), nameNear = !nameEq && (lastEq || n1.charAt(0) === n2.charAt(0)) && lev(n1, n2) <= 2;
     if (!nameEq && !nameNear) return null;
     var gradEq = !!(rec.grad && c.grad && Number(rec.grad) === Number(c.grad));
     var stEq = !!(rec.state && c.state && String(rec.state).toUpperCase() === String(c.state).toUpperCase());
-    var schoolBad = !!(rec.school && c.school && normName(rec.school) !== normName(c.school));
+    var rs = rec.school || rec.hs, cs = c.school || c.hs, schoolBad = !!(rs && cs && normName(rs) !== normName(cs));
     if (rec.dob && c.dob && rec.dob !== c.dob) return null;
     if (nameEq && gradEq && stEq && !schoolBad) return 'exact';
     if (nameEq || gradEq || stEq) return 'possible';
@@ -324,6 +324,11 @@
       if (isXfer() && d.tr) {
         var t = d.tr; rec.transfer = { college: t.college.trim(), conf: t.conf || '', assoc: t.assoc, seasons: t.seasons === '' || t.seasons == null ? null : Number(t.seasons), rs: t.rs || '', portal: t.portal, portalDate: t.portal === 'Not In Portal' ? '' : t.portalDate || '', release: t.release || '', year: t.year || '', gradStatus: t.gradStatus || '', credits: t.credits === '' || t.credits == null ? null : Number(t.credits), standing: t.standing || '', ncaa: t.ncaa || '', naia: t.naia || '', njcaa: t.njcaa || '', stats: t.stats || '', coach: { name: t.cName || '', email: t.cEmail || '', phone: t.cPhone || '' } };
         if (t.cVerify && t.cEmail) rec.verifiers.push({ type: 'High School Coach', name: t.cName || t.college, email: t.cEmail, status: 'Requested', date: todayIso() });
+      }
+      var dups = [];
+      load().forEach(function (o) { if (o && o.id !== rec.id) { var mm = matchPlayers({ name: rec.name, grad: rec.grad, state: rec.state, school: rec.school, dob: rec.dob, sport: rec.sport }, [{ id: o.id, name: o.name, grad: o.grad, state: o.state, school: o.school, dob: o.dob, sport: o.sport }]); if (mm.exact.length || mm.possible.length) dups.push(o.name); } });
+      if (dups.length && d._dupAck !== dups.join('|')) {
+        d._dupAck = dups.join('|'); errs = [['name', 'A profile for ' + dups[0] + ' (same sport, class and state) already exists in this browser. If that is you, sign in instead of creating a second profile. If this is a different person, press Submit again to continue.']]; showErrs(); return;
       }
       upsert(rec); try { localStorage.setItem('theReadSession', JSON.stringify({ role: 'athlete', name: rec.name, email: rec.email, org: '', aid: rec.id, ts: new Date().toISOString() })); } catch (x) { /* ignore */ }
       renderStatus(rec, true);

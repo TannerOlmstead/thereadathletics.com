@@ -256,3 +256,18 @@ This site is plain HTML/CSS/JS with no build step. There is **no backend**: form
 - Real build still needed: server-side athlete approval and share codes (demo stores everything in this browser), email notice to athletes, device-data import (Trackman / Rapsodo files), per-sport metric templates beyond the baseball set, pop time / infield / outfield velo as first-class Recruit Score inputs.
 - Open questions for the owner: should verifiers also see athletes who never requested them (search only, approval required, as built)? Should a showcase organizer be allowed to enter for a whole event without per-athlete acceptance?
 
+
+## Owner Batch: Sports Separation, Grades, Import (done in this PR)
+- [x] Per-sport Master Database datasets with namespaced storage; multi-sport athlete = linked profiles; leakage tests.
+- [x] Letter grades for OPG/SOPG/DPG/SDPG/PPG; Confidence role parity (PO / Hitter / Two-Way); Confidence 100% bug fixed; GPA, blank Player Notes, automatic Evaluation Date.
+- [x] Secondary Position filters; Role Preference / Projected College Role out of the Master Database.
+- [x] CSV import with duplicate review, log and undo; duplicate check at Add Prospect.
+- [x] Metallic tiers; per-coach evaluator note colors; bell beside Notifications; scrollable menus.
+
+### Open questions for the owner
+- Final weights for OPG/SOPG/DPG/SDPG/PPG and Athletic Score (current formulas are provisional, see the Recruit Score panel).
+- Self-reported metric credit toward Confidence is 25% (`SELF_CREDIT`); confirm or change.
+- Two-Way: Recruit Score uses the primary position path; Confidence averages both sets.
+- Duplicate rules: exact needs name + class + state + sport (and the same school/DOB when both exist). Should merging (not only linking) be allowed?
+- Athlete signup warns when a matching profile (same sport, class, state) already exists in this browser; a real site needs the check against the server database.
+- Team Needs and Coach Fit do not yet show Role Preference / Projected College Role (Player Card does).

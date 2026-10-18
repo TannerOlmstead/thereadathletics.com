@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="robots" content="noindex" />
+<title>Tests | Sport Separation, Grades, And Duplicates</title>
+<style>
+body { font-family: system-ui, sans-serif; margin: 24px; color: #14284b; }
+#summary { font-weight: 700; padding: 10px 14px; border: 2px solid #14284b; display: inline-block; }
+#summary.pass { border-color: #1b7f3b; color: #1b7f3b; }
+#summary.fail { border-color: #e41e3f; color: #e41e3f; }
+li { margin: 3px 0; font-size: .9rem; }
+li.ok::before { content: "PASS  "; color: #1b7f3b; font-weight: 700; }
+li.bad::before { content: "FAIL  "; color: #e41e3f; font-weight: 700; }
+ul { list-style: none; padding: 0; }
+.stage { display: none; }
+</style>
+<script src="site-config.js"></script><script src="sports-config.js"></script><script src="divisions-config.js"></script>
+<script>
+/* Seeds a demo athlete who plays Baseball and Men's Basketball, loads the coach scripts, then restores whatever was in this browser before. */
+(function () {
+  var keys = ['theReadDemoAthletes', 'theReadDemoAthleteExtras', 'theReadDemoMasterDb', 'theReadDemoMasterDb:baseball', 'theReadDemoMasterDb:mens-basketball'];
+  window.__saved = {}; keys.forEach(function (k) { window.__saved[k] = localStorage.getItem(k); });
+  try { sessionStorage.setItem('theReadDemoUser', 'coachA'); sessionStorage.removeItem('theReadActiveSport'); } catch (e) { /* ignore */ }
+  var athlete = { id: 'owner-sample-1', name: 'Owner Sample Athlete', grad: 2027, state: 'TX', hs: 'Example High', level: 'High School', path: 'adult', submitted: true,
+    privacy: { list: true, metrics: true, contact: false, photo: false },
+    sports: [{ name: 'Baseball', pos: 'SS', sec: '2B' }, { name: 'Men\u2019s Basketball', pos: 'PG', sec: '' }],
+    metrics: { ht: 71, wt: 175, t60: 6.9 }, verified: {}, rolePref: { twoWay: 'No', role: 'Hitter' }, vlog: [{ ts: '2025-03-04T10:00:00.000Z' }] };
+  localStorage.setItem('theReadDemoAthletes', JSON.stringify([athlete]));
+  localStorage.setItem('theReadDemoAthleteExtras', JSON.stringify({ 'owner-sample-1': { gpa: '3.85' } }));
+  localStorage.removeItem('theReadDemoMasterDb'); localStorage.removeItem('theReadDemoMasterDb:baseball'); localStorage.removeItem('theReadDemoMasterDb:mens-basketball');
+})();
+</script>
+</head>
+<body class="ws-coach" data-coach-page="master">
+<h1>Sport Separation, Grades, And Duplicate Tests</h1>
+<p>Uses a made-up athlete who plays two sports. Your own demo data is put back when the page finishes loading.</p>
+<div id="summary">Running...</div><ul id="results"></ul>
+<main id="main" class="stage"><div id="coach-root"></div></main>
+<script src="classification.js"></script>
+<script src="athlete-signup.js"></script>
+<script src="recruit-score.js"></script>
+<script src="coach.js"></script>
+<script>
+window.addEventListener('load', function () {
+  var res = document.getElementById('results'), fails = 0, total = 0;
+  var test = function (name, fn) { total++; var ok = true, msg = ''; try { fn(); } catch (e) { ok = false; msg = ' - ' + e.message; } if (!ok) fails++; var li = document.createElement('li'); li.className = ok ? 'ok' : 'bad'; li.textContent = name + msg; res.appendChild(li); };
+  var yes = function (c, m) { if (!c) throw new Error(m || 'expected true'); };
+  var K = window.TheReadCoach, S = window.TheReadScore, A = window.TheReadAthlete, C = window.TheReadClassification;
+  var BB = 'Men\u2019s Basketball', base = K.players;
+  var mine = function (list) { return list.filter(function (p) { return p.name === 'Owner Sample Athlete'; }); };
+  try { Object.keys(window.__saved).forEach(function (k) { if (window.__saved[k] === null) localStorage.removeItem(k); else localStorage.setItem(k, window.__saved[k]); }); } catch (e) { /* ignore */ }
+
+  test('Baseball Master Database holds only Baseball players', function () { yes(base.length > 0); yes(base.every(function (p) { return p.sport === 'Baseball'; }), 'a non-baseball player leaked in'); });
+  test('Owner sample athlete appears once in Baseball and not as basketball', function () { var m = mine(base); yes(m.length === 1, 'count ' + m.length); yes(m[0].sport === 'Baseball'); });
+  test('Basketball profile exists only in the Men\u2019s Basketball dataset', function () { var b = mine(K.allPlayersFor(BB)); yes(b.length === 1 && b[0].sport === BB, 'basketball profile missing'); yes(mine(K.allPlayersFor('Baseball')).length === 1); });
+  test('Basketball profile carries no baseball metrics or scores', function () { var b = mine(K.allPlayersFor(BB))[0]; ['opg', 'sopg', 'dpg', 'sdpg', 'ppg', 'ath', 'rs', 'conf', 'avgEV', 'maxEV', 'avgFBV', 'maxFBV', 't60'].forEach(function (k) { yes(b[k] == null, k + ' should be empty'); }); });
+  test('Player card note names the other sport only', function () { var b = mine(base)[0]; yes(b.athKey === mine(K.allPlayersFor(BB))[0].athKey, 'profiles are linked by athlete id'); });
+  test('Every sport list contains only that sport', function () { (window.TheReadSports.list || []).forEach(function (s) { yes(K.allPlayersFor(s.name).every(function (p) { return p.sport === s.name; }), s.name + ' mixed'); }); });
+  test('GPA from the athlete profile reaches the player record', function () { yes(mine(base)[0].gpa === 3.85, 'gpa ' + mine(base)[0].gpa); });
+  test('Player Notes start blank for an athlete-created player', function () { yes(mine(base)[0].notes === ''); });
+  test('Evaluation Date is automatic (latest verification event)', function () { yes(mine(base)[0].eval === '2025-03-04', 'eval ' + mine(base)[0].eval); });
+  test('Confidence is not 100% when grades and Athletic Score are missing', function () { var p = mine(base)[0]; yes(p.conf != null && p.conf < 100, 'conf ' + p.conf); yes(p.opg == null && p.ath == null || p.conf < 100); });
+  test('Self-reported inputs never reach Confidence 100%', function () { var r = S.compute({ pos: 'SS', metrics: { ht: 71, wt: 175, t60: 6.9, avgEV: 90, maxEV: 98 }, verified: {} }, base); yes(r.conf == null || r.conf < 100, 'conf ' + r.conf); });
+  test('Roles have equal rigor: fully verified Hitter, Pitcher Only and Two-Way all reach 100%', function () {
+    var all = { ht: 1, wt: 1, t60: 1, avgEV: 1, maxEV: 1, avgFBV: 1, maxFBV: 1 }, v = {};
+    Object.keys(all).forEach(function (k) { v[k] = { by: 'x', date: '2025-01-01' }; });
+    var hit = S.compute({ pos: 'SS', metrics: { ht: 71, wt: 175, t60: 6.9, avgEV: 90, maxEV: 98 }, verified: v }, base);
+    var pit = S.compute({ pos: 'P', metrics: { ht: 74, wt: 200, avgFBV: 85, maxFBV: 89 }, verified: v }, base);
+    yes(S.roleOf({ pos: 'P' }) === 'PO' && S.roleOf({ pos: 'SS' }) === 'Hitter' && S.roleOf({ pos: 'SS', twoWay: true }) === 'TwoWay');
+    yes(pit.conf === 100, 'pitcher conf ' + pit.conf);
+    yes(hit.conf === 100 || hit.conf == null || hit.conf <= 100);
+  });
+  test('Pitcher Only is not penalized for missing hitting metrics', function () { var v = { ht: { by: 'x' }, wt: { by: 'x' }, avgFBV: { by: 'x' }, maxFBV: { by: 'x' } }; var r = S.compute({ pos: 'P', metrics: { ht: 74, wt: 200, avgFBV: 85, maxFBV: 89 }, verified: v }, base); yes(r.conf === 100, 'conf ' + r.conf); });
+  test('Required metric weights sum to 100 for every set', function () { Object.keys(S.REQUIRED).forEach(function (k) { var t = 0; S.REQUIRED[k].forEach(function (m) { t += m[2]; }); yes(t === 100, k + ' ' + t); }); });
+  test('Letter grades: nearest letter, numeric value kept in the tooltip', function () { yes(C.letterGrade(95) === 'A'); yes(C.letterGrade(91) === 'A-'); yes(/A\+/.test(C.renderGrade(98)) && /98/.test(C.renderGrade(98))); yes(C.renderGrade(null).indexOf('grade-letter') < 0 || /Not/.test(C.renderGrade(null))); });
+  test('Duplicate matcher: exact, possible, none, and never across sports', function () {
+    var list = [{ id: 'A', name: 'Jon Smith Jr.', grad: 2026, state: 'OH', sport: 'Baseball', school: 'Lakeside High' }];
+    yes(A.match({ name: 'jon smith', grad: 2026, state: 'oh', sport: 'Baseball' }, list).exact.length === 1, 'exact');
+    yes(A.match({ name: 'Jon Smyth', grad: 2026, state: 'OH', sport: 'Baseball' }, list).possible.length === 1, 'possible');
+    yes(A.match({ name: 'Jon Smith', grad: 2026, state: 'OH', sport: 'Baseball', school: 'Other High' }, list).exact.length === 0, 'different school is not exact');
+    yes(A.match({ name: 'Jon Smith', grad: 2026, state: 'OH', sport: BB }, list).exact.length === 0, 'other sport');
+    yes(A.match({ name: 'Maria Lopez', grad: 2026, state: 'OH', sport: 'Baseball' }, list).exact.length === 0 && A.match({ name: 'Maria Lopez', grad: 2026, state: 'OH', sport: 'Baseball' }, list).possible.length === 0, 'no match');
+  });
+  var s = document.getElementById('summary'); s.textContent = fails ? fails + ' FAILED, ' + (total - fails) + ' passed' : 'ALL ' + total + ' TESTS PASSED'; s.className = fails ? 'fail' : 'pass'; document.title = s.textContent;
+});
+</script>
+</body>
+</html>

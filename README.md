@@ -191,3 +191,13 @@ Department Finances (`department-finances.html`, built in `dept.js`) now labels 
 - In the Athletic Department sport view, a collapsed "Sport Setup (Stub)" panel shows the same structure for sports without scoring.
 - High School Coaches and Private Instructors are Verified Data Providers (verifiers); the note appears on signup, sign-in, workflow, FAQ, pricing and the athlete Request Verification form.
 - Founding rates are not public. `owner-rates.html` (linked from the owner page, passphrase check, demo only) lets the owner grant a rate to one institution or coach; only that account sees "Founding Rate" on its Billing page. Grants live in localStorage (`theReadFoundingGrants`).
+
+## Owner Batch: Sports Separation, Grades And Import
+- **Each sport has its own Master Database.** Entered players are stored per sport (`theReadDemoMasterDb:<sport id>`; the old single key is migrated once). Coach pages show one sport at a time (Sport selector, remembered for the session). A multi-sport athlete has one profile per sport, linked by athlete id, and the Player Card only says "also plays X". Athletic Department pages without `?dsport=` are labeled by sport.
+- **OPG, SOPG, DPG, SDPG, PPG** show as letter grades (hover for the number); sorting stays numeric. Their formulas are provisional until the owner confirms the weights.
+- **Confidence** counts only the metrics required for the player role (Pitcher Only, Hitter, Two-Way), each role summing to 100. Unscoreable inputs earn nothing, so Confidence can no longer be 100% with grades or Athletic Score missing. Display is floored to one decimal.
+- GPA flows from the athlete profile to the Player Card; Player Notes start blank; Evaluation Date is automatic.
+- Master Database and Board have Secondary Position filters. Role Preference and Projected College Role are not Master Database columns.
+- **Import:** Master Database > Import A Board Or Prospect List (CSV) checks every row for Exact / Possible / New matches before saving, keeps an import log with undo, and flags new players "Coach-Entered (Imported)". Add Prospect also warns about possible duplicates.
+- Gold, Silver, Bronze and Platinum use metallic gradients; Coach Grading evaluator notes have a color, initials, role and time per coach, plus a filter.
+- Tests: `tests.html` and `tests-sports.html` (sport leakage, owner sample athlete, role parity, duplicate matcher).

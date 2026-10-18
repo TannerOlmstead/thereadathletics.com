@@ -49,9 +49,9 @@ ul { list-style: none; padding: 0; }
       var p = D.players.filter(function (x) { return x.rs === 94.96; })[0];
       yes(p, 'player'); eq(p.tier, 'Gold'); eq(C.formatRecruitScore(p.rs), '95.0');
     });
-    test('Sample data: 89.96 confidence is Medium and displays 90.0%', function () {
+    test('Sample data: 89.96 confidence is Medium and displays 89.9%', function () {
       var p = D.players.filter(function (x) { return x.conf === 89.96; })[0];
-      yes(p, 'player'); eq(p.confLevel, 'Medium'); eq(C.formatConfidencePercentage(p.conf), '90.0%');
+      yes(p, 'player'); eq(p.confLevel, 'Medium'); eq(C.formatConfidencePercentage(p.conf), '89.9%');
     });
     test('Sample data: Not Rated players have no Recruit Score of 0', function () {
       D.players.forEach(function (p) { if (p.tier === 'Not Rated') yes(p.rs === null, 'rs must stay null'); });
@@ -176,12 +176,19 @@ test('Recruit Score calculator: frame grade, reweighting, Not Rated, confidence'
   eq(Math.round(r.comps.reduce(function (a, c) { return a + (c.scaled || 0); }, 0)), 100, 'weights rescale to 100');
   eq(r.conf, 25, 'five self-reported metrics = 25% confidence (25% credit each)');
   var pv = S.compute({ pos: 'SS', metrics: { avgEV: 85, maxEV: 95, t60: 6.9, ht: 72, wt: 185 }, verified: { avgEV: { by: 'x' } } }, bench);
-  eq(pv.conf, 58.8, 'only Avg EV verified: 45 + 0.25 x 55 = 58.75');
+  eq(pv.conf, 58.75, 'only Avg EV verified: 45 + 0.25 x 55 = 58.75 (unrounded)');
   var pp = S.compute({ pos: 'P', metrics: { avgFBV: 86, maxFBV: 92, ht: 77, wt: 245 }, verified: { avgFBV: {}, maxFBV: {} } }, bench);
   eq(pp.conf, 70 + 0.25 * 30, 'pitcher: Avg+Max FBV verified');
   var n = S.compute({ pos: 'SS', metrics: { ht: 72, wt: 185 }, verified: {} }, bench);
   eq(n.rs, null, 'no velocity = Not Rated, not zero');
   var p = S.compute({ pos: 'P', metrics: {}, verified: {} }, bench); eq(p.rs, null, 'empty pitcher Not Rated'); eq(p.conf, null, 'no metrics = Unknown confidence');
+});
+test('Confidence displays floored to one decimal', function () {
+  var C = window.TheReadClassification, f = C.formatConfidencePercentage;
+  eq(f(89.96), '89.9%', '89.96 shows 89.9%'); eq(f(90), '90.0%', '90 stays 90.0%'); eq(f(99.99), '99.9%', '99.99'); eq(f(59.99), '59.9%', '59.99');
+  eq(f(100), '100.0%', '100'); eq(f(0), '0.0%', '0'); eq(f(89.9), '89.9%', 'float guard 89.9'); eq(f(72.5), '72.5%', '72.5');
+  eq(C.getConfidenceLevel(89.96), 'Medium', '89.96 is Medium'); eq(C.getConfidenceLevel(90), 'High', '90.0 is High');
+  eq(/89\.9 percent/.test(C.confidenceAccessibleLabel ? C.confidenceAccessibleLabel(89.96) : '89.9 percent'), true, 'aria label floored');
 });
 test('Verifier bulk-entry validators and CSV', function () {
   var T = window.TheReadVerifierTools;

@@ -31,7 +31,7 @@
       '<p>Athlete: <strong>' + esc(r.name) + '</strong> &middot; ' + esc(r.pos || '') + ' &middot; Class of ' + esc(r.grad) + '. Verifier: ' + esc(q.type) + (q.name ? ', ' + esc(q.name) : '') + '.</p>' +
       (msg ? '<p role="status"><strong>' + esc(msg) + '</strong></p>' : '') +
       '<div class="table-wrap"><table><thead><tr><th scope="col">Metric</th><th scope="col">Athlete Value</th><th scope="col">Status</th><th scope="col">Method / Source</th><th scope="col">Decision</th></tr></thead><tbody>' + (rows || '<tr><td colspan="5">No metrics were entered for this request.</td></tr>') + '</tbody></table></div>' +
-      '<p>Athlete Confidence now: <strong>' + (conf == null ? 'Unknown' : conf.toFixed(1) + '%') + '</strong> (weighted share of verified Recruit Score inputs; unrelated to talent).</p></section>';
+      '<p>Athlete Confidence now: <strong>' + (conf == null ? 'Unknown' : window.TheReadClassification.formatConfidencePercentage(conf)) + '</strong> (weighted share of verified Recruit Score inputs; unrelated to talent).</p></section>';
     root.querySelector('#vr-sel').addEventListener('change', function (e) { sel = e.target.value; msg = ''; draw(); });
     Array.prototype.forEach.call(root.querySelectorAll('[data-ok],[data-no]'), function (b) {
       b.addEventListener('click', function () {

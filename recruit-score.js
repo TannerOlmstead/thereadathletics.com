@@ -81,7 +81,7 @@
       out.inputs.push({ key: e[0], label: e[1], value: get(e[0]), status: !has ? 'Missing' : v ? 'Verified' : 'Self-Reported', weight: w, credit: cr, earned: round1(w * cr), gain: round1(w * (1 - cr)) });
       credit += w * cr; if (!has) out.needed.push(e[1]);
     });
-    out.conf = credit > 0 ? round1(credit) : null;
+    out.conf = credit > 0 ? credit : null;
     var add = function (label, weight, r, detail) { out.comps.push({ label: label, weight: weight, pts: r.pts == null ? null : r.pts, detail: r.pts == null ? r.why : detail + (r.n ? (r.wide ? ' (fewer than ' + MIN_BENCH + ' same-position players, so all ' + r.n + ' non-pitcher players were used)' : ' (' + r.n + ' players)') : '') }); };
     var b = bench || [];
     if (isP) {
@@ -119,7 +119,7 @@
     } else {
       h += '<p><strong>Recruit Score = sum of points = ' + r.rsShown.toFixed(1) + '</strong> (unrounded ' + r.rs.toFixed(4) + '). Tier is chosen from the unrounded value: ' + TRC.renderTierBadge(r.rs) + '</p>';
     }
-    h += r.conf == null ? '<p><strong>Confidence: Unknown.</strong> No metrics entered.</p>' : '<p><strong>Confidence = ' + r.conf.toFixed(1) + '%</strong> ' + TRC.renderConfidenceBadge(r.conf) + ' (weighted by each input share of the score; verified = full weight, self-reported = 25% of its weight, missing = 0).</p>';
+    h += r.conf == null ? '<p><strong>Confidence: Unknown.</strong> No metrics entered.</p>' : '<p><strong>Confidence = ' + TRC.formatConfidencePercentage(r.conf) + '</strong> ' + TRC.renderConfidenceBadge(r.conf) + ' (weighted by each input share of the score; verified = full weight, self-reported = 25% of its weight, missing = 0).</p>';
     var up = r.inputs.filter(function (i) { return i.gain > 0; }).sort(function (a, b) { return b.gain - a.gain; });
     h += '<h3>What Would Raise My Confidence</h3>' + (up.length ? '<ul>' + up.map(function (i) { return '<li><strong>' + esc(i.label) + '</strong>: ' + (i.status === 'Missing' ? 'enter it' : 'have a verifier confirm it') + ' (up to +' + i.gain + ' points)</li>'; }).join('') + '</ul>' : '<p>Every input is verified.</p>');
     h += '<details><summary>Assumptions And Open Questions</summary><ul>' + r.assumptions.map(function (a) { return '<li>' + esc(a) + '</li>'; }).join('') + '</ul></details>';

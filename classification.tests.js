@@ -35,7 +35,7 @@
   test('Confidence: 100.0 is High', function () { eq(C.getConfidenceLevel(100), 'High'); });
   test('Confidence: 90.0 is High', function () { eq(C.getConfidenceLevel(90), 'High'); });
   test('Confidence: 89.999 is Medium', function () { eq(C.getConfidenceLevel(89.999), 'Medium'); });
-  test('Confidence: 89.96 is Medium before display rounding (displays 90.0%)', function () { eq(C.getConfidenceLevel(89.96), 'Medium'); eq((89.96).toFixed(1), '90.0'); eq(C.formatConfidencePercentage(89.96), '90.0%'); });
+  test('Confidence: 89.96 is Medium and displays floored as 89.9%', function () { eq(C.getConfidenceLevel(89.96), 'Medium'); eq((89.96).toFixed(1), '90.0'); eq(C.formatConfidencePercentage(89.96), '89.9%'); });
   test('Confidence: 60.0 is Medium', function () { eq(C.getConfidenceLevel(60), 'Medium'); });
   test('Confidence: 59.999 is Low', function () { eq(C.getConfidenceLevel(59.999), 'Low'); });
   test('Confidence: 0.0 is Low', function () { eq(C.getConfidenceLevel(0), 'Low'); });

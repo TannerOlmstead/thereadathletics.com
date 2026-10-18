@@ -73,7 +73,9 @@
 
   var DASH = '\u2014';
   function formatRecruitScore(v) { return isMissing(v) ? DASH : Number(v).toFixed(1); }
-  function formatConfidencePercentage(v) { return isMissing(v) ? DASH : Number(v).toFixed(1) + '%'; }
+  // Confidence is shown FLOORED to one decimal (89.96 -> 89.9) so the display never rounds up across a level threshold. Recruit Score keeps normal rounding.
+  function floorConfidence(v) { var n = Number(v); return (Math.floor(n * 10 + 1e-9) / 10).toFixed(1); }
+  function formatConfidencePercentage(v) { return isMissing(v) ? DASH : floorConfidence(v) + '%'; }
 
   function tierAccessibleLabel(score) {
     var t = getPlayerTier(score);
@@ -83,7 +85,7 @@
   function confidenceAccessibleLabel(pct) {
     var l = getConfidenceLevel(pct);
     if (l === 'Unknown') return 'Confidence Level: Unknown. Confidence Percentage is unavailable.';
-    var base = 'Confidence Level: ' + l + '. Confidence Percentage ' + Number(pct).toFixed(1) + ' percent. ';
+    var base = 'Confidence Level: ' + l + '. Confidence Percentage ' + floorConfidence(pct) + ' percent. ';
     if (l === 'Low') return base + 'Additional verified metrics are needed. Low Confidence does not mean low talent.';
     return base + 'Confidence measures data completeness, not talent.';
   }
@@ -184,6 +186,7 @@
     validateConfidencePercentage: validateConfidencePercentage,
     formatRecruitScore: formatRecruitScore,
     formatConfidencePercentage: formatConfidencePercentage,
+    floorConfidence: floorConfidence,
     tierAccessibleLabel: tierAccessibleLabel,
     confidenceAccessibleLabel: confidenceAccessibleLabel,
     renderTierBadge: renderTierBadge,

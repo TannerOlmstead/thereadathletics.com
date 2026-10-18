@@ -126,7 +126,7 @@
   };
   var keysOf = function (x) { return (x.q.keys && x.q.keys.length ? x.q.keys : ALLM.map(function (m) { return m[0]; })).filter(function (k) { return x.rec.metrics && x.rec.metrics[k] != null; }); };
   var decided = function (r, k) { var s = A.metricStatus(r, k).status; return s === 'Verified' || s === 'Declined'; };
-  var conf = function (r) { try { var c = window.TheReadScore && window.TheReadScore.compute({ pos: r.pos, metrics: r.metrics || {}, verified: r.verified || {} }, []).conf; return c == null ? 'Unknown' : c.toFixed(1) + '%'; } catch (e) { return 'Unknown'; } };
+  var conf = function (r) { try { var c = window.TheReadScore && window.TheReadScore.compute({ pos: r.pos, metrics: r.metrics || {}, verified: r.verified || {} }, []).conf; return c == null ? 'Unknown' : window.TheReadClassification.formatConfidencePercentage(c); } catch (e) { return 'Unknown'; } };
   var find = function (rid, i) { var r = A.load().filter(function (x) { return x.id === rid; })[0]; return r ? { rec: r, q: r.verifiers[i], rid: rid, i: i } : null; };
   var who = function (v) { return { by: v.name + (v.org ? ', ' + v.org : ''), role: typeName(v.type), vid: v.id }; };
   var finishIfDone = function (x) { if (keysOf(x).every(function (k) { return decided(x.rec, k); })) { x.q.status = 'Completed'; x.q.done = today(); } };

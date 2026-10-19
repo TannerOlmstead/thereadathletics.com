@@ -17,7 +17,7 @@ const load = async (rec) => {
   const html = fs.readFileSync(path.join(__dirname, 'coach-master-database.html'), 'utf8');
   const dom = new JSDOM(html, { runScripts: 'dangerously', resources: 'usable', url: base + '/coach-master-database.html?demo=1',
     virtualConsole: new VirtualConsole(), beforeParse(w) { if (rec) w.localStorage.setItem('theReadDemoAthletes', JSON.stringify([rec])); } });
-  await new Promise((r) => setTimeout(r, 1500));
+  await new Promise((r) => setTimeout(r, 3500));
   const d = dom.window.document, heads = [...d.querySelectorAll('thead th')].map((t) => t.textContent.replace(/[^A-Za-z ]/g, '').trim());
   const col = (n) => heads.indexOf(n);
   const rows = [...d.querySelectorAll('tbody tr')].map((tr) => [...tr.children].map((c) => c.textContent.trim()));

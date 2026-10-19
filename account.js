@@ -96,11 +96,12 @@
   var athletes = function () { return rd(AKEY, []); };
   var verifiers = function () { return rd(VKEY, []); };
 
+  var roleParam = function () { var r = qp('role'); r = r === 'verifier' ? 'vdp' : r; return roleOf(r) ? r : ''; };
   var signInPage = function (root) {
     var s = session(), wrong = qp('wrong'), next = safeNext(qp('next'));
     var notice = wrong ? '<div class="notice red" role="alert"><strong>This area needs a different role.</strong> ' + (s ? 'You are signed in as ' + esc(roleOf(s.role)[1]) + '. ' : '') + 'Sign in with the matching role to continue.</div>' : next ? '<div class="notice navy" role="note">Sign in to open that page.</div>' : '';
     root.innerHTML = notice + '<form class="form-card" id="si-form" novalidate><h2>Sign In</h2><div class="notice navy" role="note"><strong>Demo sign-in &ndash; no real authentication.</strong> This site has no server yet. Your password is not checked, saved or sent. Signing in only sets a demo session in this browser so each role lands in the right workspace. Real accounts need a backend (see ROADMAP).</div><div class="form-grid">' +
-      field('si-role', 'I Am Signing In As', { req: 1, opts: ROLES.map(function (r) { return [r[0], r[1]]; }), val: s ? s.role : '' }) + field('si-email', 'Email', { req: 1, type: 'email', ac: 'email', val: s ? s.email : '' }) +
+      field('si-role', 'I Am Signing In As', { req: 1, opts: ROLES.map(function (r) { return [r[0], r[1]]; }), val: roleParam() || (s ? s.role : '') }) + field('si-email', 'Email', { req: 1, type: 'email', ac: 'email', val: s ? s.email : '' }) +
       field('si-pw', 'Password', { req: 1, type: 'password', ac: 'current-password', hint: 'Demo: any password works and it is discarded.' }) +
       field('si-name', 'Your Name', { hide: 1, ac: 'name', val: s ? s.name : '' }) + field('si-org', 'School Or Organization', { hide: 1, ac: 'organization', val: s ? s.org : '' }) +
       field('si-staff', 'Staff Role', { hide: 1, opts: [['Head Coach', 'Head Coach'], ['Assistant Coach', 'Assistant Coach']] }) + '</div>' + errBox +

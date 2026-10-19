@@ -28,6 +28,11 @@
   // Two-way players list their hitting position; pitching is implied, so it is never shown as a position.
   const twTag = (p) => (p.twoWay ? ' <span class="pill navy">Two-Way</span>' : '');
   const vTag = (p) => (p.simVerified ? ' <span class="pill green" title="Simulated demo verification by ' + esc(p.simVerified) + '">Verified - Demo</span>' : '');
+  // Baseball position order used for sorting and filter lists; a two-way player with P primary sorts by the hitting position.
+  const POSNUM = { P: 1, C: 2, '1B': 3, '2B': 4, '3B': 5, SS: 6, LF: 7, CF: 8, RF: 9, OF: 7, DH: 10, UT: 11 };
+  const posNum = (x) => (x && POSNUM[x] != null ? POSNUM[x] : 99);
+  const posRank = (p) => (p.twoWay && p.pos === 'P' && p.sec && p.sec !== 'P' ? posNum(p.sec) : posNum(p.pos));
+  const secRank = (p) => (p.sec ? posNum(p.sec) : null);
   const posHtml = (p) => esc(p.pos) + twTag(p);
   const roleOk = (p, v) => !v || (v === 'tw' ? !!p.twoWay : !p.twoWay);
   const roleCtl = (id) => '<label>Role<select id="' + id + '"><option value="">All</option><option value="tw">Two-Way</option><option value="no">Not Two-Way</option></select></label>';
@@ -622,7 +627,7 @@
   const CTX_COACH = /ws-coach/.test((document.body && document.body.className) || '');
   const ACTIVE_SPORT = DEPT_SPORT || (CTX_COACH ? (SPORT_NAMES.indexOf(sessionStorage.getItem('theReadActiveSport')) >= 0 ? sessionStorage.getItem('theReadActiveSport') : 'Baseball') : '');
   if (ACTIVE_SPORT) { for (let i = players.length - 1; i >= 0; i--) { if (players[i].sport !== ACTIVE_SPORT) players.splice(i, 1); } }
-  const posList = () => (ACTIVE_SPORT ? sportPos(ACTIVE_SPORT) : ALLPOS);
+  const posList = () => (ACTIVE_SPORT ? sportPos(ACTIVE_SPORT) : ALLPOS).slice().sort((a, b) => posNum(a) - posNum(b));
   // Sport switcher: choosing a sport reloads the page with THAT sport's own dataset only (nothing from other sports is mixed in).
   const sportCtl = (id) => (CTX_COACH && !DEPT_SPORT
     ? '<label>Sport<select id="' + id + '" data-sport-switch>' + SPORT_NAMES.map((x) => '<option' + (x === ACTIVE_SPORT ? ' selected' : '') + '>' + x + '</option>').join('') + '</select></label>'
@@ -779,7 +784,7 @@
       else if (k === 'conf') list = TRC.sortAthletes(list, 'confidence', dir);
       else {
         list = list.slice().sort((a, b) => {
-          const x = k === 'lvl' ? lvlSort(a) : k === 'elig' ? eligSort(a) : a[k], y = k === 'lvl' ? lvlSort(b) : k === 'elig' ? eligSort(b) : b[k];
+          const kv = (q) => (k === 'lvl' ? lvlSort(q) : k === 'elig' ? eligSort(q) : k === 'pos' ? posRank(q) : k === 'sec' ? secRank(q) : q[k]), x = kv(a), y = kv(b);
           if (x == null && y == null) return 0;
           if (x == null) return 1;
           if (y == null) return -1;
@@ -788,7 +793,7 @@
         });
       }
       $('#r-count', root).textContent = 'Showing ' + list.length + ' of ' + players.length + ' sample players';
-      tbl.innerHTML = '<caption class="visually-hidden">Player rankings (sample data, fictional)</caption><thead><tr>' + RK_COLS.map((c) => '<th scope="col" class="' + c[3].replace('c-name', 'c-name-h') + '"' + (c[4] ? ' title="' + esc(c[4]) + '"' : '') + ' aria-sort="' + (state.key === c[0] ? (state.dir === 1 ? 'ascending' : 'descending') : 'none') + '"><button type="button" data-k="' + c[0] + '">' + c[1] + (state.key === c[0] ? (state.dir === 1 ? ' \u25B2' : ' \u25BC') : '') + '</button></th>').join('') + '</tr></thead><tbody>' +
+      tbl.innerHTML = '<caption class="visually-hidden">Player rankings (sample data, fictional)</caption><thead><tr>' + RK_COLS.map((c) => '<th scope="col" class="' + c[3].replace('c-name', 'c-name-h') + '"' + (c[4] ? ' title="' + esc(c[4]) + '"' : '') + ' aria-sort="' + (state.key === c[0] ? (state.dir === 1 ? 'ascending' : 'descending') : 'none') + '"><button type="button" data-k="' + c[0] + '">' + c[1] + (state.key === c[0] ? (state.dir === 1 ? ' \u25B2' : ' \u25BC') : ' <span class="sort-ind" aria-hidden="true">\u21C5</span>') + '</button></th>').join('') + '</tr></thead><tbody>' +
         list.map(rankingRowHtml).join('') + '</tbody>';
       if (!list.length) tbl.querySelector('tbody').innerHTML = '<tr class="rd-empty"><td colspan="' + RK_COLS.length + '"><p>' + TRC.TEXT.empty + '</p><button type="button" class="button button-secondary" data-reset="1">Reset Filters</button></td></tr>';
     }
@@ -1261,11 +1266,16 @@
       LVL_LEGEND + '<div class="table-wrap"><table id="b-table"></table></div>' +
       '<div class="coach-grid">' + snap + '</div>' + boardFormula() +
       '<div id="b-read">' + boardRead() + '</div>';
+    const bst = { key: '', dir: 1 };
+    const BCOLS = [['pri', 'Priority Tier', (p) => tierOf(p) || null], ['stage', 'Stage', (p) => STAGE_ORDER.concat(['Declined']).indexOf(Act.stage(p.id))], ['name', 'Player Name', (p) => p.name], ['pos', 'Primary Position', posRank], ['sec', 'Secondary Position', secRank], ['lvl', 'Level / Class', lvlSort], ['elig', 'Eligibility Left', eligSort], ['state', 'State', (p) => p.state], ['ath', 'Athletic Score', (p) => p.ath], ['rs', 'Recruit Score', (p) => p.rs], ['tier', 'Tier', (p) => p.rs], ['conf', 'Confidence', (p) => p.conf], ['adj', 'Adjusted Recruit Score', (p) => p.adj], ['score', 'Priority Score', (p) => p.pri], ['method', 'Evaluation Method', (p) => p.method]];
+    const bsort = (list) => { const c = BCOLS.filter((x) => x[0] === bst.key)[0]; if (!c) return list; return list.slice().sort((a, b) => { const x = c[2](a), y = c[2](b); if (x == null || x === '') return (y == null || y === '') ? 0 : 1; if (y == null || y === '') return -1; return (typeof x === 'string' ? x.localeCompare(y) : x - y) * bst.dir; }); };
+    const bth = (h) => { const c = BCOLS.filter((x) => x[1] === h)[0]; if (!c) return '<th scope="col">' + h + '</th>'; const on = bst.key === c[0]; return '<th scope="col" aria-sort="' + (on ? (bst.dir === 1 ? 'ascending' : 'descending') : 'none') + '"><button type="button" data-bk="' + c[0] + '">' + h + (on ? (bst.dir === 1 ? ' \u25B2' : ' \u25BC') : ' <span class="sort-ind" aria-hidden="true">\u21C5</span>') + '</button></th>'; };
     function draw() {
       const fs = $('#b-stage', root).value, ft = $('#b-tier', root).value, fp = $('#b-pos', root).value, fsc = $('#b-sec', root).value, fl = $('#b-level', root).value, frole = $('#b-role', root).value;
-      const list = board.filter((p) => (!ft || String(tierOf(p) || 0) === ft) && (!fs || Act.stage(p.id) === fs) && (!fp || p.pos === fp) && (!fsc || p.sec === fsc) && roleOk(p, frole) && (!fl || p.level === fl)).sort((a, b) => (tierOf(a) || 9) - (tierOf(b) || 9) || (b.pri || 0) - (a.pri || 0));
-      $('#b-table', root).innerHTML = '<caption class="visually-hidden">Recruiting board (fictional data)</caption><thead><tr>' + ['Priority Tier', 'Stage', 'Player Name', 'Primary Position', 'Secondary Position', 'Level / Class', 'Eligibility Left', 'State', 'Athletic Score', 'Recruit Score', 'Tier', 'Confidence', 'Adjusted Recruit Score', 'Priority Score', 'Evaluation Method', 'Player Notes', 'Staff Notes', 'Remove'].map((h) => '<th scope="col">' + h + '</th>').join('') + '</tr></thead><tbody>' +
-        (list.length ? list.map((p) => {
+      const list0 = board.filter((p) => (!ft || String(tierOf(p) || 0) === ft) && (!fs || Act.stage(p.id) === fs) && (!fp || p.pos === fp) && (!fsc || p.sec === fsc) && roleOk(p, frole) && (!fl || p.level === fl));
+      const sorted = bst.key ? bsort(list0) : list0.sort((a, b) => (tierOf(a) || 9) - (tierOf(b) || 9) || (b.pri || 0) - (a.pri || 0));
+      $('#b-table', root).innerHTML = '<caption class="visually-hidden">Recruiting board (fictional data)</caption><thead><tr>' + ['Priority Tier', 'Stage', 'Player Name', 'Primary Position', 'Secondary Position', 'Level / Class', 'Eligibility Left', 'State', 'Athletic Score', 'Recruit Score', 'Tier', 'Confidence', 'Adjusted Recruit Score', 'Priority Score', 'Evaluation Method', 'Player Notes', 'Staff Notes', 'Remove'].map(bth).join('') + '</tr></thead><tbody>' +
+        (sorted.length ? sorted.map((p) => {
           const e = Board.get(p.id);
           return '<tr><td>' + priPill(p) + '</td><td><strong data-stage-for="' + p.id + '">' + esc(Act.stage(p.id)) + '</strong><details class="act-det"><summary>Activity &amp; Actions</summary><div data-pcact="' + p.id + '">' + actBlock(p.id) + '</div></details></td><td>' + cardLink(p) + '</td><td>' + posHtml(p) + '</td><td>' + (p.sec || '&mdash;') + '</td><td>' + lvlCell(p) + '</td><td>' + esc(eligTxt(p)) + '</td><td>' + p.state + '</td><td>' + num(p.ath) + '</td><td class="rd-num">' + TRC.formatRecruitScore(p.rs) + '</td><td>' + tierBadge(p) + '</td><td>' + confBadge(p) + '</td><td>' + num(p.adj) + '</td><td>' + nv(p.pri) + '</td><td>' + p.method + '</td><td><input type="text" class="b-edit" data-id="' + p.id + '" data-k="notes" maxlength="200" value="' + esc(e.notes || '') + '" aria-label="Notes for ' + esc(p.name) + '" /></td><td><input type="text" class="b-edit" data-id="' + p.id + '" data-k="staffNotes" maxlength="200" value="' + esc(e.staffNotes || '') + '" aria-label="Staff notes for ' + esc(p.name) + '" /></td><td><button type="button" class="md-del" data-rm="' + p.id + '" aria-label="Remove ' + esc(p.name) + ' from board">Remove From Board</button></td></tr>';
         }).join('') : '<tr class="rd-empty"><td colspan="18">' + (board.length ? 'No prospects match these filters.' : 'Your board is empty. Go to the <a href="coach-master-database.html">Master Database</a> and use &ldquo;Add To Board&rdquo; to add prospects here.') + '</td></tr>') + '</tbody>';
@@ -1276,6 +1286,8 @@
       draw();
     });
     root.addEventListener('click', (e) => {
+      const sb = e.target.closest('button[data-bk]');
+      if (sb) { const k = sb.dataset.bk; if (bst.key === k) bst.dir *= -1; else { bst.key = k; bst.dir = 1; } draw(); return; }
       const rm = e.target.closest('[data-rm]');
       if (rm) { Board.remove(rm.dataset.rm); sessionStorage.setItem('theReadBoardMsg', byId[rm.dataset.rm].name + ' was removed from your board. They are still in the Master Database.');       location.reload(); return; }
           });
@@ -1398,8 +1410,8 @@
       ['elig', 'Eligibility Left', (p) => eligSort(p), (p) => esc(eligTxt(p))],
       ['bats', 'Bats', (p) => p.bats, (p) => p.bats || '&mdash;'],
       ['throws', 'Throws', (p) => p.throws, (p) => p.throws || '&mdash;'],
-      ['pos', 'Primary Position', (p) => p.pos, (p) => posHtml(p)],
-      ['sec', 'Secondary Position', (p) => p.sec, (p) => p.sec || '&mdash;'],
+      ['pos', 'Primary Position', (p) => posRank(p), (p) => posHtml(p)],
+      ['sec', 'Secondary Position', (p) => secRank(p), (p) => p.sec || '&mdash;'],
       ['twoWay', 'Two Way', (p) => (p.twoWay ? 1 : 0), (p) => (p.twoWay ? 'Yes' : 'No')],
       ['hs', 'High School', (p) => p.hs, (p) => (p.hs ? esc(p.hs) : '&mdash;')],
       ['state', 'State', (p) => p.state, (p) => p.state || '&mdash;'],
@@ -1486,7 +1498,7 @@
         return (typeof x === 'string' ? x.localeCompare(y) : x - y) * state.dir;
       });
       $('#md-count', root).textContent = 'Showing ' + list.length + ' of ' + players.length + ' players';
-      tbl.innerHTML = '<caption class="visually-hidden">Master database of players (sample data, fictional)</caption><thead><tr>' + COLS.map((c) => '<th scope="col" aria-sort="' + (state.key === c[0] ? (state.dir === 1 ? 'ascending' : 'descending') : 'none') + '"><button type="button" data-k="' + c[0] + '">' + c[1] + (state.key === c[0] ? (state.dir === 1 ? ' \u25B2' : ' \u25BC') : '') + '</button></th>').join('') + '</tr></thead><tbody>' +
+      tbl.innerHTML = '<caption class="visually-hidden">Master database of players (sample data, fictional)</caption><thead><tr>' + COLS.map((c) => '<th scope="col" aria-sort="' + (state.key === c[0] ? (state.dir === 1 ? 'ascending' : 'descending') : 'none') + '"><button type="button" data-k="' + c[0] + '">' + c[1] + (state.key === c[0] ? (state.dir === 1 ? ' \u25B2' : ' \u25BC') : ' <span class="sort-ind" aria-hidden="true">\u21C5</span>') + '</button></th>').join('') + '</tr></thead><tbody>' +
         (list.length ? list.map((p) => '<tr>' + COLS.map((c) => '<td>' + c[3](p) + '</td>').join('') + '</tr>').join('') : '<tr class="rd-empty"><td colspan="' + COLS.length + '">No players match these filters.</td></tr>') + '</tbody>';
     }
     kpis(); draw();

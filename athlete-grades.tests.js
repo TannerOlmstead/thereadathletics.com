@@ -21,9 +21,12 @@ const load = async (rec) => {
   const d = dom.window.document, heads = [...d.querySelectorAll('thead th')].map((t) => t.textContent.replace(/[^A-Za-z ]/g, '').trim());
   const col = (n) => heads.indexOf(n);
   const rows = [...d.querySelectorAll('tbody tr')].map((tr) => [...tr.children].map((c) => c.textContent.trim()));
+  const tableText = [...d.querySelectorAll('table')].map((t) => t.textContent).join(' ');
+  let roleRows = null;
+  if (d.querySelector('#md-role')) { const sel = d.querySelector('#md-role'); sel.value = 'tw'; sel.dispatchEvent(new dom.window.Event('change', { bubbles: true })); roleRows = [...d.querySelectorAll('tbody tr')].map((tr) => tr.textContent); }
   if (process.env.DBG) console.log('rows', rows.length, d.title);
   dom.window.close();
-  return { col, rows };
+  return { col, rows, roleRows, tableText };
 };
 const letter = /^[A-F][+-]?$/;
 (async () => {
@@ -33,7 +36,7 @@ const letter = /^[A-F][+-]?$/;
     ['two-way, 1B primary, P secondary', mk('1B', 'P', 'Yes'), true, true], ['two-way, 1B primary, SS secondary', mk('1B', 'SS', 'Yes'), true, true], ['two-way, 1B primary, no pitching selected', mk('1B', '', 'Yes'), true, true],
     ['pitcher-only, P primary', mk('P', '', 'No'), false, true], ['pitcher-only, P primary, 1B secondary', mk('P', '1B', 'No'), false, true]];
   for (const [label, rec, hit, pit] of cases) {
-    const { col, rows } = await load(rec);
+    const { col, rows, tableText: tbl } = await load(rec);
     const mine = rows.filter((r) => r.join('|').includes('ATH-'))[0];
     assert.ok(mine, label + ': athlete row missing');
     ['OPG', 'DPG'].forEach((k) => assert.strictEqual(letter.test(mine[col(k)]), hit, label + ': ' + k + ' = ' + mine[col(k)]));
@@ -41,12 +44,20 @@ const letter = /^[A-F][+-]?$/;
     if (label.startsWith('two-way')) ['SOPG', 'SDPG'].forEach((k) => assert.ok(!letter.test(mine[col(k)]), label + ': ' + k));
     assert.strictEqual(letter.test(mine[col('PPG')]), pit, label + ': PPG = ' + mine[col('PPG')]);
     rows.filter((r) => r[col('Primary Position')] === 'P' && !r.join('|').includes('ATH-')).forEach((r) => assert.ok(r[col('Two Way')] === 'Yes' || !letter.test(r[col('OPG')]), label + ': pitcher-only sample row shows OPG'));
+    assert.ok(!/Not Applicable/.test(tbl), label + ': Not Applicable in table');
+    if (label.startsWith('two-way') && !label.includes('nothing else')) assert.ok(!/^P/.test(mine[col('Primary Position')]) && !/P/.test(mine[col('Secondary Position')].replace('—','')), label + ': pitching listed as position: ' + mine[col('Primary Position')] + '/' + mine[col('Secondary Position')]);
     console.log('ok -', label);
   }
   const seeded = await load(null);
   const demo = seeded.rows.filter((r) => r.join('|').includes('ATH-MOSEED'))[0];
   assert.ok(demo, 'demo seed athlete missing when storage is empty');
   ['OPG', 'DPG'].forEach((k) => assert.ok(/^A[+-]?$/.test(demo[seeded.col(k)]), 'seed ' + k + ' should be A-range under v0.2, got ' + demo[seeded.col(k)]));
+  assert.ok(/^Two-Way Player/.test(demo[0]) || demo.some((c) => c === 'Two-Way Player' || c.indexOf('Two-Way Player') === 0), 'seed name should be Two-Way Player');
+  const dp = demo[seeded.col('Primary Position')];
+  assert.ok(/^1B/.test(dp) && /Two-Way/.test(dp), 'seed position should read 1B + Two-Way, got ' + dp);
+  assert.ok(!/(^|\W)P(\W|$)/.test(demo[seeded.col('Secondary Position')] || ''), 'pitching must not be a listed secondary');
+  assert.ok(!/Not Applicable/.test(seeded.tableText), 'Not Applicable must not appear in any table');
+  assert.ok(seeded.roleRows && seeded.roleRows.some((t) => t.indexOf('Two-Way Player') >= 0), 'Role=Two-Way filter must find the seed');
   console.log('ok - demo seed shown when no athlete exists, OPG/DPG A-range (' + demo[seeded.col('OPG')] + '/' + demo[seeded.col('DPG')] + ')');
   process.exit(0);
 })().catch((e) => { console.error('FAIL', e.message); process.exit(1); });

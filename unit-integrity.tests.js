@@ -52,7 +52,13 @@ assert.ok(/seconds/.test(B.ariaOf('SIXTY_TIME', 6.9)) && !/mph|miles/.test(B.ari
 assert.ok(/miles per hour/.test(B.ariaOf('AVG_EV', 94)) && /miles per hour/.test(B.ariaOf('THROW_VELO', 94)));
 const files = fs.readdirSync(__dirname).filter((f) => /\.(js|html|md)$/.test(f) && !/tests?\.(js|html)$/.test(f));
 const timeMph = /(60[- ]?(yd|yard)|pop|t60|sixty)[^\n]{0,60}\bmph\b|\bmph\b[^\n]{0,30}(60[- ]?(yd|yard)|pop time)/i;
-files.forEach((f) => fs.readFileSync(path.join(__dirname, f), 'utf8').split(/\r?\n/).forEach((l, i) => { if (timeMph.test(l) && !/UnitMismatch|never mph|not mph|mph\) \(|PLAUSIBLE|Spacing|ElapsedTime/i.test(l) && !/^\s*\/[/*]/.test(l)) throw new assert.AssertionError({ message: f + ':' + (i + 1) + ' pairs a time metric with mph: ' + l.trim().slice(0, 140) }); }));
+const ALLOWED_LINES = [{ file: 'COPILOT_HANDOFF.md', line: '2. Report every occurrence of `SIXTY_TIME` or `POP_TIME` associated with `mph`.' }];
+const scanTimeMph = (f, text) => text.split(/\r?\n/).forEach((l, i) => { if (timeMph.test(l) && !/UnitMismatch|never mph|not mph|mph\) \(|PLAUSIBLE|Spacing|ElapsedTime/i.test(l) && !/^\s*\/[/*]/.test(l) && !ALLOWED_LINES.some((x) => x.file === f && x.line === l.trim())) throw new assert.AssertionError({ message: f + ':' + (i + 1) + ' pairs a time metric with mph: ' + l.trim().slice(0, 140) }); });
+files.forEach((f) => scanTimeMph(f, fs.readFileSync(path.join(__dirname, f), 'utf8')));
+const exact = ALLOWED_LINES[0].line;
+scanTimeMph('COPILOT_HANDOFF.md', exact);
+[['other.md', exact], ['COPILOT_HANDOFF.md', exact.replace('Report', 'Show')], ['COPILOT_HANDOFF.md', exact + ' x'], ['x.js', '60-Yard Time 6.9 mph'], ['COPILOT_HANDOFF.md', '60-Yard Time 6.9 mph'], ['x.md', 'POP_TIME 1.9 mph']].forEach(([f, l]) => assert.throws(() => scanTimeMph(f, l), /pairs a time metric with mph/, f + ': ' + l));
+ok('scan allow-list: only the exact COPILOT_HANDOFF.md instruction is exempt; altered/other-file/real pairings still fail');
 const sig = fs.readFileSync(path.join(__dirname, 'athlete-signup.js'), 'utf8');
 assert.ok(/UL\('SIXTY_TIME', '60-Yard Time'\)/.test(sig) && !/60-Yard Time \((sec|mph)\)/.test(sig), 'signup 60-yard label comes from the registry');
 assert.ok(!/<option[^>]*>[^<]*mph/i.test(sig.slice(sig.indexOf("'t60'"), sig.indexOf("'t60'") + 400)), 'no user-selectable mph option for 60-Yard');

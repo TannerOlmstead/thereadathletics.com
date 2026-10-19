@@ -26,8 +26,36 @@ window.TheReadSports = (function () {
     softball: ['Pitch Speed', 'Exit Velocity', 'Home-To-First Time', 'Pop Time', 'Throwing Velo', '60 Time'],
     'womens-volleyball': ['Height', 'Standing Reach', 'Approach Touch', 'Block Touch', 'Vertical', 'Kills Per Set', 'Serve Speed']
   };
+  // Handedness is defined per sport, never as one universal set. Only Baseball is approved (existing Bats / Throws behavior).
+  // Every other sport is an extensible stub: add { key, label, options } fields here once the founder approves the policy.
+  var PENDING = { status: 'Requires Founder Decision', fields: [] };
+  var HANDEDNESS = {
+    baseball: { status: 'Approved', fields: [{ key: 'bats', label: 'Bats', options: ['R', 'L', 'S'] }, { key: 'throws', label: 'Throws', options: ['R', 'L'] }] }
+  };
   var byId = {}, byName = {};
-  list.forEach(function (s) { s.metrics = METRICS[s.id] || []; byId[s.id] = s; byName[s.name] = s; });
+  list.forEach(function (s) { s.metrics = METRICS[s.id] || []; s.handedness = HANDEDNESS[s.id] || PENDING; byId[s.id] = s; byName[s.name] = s; });
+  function sportFor(k) { return byId[k] || byName[k] || null; }
+  function handednessFor(k) { var s = sportFor(k); return s ? s.handedness : null; }
+  function handednessOptions(k, key) {
+    var h = handednessFor(k), f = h && h.fields.filter(function (x) { return x.key === key; })[0];
+    return f ? f.options.slice() : [];
+  }
+  // Returns a list of error strings (empty = valid). Blank values are allowed and stay blank (never defaulted).
+  function validateHandedness(k, values) {
+    var h = handednessFor(k), errs = [], v = values || {};
+    if (!h) return ['Sport is not supported.'];
+    var given = Object.keys(v).filter(function (x) { return v[x] !== null && v[x] !== undefined && v[x] !== ''; });
+    if (!h.fields.length) { return given.length ? ['Handedness is not approved for ' + sportFor(k).name + ' yet.'] : []; }
+    given.forEach(function (x) { if (!h.fields.some(function (f) { return f.key === x; })) errs.push('Unknown handedness field: ' + x + '.'); });
+    h.fields.forEach(function (f) { var val = v[f.key]; if (val !== null && val !== undefined && val !== '' && f.options.indexOf(val) < 0) errs.push(f.label + ' must be one of ' + f.options.join(', ') + '.'); });
+    return errs;
+  }
+  // Baseball shows "Bats/Throws" like R/L. Missing parts read Not Listed (never a default). Unapproved sports return null.
+  function formatHandedness(k, values) {
+    var h = handednessFor(k), v = values || {};
+    if (!h || !h.fields.length) return null;
+    return h.fields.map(function (f) { return v[f.key] || 'Not Listed'; }).join('/');
+  }
   var esc = function (x) { return String(x).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); };
   var chips = function (a) { return '<ul class="intro-list">' + a.map(function (x) { return '<li>' + esc(x) + '</li>'; }).join('') + '</ul>'; };
   // One uniform "setup stub" for every sport so the owner can fill each in later. Same structure everywhere.
@@ -43,7 +71,7 @@ window.TheReadSports = (function () {
       '<h3>THE READ Blurb <span class="pill gray">Stub</span></h3><p class="coach-note">A <span class="tr">THE READ</span> summary for ' + esc(s.name) + ' athletes appears here once scoring exists. Until then: "Scoring Not Yet Available."</p>' +
       '<h3>TODO / Details Needed</h3><ul class="intro-list"><li>Confirm the position list</li><li>Confirm metric names, units and which are verifiable</li><li>Grade tables per metric (letter and value)</li><li>Recruit Score component weights</li><li>Confidence weights per metric</li><li>Team Needs depth rules</li><li>Level and class labels for this sport</li><li>THE READ blurb wording</li></ul></div>';
   }
-  return { list: list, stub: stub, metrics: METRICS, byId: byId, byName: byName, names: list.map(function (s) { return s.name; }), get: function (k) { return byId[k] || byName[k] || null; } };
+  return { handednessFor: handednessFor, handednessOptions: handednessOptions, validateHandedness: validateHandedness, formatHandedness: formatHandedness, list: list, stub: stub, metrics: METRICS, byId: byId, byName: byName, names: list.map(function (s) { return s.name; }), get: function (k) { return byId[k] || byName[k] || null; } };
 })();
 
 (function () {

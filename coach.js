@@ -1454,8 +1454,8 @@
       '<label>Years Of Eligibility Left (JUCO / college; leave blank if unknown)<input name="elig" type="number" min="0" max="6" step="1" inputmode="numeric" /></label>' +
       '<label>Profile Photo URL (athlete-provided only)<input name="photo" type="url" placeholder="https://" /></label>' +
       '<label>Secondary Position<select name="sec">' + opt(POS, 'None') + '</select></label>' +
-      '<label>Bats<select name="bats">' + opt(['R', 'L', 'S'], 'Unknown') + '</select></label>' +
-      '<label>Throws<select name="throws">' + opt(['R', 'L'], 'Unknown') + '</select></label>' +
+      '<label>Bats<select name="bats">' +       opt(window.TheReadSports.handednessOptions('baseball', 'bats'), 'Unknown') + '</select></label>' +
+            '<label>Throws<select name="throws">' + opt(window.TheReadSports.handednessOptions('baseball', 'throws'), 'Unknown') + '</select></label>' +
       '<label class="md-check"><input name="twoWay" type="checkbox" /> Two Way Player</label>' +
       '<label>High School<input name="hs" type="text" maxlength="80" /></label>' +
       '<label>State (2 letters)<input name="state" type="text" maxlength="2" pattern="[A-Za-z]{2}" /></label>' +
@@ -1613,6 +1613,7 @@
       if (v('elig') !== '' && rec.level !== 'High School') { const ev = Number(v('elig')); if (!Number.isInteger(ev) || ev < 0 || ev > 6) errs.push('Years Of Eligibility Left must be a whole number from 0 to 6.'); else rec.elig = ev; }
       if (rec.photo && !/^https?:\/\/\S+$/i.test(rec.photo)) errs.push('Profile Photo URL must start with http:// or https://.');
       rec.bats = v('bats'); rec.throws = v('throws'); rec.twoWay = f.elements.twoWay.checked;
+      if (rec.sport === 'Baseball') window.TheReadSports.validateHandedness('baseball', { bats: rec.bats, throws: rec.throws }).forEach((m) => errs.push(m));
       rec.hs = v('hs'); rec.state = v('state').toUpperCase(); rec.evalTs = new Date().toISOString(); rec.method = v('method') || 'Coach Entry (Unverified)'; rec.notes = v('notes');
       if (rec.sec && rec.sec === rec.pos) errs.push('Secondary Position must differ from Primary Position.');
       if (rec.twoWay && rec.sport === 'Baseball') { if (rec.pos === 'P') errs.push('Two-way players need a non-pitcher hitting position as Primary. Pitching is added automatically.'); if (rec.sec === 'P') errs.push('Do not pick Pitcher as Secondary for a two-way player. It is added automatically.'); }

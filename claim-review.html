@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="robots" content="noindex" />
+    <meta name="description" content="Preview of the athlete profile claim and duplicate review interface." />
+    <title>Claim And Duplicate Review (Preview) | THE READ Athletics</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,600;0,700;1,700;1,800;1,900&family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="styles.css" />
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 120'%3E%3Crect width='120' height='120' rx='28' fill='%239E1B32'/%3E%3Ctext x='50%25' y='52%25' dominant-baseline='middle' text-anchor='middle' font-size='54' font-family='Arial, sans-serif' fill='white'%3ER%3C/text%3E%3C/svg%3E" />
+  <script src="site-config.js"></script><script src="sports-config.js"></script></head>
+  <body>
+    <a class="skip-link" href="#main">Skip to main content</a>
+    <header class="site-header">
+      <div class="container nav-wrap">
+        <a class="brand" href="index.html" aria-label="THE READ Athletics home">
+          <svg class="brand-emblem" viewBox="0 0 110 110" aria-hidden="true" focusable="false"><circle cx="55" cy="55" r="52" fill="#fff" stroke="#E41E3F" stroke-width="3"/><circle cx="55" cy="55" r="45" fill="none" stroke="#E41E3F" stroke-width="1"/><text x="55" y="68" text-anchor="middle" font-family="'Barlow Condensed','Arial Narrow',Impact,sans-serif" font-style="italic" font-weight="900" font-size="46" letter-spacing="-2"><tspan fill="#14284B">T</tspan><tspan fill="#E41E3F">R</tspan><tspan fill="#14284B">A</tspan></text></svg>
+          <span class="wordmark"><span class="wordmark-main">THE READ</span><span class="wordmark-sub">ATHLETICS</span></span>
+        </a>
+        <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="main-nav"><span class="nav-toggle-bars" aria-hidden="true"></span><span>Menu</span></button>
+        <nav class="main-nav" id="main-nav" aria-label="Main navigation">
+          <a class="role-link" href="player-signup.html">Athlete</a>
+          <a class="role-link" href="individual-signup.html">Coach</a>
+          <a class="role-link" href="institution-signup.html">Athletic Department</a>
+          <a href="features.html">Features</a>
+          <a href="scoring.html">Scoring</a>
+          <a href="sport-guide.html">Sports</a>
+          <a href="pricing.html">Pricing</a>
+          <a href="internal-preview.html">Preview</a>
+          <a class="narrow-only" href="sign-in.html">Sign In</a>
+        </nav>
+        <div class="nav-actions">
+          <a class="button button-outline-light" href="sign-in.html">Sign In</a>
+          <a class="button button-primary" href="index.html#paths">Get Started</a>
+        </div>
+      </div>
+    </header>
+    <main id="main">
+      <section class="page-hero">
+        <div class="container">
+          <div class="eyebrow">Preview</div>
+          <h1>Claim And Duplicate Review</h1>
+          <p>How an athlete finds and claims an existing profile, and how an administrator reviews claims and duplicate profiles.</p>
+        </div>
+      </section>
+      <section class="section">
+        <div class="container">
+          <div class="notice navy" role="note"><strong>Preview only.</strong> Fictional sample profiles. Nothing here is saved, sent or verified, and reloading the page resets it. Approving claims and merging records needs a secure server (see docs/CLAIM_MERGE_BACKEND_REQUIREMENTS.md). A claim never changes the athlete profile. Possible duplicates are always reviewed by a person and are never merged automatically.</div>
+
+          <h2>1. Find Your Profile</h2>
+          <form id="find-form" class="form-grid" novalidate>
+            <label>Account<select name="account"><option value="acct-a">Account A</option><option value="acct-b">Account B</option></select></label>
+            <label>Your Relationship To The Athlete<select name="relationship" id="relationship"></select></label>
+            <label>Athlete Name<input type="text" name="name" autocomplete="off" /></label>
+            <label>Grad Year<input type="text" name="grad" inputmode="numeric" autocomplete="off" /></label>
+            <label>Sport<select name="sport" id="sport"></select></label>
+            <label>School Or Team<input type="text" name="school" autocomplete="off" /></label>
+            <label>State<input type="text" name="state" maxlength="2" autocomplete="off" /></label>
+            <div><button class="button button-primary" type="submit">Search</button></div>
+          </form>
+          <p id="find-msg" role="status" aria-live="polite"></p>
+          <div id="find-cards"></div>
+
+          <h2>2. Claim Requests (Administrator Review)</h2>
+          <p id="claims-empty" class="coach-note">No claim requests yet.</p>
+          <div id="claims"></div>
+
+          <h2>3. Possible Duplicate Profiles</h2>
+          <div class="form-grid">
+            <label>Keep This Profile (Canonical)<select id="merge-canon"></select></label>
+            <label>Merge This Profile Into It<select id="merge-dup"></select></label>
+          </div>
+          <p><button class="button button-secondary" type="button" id="merge-compare">Compare</button></p>
+          <p id="merge-msg" role="status" aria-live="polite"></p>
+          <div id="merge-plan"></div>
+
+          <h2>4. Audit Log</h2>
+          <p class="coach-note">Every request, decision and merge adds an entry. Entries are never edited or removed.</p>
+          <ol id="audit"></ol>
+        </div>
+      </section>
+    </main>
+    <footer class="site-footer">
+      <div class="container">
+        <div class="footer-bottom">
+          <span>&copy; <span data-year>2026</span> <span class="tr">THE READ</span> Athletics</span>
+          <span><a href="privacy.html">Privacy</a> &middot; <a href="terms.html">Terms</a> &middot; <a href="contact.html">Contact</a></span>
+        </div>
+      </div>
+    </footer>
+    <script src="claim-merge.js"></script>
+    <script src="claim-review.js"></script>
+    <script src="script.js"></script>
+  </body>
+</html>

@@ -43,6 +43,7 @@ ul { list-style: none; padding: 0; }
 <script src="athlete-signup.js"></script>
 <script src="recruit-score.js"></script>
 <script src="coach.js"></script>
+<script src="claim-merge.js"></script>
 <script>
 window.addEventListener('load', function () {
   var res = document.getElementById('results'), fails = 0, total = 0;
@@ -83,6 +84,27 @@ window.addEventListener('load', function () {
     yes(A.match({ name: 'Jon Smith', grad: 2026, state: 'OH', sport: 'Baseball', school: 'Other High' }, list).exact.length === 0, 'different school is not exact');
     yes(A.match({ name: 'Jon Smith', grad: 2026, state: 'OH', sport: BB }, list).exact.length === 0, 'other sport');
     yes(A.match({ name: 'Maria Lopez', grad: 2026, state: 'OH', sport: 'Baseball' }, list).exact.length === 0 && A.match({ name: 'Maria Lopez', grad: 2026, state: 'OH', sport: 'Baseball' }, list).possible.length === 0, 'no match');
+  });
+  var T = window.TheReadSports, CM = window.TheReadClaimMerge;
+  test('Handedness: Baseball keeps Bats R/L/S and Throws R/L; blanks stay Not Listed', function () {
+    yes(T.handednessOptions('baseball', 'bats').join() === 'R,L,S' && T.handednessOptions('baseball', 'throws').join() === 'R,L', 'options');
+    yes(T.validateHandedness('baseball', { bats: 'S', throws: 'L' }).length === 0 && T.validateHandedness('baseball', { throws: 'S' }).length === 1, 'validation');
+    yes(T.formatHandedness('baseball', { bats: 'R' }) === 'R/Not Listed', 'format');
+  });
+  test('Handedness: every other sport is an unapproved stub with no invented choices', function () {
+    T.list.filter(function (x) { return x.id !== 'baseball'; }).forEach(function (x) { yes(x.handedness.status === 'Requires Founder Decision' && x.handedness.fields.length === 0, x.id); yes(T.validateHandedness(x.id, { bats: 'R' }).length === 1, x.id + ' rejects'); });
+  });
+  test('Claim: a claim never changes the profile and a mismatched claim is Review Required', function () {
+    var l = CM.createLedger([{ id: 'R1', name: 'Jordan Smith', grad: 2027, sport: 'Baseball', pos: 'SS', state: 'TX', verified: {}, status: 'Active' }]);
+    var a = l.submitClaim({ recordId: 'R1', accountId: 'a1', relationship: 'Athlete', name: 'Someone Else', grad: 2027 });
+    yes(a.status === 'Review Required' && l.getRecord('R1').linkedAccount == null, 'review required, nothing linked');
+  });
+  test('Merge: verified values are never overwritten and every conflict needs a decision', function () {
+    var l = CM.createLedger([{ id: 'A', name: 'Jordan Smith', sec: '2B', verified: { sec: true }, status: 'Active' }, { id: 'B', name: 'Jordan Smith', sec: '3B', verified: {}, status: 'Active' }]), threw = false;
+    try { l.approveMerge('A', 'B', { reviewer: { id: 'x', role: 'admin' }, reason: 'r', decisions: {} }); } catch (e) { threw = /Decide how/.test(e.message); }
+    yes(threw, 'undecided conflict refused'); threw = false;
+    try { l.approveMerge('A', 'B', { reviewer: { id: 'x', role: 'admin' }, reason: 'r', decisions: { sec: 'use-duplicate' } }); } catch (e) { threw = /verified/.test(e.message); }
+    yes(threw && l.audit().length === 0, 'verified protected, no audit on failure');
   });
   var s = document.getElementById('summary'); s.textContent = fails ? fails + ' FAILED, ' + (total - fails) + ' passed' : 'ALL ' + total + ' TESTS PASSED'; s.className = fails ? 'fail' : 'pass'; document.title = s.textContent;
 });

@@ -97,3 +97,10 @@ console.log('ok - two-way entry validation present');
   assert.ok(r.inputs.every((i) => i.simulated), 'simulated flag on every verified input');
   console.log('ok - verified demo seed, frame A+, 60 time falls back to v0.2 benchmark');
 }
+
+{
+  const BMc = global.window.TheReadBenchmarks, T = BMc.TABLES;
+  T.MAX_EV.rows.forEach((row, i) => row.forEach((v, j) => assert.strictEqual(v, T.AVG_EV.rows[i][j] + 6, 'MAX_EV = AVG_EV + 6 at row ' + i + ' col ' + j)));
+  assert.strictEqual(BMc.gradeMetric('MAX_EV', '1B', 100).letter, 'A+'); assert.strictEqual(BMc.gradeMetric('MAX_EV', '1B', 99.9).letter, 'A'); assert.strictEqual(BMc.gradeMetric('MAX_EV', '1B', 80).letter, 'D');
+  console.log('ok - MAX_EV table is AVG_EV + 6 (1B A+ 100 ... D 80)');
+}

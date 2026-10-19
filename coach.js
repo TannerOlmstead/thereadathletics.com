@@ -203,7 +203,7 @@
     // Demo seed: shown only when this browser has no athlete records (never written to storage, so it cannot overwrite real records).
     if (Array.isArray(recs) && !recs.length) recs = [{ id: 'ath-demoseed', submitted: true, name: 'Two-Way Player', email: '', dob: '2000-01-01', age: 25, path: 'adult', sport: 'Baseball', pos: '1B', sec: '',
       sports: [{ id: 'baseball', name: 'Baseball', pos: '1B', sec: '' }], grad: 2027, level: 'High School', school: 'Demo High School', state: 'NE', rolePref: { twoWay: 'Yes', emphasis: '', role: '', pos: '' },
-      metrics: { ht: 76, wt: 250, t60: 6.9, tv: 94, avgEV: 94, maxEV: 102, avgFBV: 86, maxFBV: 90 }, guardian: null, verifiers: [], verified: DEMO_VERIFIED, privacy: { list: true, contact: true, photo: true, metrics: true }, terms: true }];
+      metrics: { ht: 76, wt: 250, t60: 6.9, tv: 94, avgEV: 94, maxEV: 102, avgFBV: 90, maxFBV: 93 }, guardian: null, verifiers: [], verified: DEMO_VERIFIED, privacy: { list: true, contact: true, photo: true, metrics: true }, terms: true }];
     if (!Array.isArray(recs) || !window.TheReadAthlete) return;
     const ents = [];
     recs.forEach((r0) => {

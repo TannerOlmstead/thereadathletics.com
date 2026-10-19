@@ -216,3 +216,8 @@ Department Finances (`department-finances.html`, built in `dept.js`) now labels 
 - **Import:** Master Database > Import A Board Or Prospect List (CSV) checks every row for Exact / Possible / New matches before saving, keeps an import log with undo, and flags new players "Coach-Entered (Imported)". Add Prospect also warns about possible duplicates.
 - Gold, Silver, Bronze and Platinum use metallic gradients; Coach Grading evaluator notes have a color, initials, role and time per coach, plus a filter.
 - Tests: `tests.html` and `tests-sports.html` (sport leakage, owner sample athlete, role parity, duplicate matcher).
+
+## Handedness And Profile Claim / Duplicate Review
+- **Handedness is per sport** and lives in `sports-config.js` (`handedness` on each sport; helpers `handednessOptions`, `validateHandedness`, `formatHandedness`). Only Baseball is approved (Bats R / L / S, Throws R / L, unchanged). Every other sport is a stub marked Requires Founder Decision and accepts no handedness value until its choices are approved. Missing values read Not Listed and are never defaulted.
+- **Claim and duplicate review** (`claim-merge.js`, preview page `claim-review.html`) is a front-end interface with fictional data. Nothing is saved or sent; the server-side requirements are in `docs/CLAIM_MERGE_BACKEND_REQUIREMENTS.md`. Statuses are Pending, Approved, Rejected and Review Required. A claim never changes athlete data, conflicting claims always need review, merges are never automatic, verified values are never overwritten, and every action is written to an append-only audit log.
+- Tests: `claim-merge.tests.js` (logic and the preview page) and the handedness section of `tests-sports.html`.

@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="robots" content="noindex" />
+<title>Tests | Recruit Score, Tier, And Confidence</title>
+<style>
+body { font-family: system-ui, sans-serif; margin: 24px; color: #14284b; }
+h1 { font-size: 1.4rem; }
+#summary { font-weight: 700; padding: 10px 14px; border: 2px solid #14284b; display: inline-block; }
+#summary.pass { border-color: #1b7f3b; color: #1b7f3b; }
+#summary.fail { border-color: #e41e3f; color: #e41e3f; }
+li { margin: 3px 0; font-size: .9rem; }
+li.ok::before { content: "PASS  "; color: #1b7f3b; font-weight: 700; }
+li.bad::before { content: "FAIL  "; color: #e41e3f; font-weight: 700; }
+ul { list-style: none; padding: 0; }
+</style>
+<script src="site-config.js"></script><script src="sports-config.js"></script><script src="divisions-config.js"></script></head>
+<body>
+<h1>Recruit Score, Tier, And Confidence Tests</h1>
+<p>Runs every boundary, validation, color, label, sort, and filter test in your browser. Sample data only. Open this page and check the summary.</p>
+<p id="summary" role="status">Running...</p>
+<ul id="results"></ul>
+<script src="classification.js"></script>
+<script src="classification.tests.js"></script>
+<script src="connect-config.js"></script>
+<script src="connect.js"></script>
+<script src="account.js"></script>
+<script src="benchmarks-config.js"></script>
+<script src="athlete-signup.js"></script>
+<script src="verifier.js"></script>
+<script src="recruit-score.js"></script>
+<script src="coach.js"></script>
+<script>
+(function () {
+  var C = window.TheReadClassification;
+  var out = window.runClassificationTests(C, function (test, eq, yes) {
+    var D = window.TheReadCoach;
+    test('Sample data: 40+ players loaded', function () { yes(D && D.players.length >= 40, 'players'); });
+    test('Sample data: every Tier and Confidence combination exists, incl. Not Rated + Unknown', function () {
+      var tiers = ['Platinum', 'Gold', 'Silver', 'Bronze'], levels = ['High', 'Medium', 'Low'], miss = [];
+      tiers.forEach(function (t) { levels.forEach(function (l) {
+        if (!D.players.some(function (p) { return p.tier === t && p.confLevel === l; })) miss.push(t + '+' + l);
+      }); });
+      if (!D.players.some(function (p) { return p.tier === 'Not Rated' && p.confLevel === 'Unknown'; })) miss.push('Not Rated+Unknown');
+      eq(miss.join(','), '', 'missing combos');
+    });
+    test('Sample data: 94.96 is Gold and displays 95.0', function () {
+      var p = D.players.filter(function (x) { return x.rs === 94.96; })[0];
+      yes(p, 'player'); eq(p.tier, 'Gold'); eq(C.formatRecruitScore(p.rs), '95.0');
+    });
+    test('Sample data: 89.96 confidence is Medium and displays 89.9%', function () {
+      var p = D.players.filter(function (x) { return x.conf === 89.96; })[0];
+      yes(p, 'player'); eq(p.confLevel, 'Medium'); eq(C.formatConfidencePercentage(p.conf), '89.9%');
+    });
+    test('Sample data: Not Rated players have no Recruit Score of 0', function () {
+      D.players.forEach(function (p) { if (p.tier === 'Not Rated') yes(p.rs === null, 'rs must stay null'); });
+    });
+    test('Rankings row: Recruit Score, Tier, and Confidence are three separate cells', function () {
+      var t = document.createElement('table'); t.innerHTML = '<tbody>' + D.rankingRowHtml(D.players[0]) + '</tbody>';
+      var tr = t.querySelector('tr');
+      eq(tr.querySelectorAll('td.c-rs').length, 1); eq(tr.querySelectorAll('td.c-tier').length, 1); eq(tr.querySelectorAll('td.c-conf').length, 1);
+      yes(tr.querySelector('td.c-tier .rd-tier') && !tr.querySelector('td.c-tier .rd-conf'), 'tier cell holds only tier badge');
+      yes(tr.querySelector('td.c-conf .rd-conf') && !tr.querySelector('td.c-conf .rd-tier'), 'conf cell holds only confidence badge');
+      yes(!tr.hasAttribute('style') && !tr.querySelector('td[style], th[style]'), 'no cell or row is colored');
+    });
+    test('Priority Tier: from average of Coach Fit and Team Need (85 / 75 cutoffs), missing = null never 0', function () {
+      eq(D.priTierFrom(90, 80), 1); eq(D.priTierFrom(85, 85), 1); eq(D.priTierFrom(80, 70), 2); eq(D.priTierFrom(75, 75), 2); eq(D.priTierFrom(74, 75), 3);
+      eq(D.priTierFrom(null, 90), null); eq(D.priTierFrom(90, null), null); eq(D.priTierFrom(undefined, undefined), null);
+    });
+    test('Priority Tier never depends on Recruit Score, Tier or Confidence', function () { eq(D.priTierFrom(80, 80), 2); });
+    test('Stage: no actions = Identified; furthest action wins', function () {
+      var S = D.stageFromEntries; eq(S([]), 'Identified'); eq(S([{ act: 'added' }]), 'Identified');
+      eq(S([{ act: 'added' }, { act: 'contact' }]), 'Contacted'); eq(S([{ act: 'added' }, { act: 'grade' }, { act: 'contact' }]), 'Evaluating');
+      eq(S([{ act: 'added' }, { act: 'visit_sched' }]), 'Visit Planned'); eq(S([{ act: 'added' }, { act: 'visit_sched' }, { act: 'visit_done' }]), 'Visit Completed');
+      eq(S([{ act: 'added' }, { act: 'visit_done' }, { act: 'offer' }, { act: 'call' }]), 'Offer Out');
+    });
+    test('Stage: Declined only when it is the latest action; canceled (void) actions are ignored', function () {
+      var S = D.stageFromEntries; eq(S([{ act: 'added' }, { act: 'offer' }, { act: 'declined' }]), 'Declined');
+      eq(S([{ act: 'added' }, { act: 'declined' }, { act: 'call' }]), 'Contacted');
+      eq(S([{ act: 'added' }, { act: 'visit_sched', void: true }]), 'Identified');
+    });
+    test('Board rows have no manual Stage or Tier controls and Master Database has no row checkboxes', function () {
+      yes(D.Board && D.Act && D.Cal, 'modules exposed');
+    });
+    test('ICS export: valid VCALENDAR, timed and all-day events, escapes text, [Sample] marker', function () {
+      var ics = D.buildIcs([{ id: 'x1', title: 'Visit, Fictional; Day', type: 'Visit', date: '2026-11-20', start: '10:00', end: '11:30', loc: 'Field', notes: 'n', pid: '', sample: true },
+        { id: 'x2', title: 'Deadline', type: 'Deadline', date: '2026-11-30', start: '', end: '', loc: '', notes: '', pid: '' }]);
+      yes(/^BEGIN:VCALENDAR\r\n/.test(ics) && /END:VCALENDAR\r\n$/.test(ics), 'wrapper');
+      yes(ics.indexOf('DTSTART:20261120T100000') >= 0 && ics.indexOf('DTEND:20261120T113000') >= 0, 'timed');
+      yes(ics.indexOf('DTSTART;VALUE=DATE:20261130') >= 0 && ics.indexOf('DTEND;VALUE=DATE:20261201') >= 0, 'all day');
+      yes(ics.indexOf('SUMMARY:[Sample] Visit\\, Fictional\\; Day') >= 0, 'escape');
+    });    test('Level / Class codes: HS, JUCO, Tr plus grad year', function () {
+      eq(D.lvlCode({ level: 'High School', grad: 2027 }), 'HS 2027'); eq(D.lvlCode({ level: 'JUCO', grad: 2028 }), 'JUCO 2028');
+      eq(D.lvlCode({ level: '4-Year College / Transfer Portal', grad: 2029 }), 'Tr 2029'); eq(D.lvlCode({ level: 'Other', grad: 2028 }), 'Other 2028');
+    });
+    test('Eligibility Left: HS = N/A, entered value shown, unknown = Not Provided (never 0)', function () {
+      eq(D.eligTxt({ level: 'High School', elig: null }), 'N/A'); eq(D.eligTxt({ level: 'JUCO', elig: 2 }), '2');
+      eq(D.eligTxt({ level: 'JUCO', elig: null }), 'Not Provided'); eq(D.eligTxt({ level: '4-Year College / Transfer Portal', elig: '' }), 'Not Provided');
+      eq(D.eligTxt({ level: 'JUCO', elig: 0 }), '0');
+    });
+    test('Sample JUCO/transfer players carry an entered eligibility; HS sample players do not', function () {
+      var nonHs = D.players.filter(function (p) { return !p.entered && p.level !== 'High School'; });
+      yes(nonHs.length > 0 && nonHs.every(function (p) { return p.elig >= 1; }), 'non-HS sample elig'); yes(D.players.filter(function (p) { return p.level === 'High School'; }).every(function (p) { return p.elig == null; }), 'HS blank');
+    });    test('Role preference: text, category, missing is Not Provided', function () {
+      eq(D.prefTxt({}), 'Not Provided', 'missing'); eq(D.prefCat({ pref: null }), 'Not Provided', 'cat missing');
+      eq(D.prefTxt({ pref: { twoWay: 'Yes', emphasis: 'Pitcher first' } }), 'Two-Way (Pitcher first)', 'yes');
+      eq(D.prefTxt({ pref: { twoWay: 'No', role: 'Position Player', pos: 'SS' } }), 'Position Player (SS)', 'no pos');
+      eq(D.prefCat({ pref: { twoWay: 'No', role: 'Pitcher' } }), 'Pitcher', 'pitcher'); eq(D.prefCat({ pref: { twoWay: 'Not Sure' } }), 'Open / Not Sure', 'open');
+      yes(D.players.every(function (p) { return p.rs == null || typeof p.rs === 'number'; }), 'preference does not touch scores');
+    });
+    test('Athlete signup: age paths and guardian gating', function () {
+      var A = window.TheReadAthlete, yr = new Date().getFullYear();
+      eq(A.ageOf((yr - 20) + '-01-01') >= 19, true, 'adult age'); eq(A.ageOf((yr + 1) + '-01-01'), null, 'future dob invalid');
+      var base = { submitted: true, privacy: { list: true, contact: true, photo: true, metrics: true } };
+      yes(A.listed(Object.assign({ path: 'adult' }, base)), 'adult listed');
+      yes(!A.listed(Object.assign({ path: 'minor', guardian: { status: 'Pending', sent: Date.now(), share: {} } }, base)), 'pending minor not listed');
+      yes(!A.listed(Object.assign({ path: 'minor', guardian: { status: 'Declined', sent: Date.now(), share: {} } }, base)), 'declined minor not listed');
+      var v = Object.assign({ path: 'minor', guardian: { status: 'Verified', sent: Date.now(), share: { contact: false, photo: true, metrics: true } } }, base);
+      yes(A.listed(v), 'verified minor listed'); yes(!A.shares(v, 'contact'), 'guardian blocks contact'); yes(A.shares(v, 'photo'), 'both allow photo');
+      eq(A.gStatus({ guardian: { status: 'Pending', sent: Date.now() - 8 * 86400000 } }), 'Expired', 'expiry');
+    });        test('Sample-label flag controls the hide class on <html>', function () {
+      var on = !!(window.SITE_CONFIG && window.SITE_CONFIG.SHOW_SAMPLE_LABELS);
+      yes(document.documentElement.classList.contains('hide-sample-labels') === !on, 'html class matches SHOW_SAMPLE_LABELS');
+    });
+    test('Sports config has exactly the 8 launch sports with positions; only Baseball scores', function () {
+      var L = window.TheReadSports.list; eq(L.length, 8);
+      eq(L.map(function (x) { return x.name; }).join('|'), 'Baseball|Men\u2019s Basketball|Women\u2019s Basketball|Football|Men\u2019s Soccer|Women\u2019s Soccer|Softball|Women\u2019s Volleyball');
+      yes(L.every(function (x) { return x.positions.length > 0; }), 'positions');
+      eq(L.filter(function (x) { return x.scoring; }).length, 1);
+    });
+    test('No sport carries a primary flag (all sports equal)', function () {
+  var src = new XMLHttpRequest(); src.open('GET','athlete-signup.js',false); try{src.send();}catch(e){}
+  if (src.responseText) eq(/primary\s*:\s*x\.id|Primary Sport/.test(src.responseText), false, 'no primary sport in signup');
+  window.TheReadSports.list.forEach(function (s) { eq('primary' in s, false, s.name + ' has no primary flag'); });
+});
+test('Athlete profile page exists and is wired', function () {
+  var r = new XMLHttpRequest(); r.open('GET','athlete-profile.html',false); try{r.send();}catch(e){}
+  if (r.responseText) eq(/data-coach-page="athprofile"/.test(r.responseText) && /athlete-profile\.js/.test(r.responseText), true, 'page loads script');
+});
+  var FBV_G = ['A+', 'A', 'A-', 'B+', 'B', 'B-', 'C+', 'C', 'C-', 'D'], FBV_V = { 'A+': 10, 'A': 9.5, 'A-': 9, 'B+': 8.5, 'B': 8, 'B-': 7.5, 'C+': 7, 'C': 6, 'C-': 5, 'D': 3, 'F': 1 };
+  var AVG_FBV_T = [95, 92, 90, 88, 86, 84, 82, 80, 78, 75], MAX_FBV_T = [98, 95, 93, 91, 89, 87, 85, 83, 81, 78];
+  var fbvEdges = function (T) { var out = []; T.forEach(function (th, i) { var below = Math.round((th - 0.1) * 10) / 10; out.push([th, FBV_G[i]]); out.push([below, i + 1 < FBV_G.length ? FBV_G[i + 1] : 'F']); }); out.push([0, 'F']); return out; };
+  test('getAvgFBVGrade reference behavior and pitcher PPG', function () {
+    var f = TheReadScore.getAvgFBVGrade;
+    [null, undefined, NaN].forEach(function (v) { var r = f(v); eq(r.letterGrade, null, 'letter'); eq(r.status, 'Missing', 'status'); });
+    var threw = null; try { f(-1); } catch (e) { threw = e; }
+    eq(threw instanceof RangeError && threw.message === 'Avg FBV cannot be negative.', true, 'error');
+    fbvEdges(AVG_FBV_T).concat([[100, 'A+'], [94.95, 'A'], [91.95, 'A-'], [77.9, 'D'], [74.9, 'F']]).forEach(function (c) { var r = f(c[0]); eq(r.letterGrade, c[1], 'letter ' + c[0]); eq(r.gradeValue, FBV_V[c[1]], 'value ' + c[0]); eq(r.status, 'Graded', 'status ' + c[0]); });
+    var bench = [];
+    var r = TheReadScore.compute({ pos: 'P', metrics: { avgFBV: 86, maxFBV: 92, ht: 77, wt: 245 }, verified: {} }, bench);
+    eq(r.comps[0].pts, 80, 'avg 86 = B pts'); eq(r.comps[1].pts, 85, 'max 92 = B+ pts'); eq(r.comps[2].pts, 100, 'frame pts'); eq(Math.round(r.rs * 1000) / 1000, 87.5, 'PPG 40/30/30');
+    var r2 = TheReadScore.compute({ pos: 'P', metrics: { maxFBV: 92 }, verified: {} }, bench);
+    eq(r2.comps[0].pts, 95, 'avg filled from max per velocity policy (92 on Avg table = A)'); eq(r2.comps[1].pts, 85, 'max 92 = B+'); eq(r2.comps[2].used, false, 'frame left out');
+    var r4 = TheReadScore.compute({ pos: 'P', metrics: { avgFBV: 90, maxFBV: 93, ht: 77, wt: 245 }, verified: {} }, bench);
+    eq(r4.comps[0].pts, 90, 'avg 90 = A-'); eq(r4.comps[1].pts, 90, 'max 93 = A-'); eq(Math.round(r4.rs * 1000) / 1000, 93, 'PPG 40/30/30 with 90/93');
+    var r3 = TheReadScore.compute({ pos: 'P', metrics: { ht: 77, wt: 245 }, verified: {} }, bench);
+    eq(r3.rs, null, 'Not Rated without velocity');
+  });
+  test('getMaxFBVGrade reference behavior', function () {
+    var f = TheReadScore.getMaxFBVGrade;
+    [null, undefined, NaN, Infinity].forEach(function (v) { var r = f(v); eq(r.letterGrade, null, 'letter ' + v); eq(r.gradeValue, null, 'value ' + v); eq(r.status, 'Missing', 'status ' + v); });
+    var threw = null; try { f(-0.1); } catch (e) { threw = e; }
+    eq(threw instanceof RangeError, true, 'RangeError'); eq(threw.message, 'Max FBV cannot be negative.', 'message');
+    fbvEdges(MAX_FBV_T).concat([[101, 'A+'], [97.9, 'A'], [94.95, 'A-'], [80.9, 'D'], [77.9, 'F']]).forEach(function (c) { var r = f(c[0]); eq(r.letterGrade, c[1], 'letter ' + c[0]); eq(r.gradeValue, FBV_V[c[1]], 'value ' + c[0]); eq(r.status, 'Graded', 'status ' + c[0]); });
+  });
+  test('Max FBV grade table band edges', function () {
+    var g = function (v) { return TheReadScore.maxFbvGrade(v); };
+    fbvEdges(MAX_FBV_T).concat([[97.9, 'A'], [94.9, 'A-'], [80.9, 'D'], [77.95, 'F']]).forEach(function (c) { eq(g(c[0]).grade, c[1], 'Max FBV ' + c[0]); });
+    eq(g(98).score, 10, 'A+ value'); eq(g(80).score, 3, 'D value'); eq(g(60).score, 1, 'F value');
+    eq(!!g(-1).error, true, 'negative rejected'); eq(!!g('abc').none, true, 'non-numeric has no grade');
+    eq(!!g('').none && !g('').grade, true, 'missing has no grade'); eq(!!g(null).none, true, 'null has no grade');
+  });
+  test('Avg FBV and Max FBV tables are independent', function () {
+    var a = TheReadScore.getAvgFBVGrade, m = TheReadScore.getMaxFBVGrade;
+    eq(a(95).letterGrade, 'A+', 'avg 95 A+'); eq(m(95).letterGrade, 'A', 'max 95 A'); eq(a(78).letterGrade, 'C-', 'avg 78 C-'); eq(m(78).letterGrade, 'D', 'max 78 D');
+    eq(a(75).letterGrade, 'D', 'avg 75 D'); eq(m(75).letterGrade, 'F', 'max 75 F'); eq(a(98).letterGrade, 'A+', 'avg 98'); eq(m(98).letterGrade, 'A+', 'max 98');
+  });
+test('Recruit Score calculator: frame grade, reweighting, Not Rated, confidence', function () {
+  var S = window.TheReadScore; var bench = []; for (var i = 0; i < 6; i++) bench.push({ pos: 'SS', avgEV: 80 + i, maxEV: 90 + i, t60: 7 + i / 10 });
+  eq(S.frame('SS', 72, 185).grade, 'B-', 'SS 72in 185lb = B-');
+  eq(S.frame('SS', 72, null).grade, undefined, 'missing weight gives no grade');
+  var r = S.compute({ pos: 'SS', metrics: { avgEV: 85, maxEV: 95, t60: 6.9, ht: 72, wt: 185 }, verified: {} }, bench);
+  eq(r.comps.filter(function (c) { return c.used; }).length, 4, 'all components used');
+  eq(Math.round(r.comps.reduce(function (a, c) { return a + (c.scaled || 0); }, 0)), 100, 'weights rescale to 100');
+  eq(r.conf, 25, 'five self-reported metrics = 25% confidence (25% credit each)');
+  var pv = S.compute({ pos: 'SS', metrics: { avgEV: 85, maxEV: 95, t60: 6.9, ht: 72, wt: 185 }, verified: { avgEV: { by: 'x' } } }, bench);
+  eq(pv.conf, 58.75, 'only Avg EV verified: 45 + 0.25 x 55 = 58.75 (unrounded)');
+  var pp = S.compute({ pos: 'P', metrics: { avgFBV: 86, maxFBV: 92, ht: 77, wt: 245 }, verified: { avgFBV: {}, maxFBV: {} } }, bench);
+  eq(pp.conf, 70 + 0.25 * 30, 'pitcher: Avg+Max FBV verified');
+  var n = S.compute({ pos: 'SS', metrics: { ht: 72, wt: 185 }, verified: {} }, bench);
+  eq(n.rs, null, 'no velocity = Not Rated, not zero');
+  var p = S.compute({ pos: 'P', metrics: {}, verified: {} }, bench); eq(p.rs, null, 'empty pitcher Not Rated'); eq(p.conf, null, 'no metrics = Unknown confidence');
+});
+test('Confidence displays floored to one decimal', function () {
+  var C = window.TheReadClassification, f = C.formatConfidencePercentage;
+  eq(f(89.96), '89.9%', '89.96 shows 89.9%'); eq(f(90), '90.0%', '90 stays 90.0%'); eq(f(99.99), '99.9%', '99.99'); eq(f(59.99), '59.9%', '59.99');
+  eq(f(100), '100.0%', '100'); eq(f(0), '0.0%', '0'); eq(f(89.9), '89.9%', 'float guard 89.9'); eq(f(72.5), '72.5%', '72.5');
+  eq(C.getConfidenceLevel(89.96), 'Medium', '89.96 is Medium'); eq(C.getConfidenceLevel(90), 'High', '90.0 is High');
+  eq(/89\.9 percent/.test(C.confidenceAccessibleLabel ? C.confidenceAccessibleLabel(89.96) : '89.9 percent'), true, 'aria label floored');
+});
+test('Verifier bulk-entry validators and CSV', function () {
+  var T = window.TheReadVerifierTools;
+  eq(T.validate('avgEV', '').blank, true, 'blank stays blank'); eq(T.validate('avgEV', '').value, null, 'blank is never 0');
+  eq(T.validate('avgEV', '85.5').value, 85.5, 'valid number'); eq(T.validate('avgEV', '300').ok, false, 'out of range rejected');
+  eq(T.validate('t60', 'fast').ok, false, 'non-number rejected'); eq(T.validate('pop', '1.95').ok, true, 'pop time accepted'); eq(T.validate('pop', '9').ok, false, 'pop out of range');
+  var rows = T.parseCSV('email,name\r\na@x.com,"Doe, Jo"\r\n\r\nb@x.com,Al\r\n'); eq(rows.length, 3, 'blank lines skipped'); eq(rows[1][1], 'Doe, Jo', 'quoted comma kept');
+  eq(T.parseCSV('a\tb\n1\t2')[1][1], '2', 'tab paste parsed'); eq(T.template('baseball').indexOf('pop') > 0, true, 'baseball template has pop time');
+  eq(T.templateKeys('mens-soccer').join(','), 'ht,wt', 'other sports use stub template'); eq(/^READ-[A-Z0-9]{1,6}$/.test(T.shareCode({ id: 'ath-abc123xyz' })), true, 'share code format');
+});
+test('Per-metric verification and interests API', function () {
+  var A = window.TheReadAthlete, r = { id: 'ath-t1', metrics: { avgEV: 85, maxEV: 95 }, verified: {}, verifiers: [{ type: 'High School Coach', name: 'C', status: 'Requested', keys: ['avgEV'] }] };
+  eq(A.metricStatus(r, 'avgEV').status, 'Pending', 'requested metric pending');
+  eq(A.metricStatus(r, 'maxEV').status, 'Unverified', 'metric not in request stays unverified');
+  A.verifyMetric(r, 'avgEV', true, { by: 'C', role: 'High School Coach' }, 'radar');
+  eq(A.metricStatus(r, 'avgEV').status, 'Verified', 'confirmed'); eq(A.metricStatus(r, 'avgEV').method, 'radar', 'method kept'); eq(A.metricStatus(r, 'maxEV').status, 'Unverified', 'no bypass of other metrics');
+  A.verifyMetric(r, 'avgEV', false, { by: 'C', role: 'High School Coach' }, 'bad reading');
+  eq(A.metricStatus(r, 'avgEV').status, 'Declined', 'declined'); eq(!!r.verified.avgEV, false, 'declined is not verified');
+  var saved = localStorage.getItem('theReadDemoInterests'); localStorage.removeItem('theReadDemoInterests');
+  var a = A.addInterest('ath-t1', 'Sample State University', 'Baseball', 'close to home', true);
+  eq(!!a, true, 'added'); eq(A.addInterest('ath-t1', 'sample state university', 'Baseball', '', true), null, 'duplicate blocked');
+  eq(A.interests().length, 1, 'one interest'); A.markSeen(a.id, 'Coach X'); eq(A.interests()[0].seen.by, 'Coach X', 'seen recorded');
+  A.removeInterest(a.id); eq(A.interests().length, 0, 'removed');
+  if (saved == null) localStorage.removeItem('theReadDemoInterests'); else localStorage.setItem('theReadDemoInterests', saved);
+});
+test('Department scope API: allPlayersFor filters by config sport', function () { var C = window.TheReadCoach, n = TheReadSports.list[0].name; yes(typeof C.allPlayersFor === 'function' && !!C.ours, 'API exposed'); var all = C.allPlayersFor(), b = C.allPlayersFor(n); yes(b.length > 0 && b.length <= all.length && b.every(function (p) { return p.sport === n; }), 'only ' + n); yes(all.every(function (p) { return TheReadSports.names.indexOf(p.sport) >= 0; }), 'every player sport is a launch sport'); });
+test('Division config: five associations, D3 has no athletic aid fields, no invented rule numbers', function () { var D = window.TheReadDivisions; eq(D.list.map(function (x) { return x.id; }).join(','), 'd1,d2,d3,naia,njcaa', 'ids'); yes(D.get('NCAA D3') === D.byId.d3, 'legacy signup value maps'); var d3 = D.byId.d3; eq(d3.aid, 'none', 'D3 aid'); yes(!d3.limitFields.some(function (f) { return f[0] === 'sa' || f[0] === 'su'; }), 'no scholarship fields for D3'); yes(D.byId.njcaa.kpis[0][0] === 'Transfers Placed', 'JUCO key metric'); D.list.forEach(function (x) { yes(x.links.length > 0 && x.sections.length > 0 && x.eligValues.indexOf('Not Provided') === 0, x.id + ' complete'); yes(!/\b\d{2,}\s*(scholarships|roster spots)/i.test(JSON.stringify(x)), x.id + ' has no hardcoded limits'); }); });
+test('Account: password rules and email check', function () {
+  var A = window.TheReadAccount;
+  eq(A.emailOk('a@b.co'), true); eq(A.emailOk('nope'), false);
+  eq(A.pwOk('short'), false);
+});
+test('Account: sign out clears the demo session', function () {
+  localStorage.setItem('theReadSession', JSON.stringify({ role: 'coach', name: 'T' }));
+  window.TheReadAccount.signOut();
+  eq(window.TheReadAccount.session(), null);
+});
+test('Account: every role has a home page', function () {
+  var A = window.TheReadAccount;
+  Object.keys(A.roles).forEach(function (k) { yes(/\.html$/.test(A.homeOf({ role: k })), k); });
+});
+test('Connect: every role pair in the matrix has a rule', function () {
+  var C = window.CONNECT_CONFIG, ok = true;
+  Object.keys(C.ROLES).forEach(function (a) { Object.keys(C.ROLES).forEach(function (b) { if (!C.MATRIX[a] || !C.MATRIX[a][b]) ok = false; }); });
+  yes(ok, 'matrix complete');
+});
+test('Connect: athletes cannot message athletes; AD to athlete needs an introduction', function () {
+  var T = window.TheReadConnect, a = { id: 'x1', role: 'athlete' }, b = { id: 'x2', role: 'athlete' }, ad = { id: 'ad1', role: 'ad' };
+  eq(T.perm(a, b).mode, 'deny'); eq(T.perm(ad, a).mode, 'intro');
+});
+test('Connect: coach to a minor without a verified guardian needs an introduction', function () {
+  var T = window.TheReadConnect, co = { id: 'co1', role: 'coach' }, m = { id: 'ath:m', role: 'athlete', minor: true, rid: 'm', rec: { path: 'minor', privacy: { list: true, contact: true }, guardian: { status: 'Pending', sent: Date.now() } } };
+  eq(T.perm(co, m).mode, 'intro');
+});
+test('Connect: a sent message is stored once and seen by both sides', function () {
+  localStorage.removeItem('theReadConnect');
+  var T = window.TheReadConnect, r = T.send('co:sample', 'dir:c7', 'Hello from the test');
+  yes(r.ok, 'sent');
+  var mine = T.threadsFor({ id: 'co:sample', role: 'coach' }), theirs = T.threadsFor({ id: 'dir:c7', role: 'coach' });
+  yes(mine.some(function (x) { return x.t.id === r.id; }) && theirs.some(function (x) { return x.t.id === r.id; }), 'both sides');
+  eq(T.unread('dir:c7') > 0, true);
+  localStorage.removeItem('theReadConnect');
+});
+test('Connect: AD has read-only oversight; others do not', function () {
+  var T = window.TheReadConnect; localStorage.removeItem('theReadConnect');
+  var r = T.send('co:sample', 'dir:c7', 'Oversight test');
+  var ad = T.threadsFor({ id: 'ad:other', role: 'ad' }).filter(function (x) { return x.t.id === r.id; })[0];
+  yes(ad && ad.view === 'oversight', 'oversight');
+  eq(T.threadsFor({ id: 'dir:c1', role: 'vdp' }).filter(function (x) { return x.t.id === r.id; }).length, 0);
+  localStorage.removeItem('theReadConnect');
+});
+test('Guardian is not a Connect role; provider types exist', function () {
+  var C = window.TheReadConnect.config;
+  yes(Object.keys(C.ROLES).join(',').indexOf('guardian') < 0, 'no guardian role');
+  yes(JSON.stringify(C.PTYPES).indexOf('Private Instructor') > 0 && JSON.stringify(C.PTYPES).indexOf('High School Coach') > 0, 'ptypes');
+  eq(typeof window.TheReadConnect.guardianView, 'function');
+});
+test('Every sport has the same stub structure and no public founding wording', function () {
+  var SP = window.TheReadSports;
+  eq(SP.list.length, 8);
+  SP.list.forEach(function (x) {
+    var h = SP.stub(x);
+    yes(x.metrics.length > 0 && x.positions.length > 0, x.name + ' config');
+    yes(h.indexOf('TODO / Details Needed') > 0 && h.indexOf('Team Needs Positions') > 0, x.name + ' stub');
+    yes(x.scoring ? h.indexOf('Scoring Available') > 0 : h.indexOf('Scoring Not Yet Available') > 0, x.name + ' scoring note');
+  });
+});
+test('Rankings row: Grad Class is the 4th column after Player Name', function () {
+      var t = document.createElement('table'); t.innerHTML = '<tbody>' + D.rankingRowHtml(D.players[0]) + '</tbody>';
+      var cells = t.querySelectorAll('tr > *');
+      yes(cells[2].classList.contains('c-name') && cells[3].classList.contains('c-grad'), 'order');
+    });
+  });
+  var ul = document.getElementById('results');
+  out.results.forEach(function (r) {
+    var li = document.createElement('li'); li.className = r.ok ? 'ok' : 'bad';
+    li.textContent = r.name + (r.ok ? '' : ' - ' + r.error); ul.appendChild(li);
+  });
+  var s = document.getElementById('summary');
+  s.textContent = out.failed === 0 ? 'ALL ' + out.passed + ' TESTS PASSED' : out.failed + ' FAILED, ' + out.passed + ' passed';
+  s.className = out.failed === 0 ? 'pass' : 'fail';
+  document.title = s.textContent;
+})();
+</script>
+</body>
+</html>

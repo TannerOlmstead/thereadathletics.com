@@ -1,39 +1,208 @@
-THE READ Athletics
+# THE READ Athletics
 
-Static recruiting-intelligence website for athletes, independent recruiting professionals, and athletic departments.
+Static recruiting-intelligence website for athletes, independent recruiting professionals, and athletic departments. Plain HTML, CSS, and JavaScript — no build step, no frameworks. See [ROADMAP.md](ROADMAP.md) for progress and what is still a placeholder.
 
-Site functions
+**Rule: No unverified claims or fake data; add popularity/social-proof labels only when backed by real data.** All demo data is labeled "Sample Data / Fictional Example".
 
-Page
-Purpose
-index.html
-Public landing page with platform details, recruiting workflow, access options, sport links, and entry points to every request flow.
-individual-signup.html
-Individual workspace request for coaches, scouts, instructors, and evaluators.
-institution-signup.html
-Athletic-department access request with institution details, sports selection, and upgrade support for individual accounts.
-player-signup.html
-Athlete profile request that captures graduation year, sports, positions, and college-role preferences.
-sport-guide.html
-Expandable field guide with recruiting terminology and evaluation context for eight sports.
-internal-preview.html
-Clearly labeled fictional-data product preview of a baseball recruiting workspace.
+## Sample Labels Switch
 
-Interactive behavior
+- The site is private, so Demo / Sample Data / Fictional / Preview labels are **hidden** by default.
+- One switch controls them: `SHOW_SAMPLE_LABELS` in `site-config.js` (loaded in the head of every page). `false` adds `hide-sample-labels` to `<html>`, hides disclaimer notes (tagged `data-sample-label=hidden`) and trims label wording; `true` shows everything as written.
+- Honesty items stay true: no claim that messages are encrypted, emails are sent or identity is verified.
+- **Before launch:** turn labels back on or replace all sample data with real data (see the ROADMAP pre-launch checklist).
 
-All request forms validate required fields in the browser.
-Submission prepares a prefilled email to hello@thereadathletics.com; no account, billing, or server-side data storage is created.
-Institution links can preselect a role, upgrade request, or sport with query parameters such as ?role=School%20Admin, ?application=upgrade, or ?sport=baseball.
-Institution sports selection requires at least one sport and supports a select-all option.
-The internal preview switches its active navigation state and page heading without accessing real athlete data.
-The footer automatically displays the current year.
+## Sports
 
-Files
+- The launch sports live in ONE file, `sports-config.js`: Baseball, Men's Basketball, Women's Basketball, Football, Men's Soccer, Women's Soccer, Softball, Women's Volleyball (same as the home hero tiles, which are built from it). Edit positions or add sports only there.
+- Athletes can pick every sport they play, then choose primary and secondary positions for each. All sports count equally (no primary sport). Baseball-only extras (College Role Preference, measurables) appear only under Baseball.
+- The Master Database stores one entry per athlete per sport. Rankings and Master Database have a Sport filter; the Player Card has a sport switcher.
+- Scoring tables exist for Baseball only. Other sports show Scoring Not Yet Available: Recruit Score Not Rated, Confidence Unknown (never 0 or Bronze).
 
-styles.css contains the responsive scarlet, navy, and white visual system.
-script.js contains the form, query-parameter, and preview interactions.
-Each HTML page loads the shared stylesheet and script directly, so no build step is required.
+## Pages
 
-Local preview
+| Page | Purpose |
+| --- | --- |
+| `index.html` | Landing page with three audience paths (athlete, coach/evaluator, institution), platform overview, scoring summary, workflow, and pricing. |
+| `player-signup.html` | Athlete profile request: graduation year, sports, positions, college-role preferences. |
+| `individual-signup.html` | Coach, scout, instructor, and evaluator workspace request. |
+| `institution-signup.html` | Athletic-department access request with sports multi-select and upgrade support. |
+| `contact.html` | Contact and demo request form. |
+| `features.html` | Hub for the three feature areas below. |
+| `objective-features.html` | Verified measurables, events, stats, benchmarks, eligibility, video, growth trends, locked grades. |
+| `evaluations.html` | Evaluation forms, trait ratings, references, fit questionnaires, multi-evaluator scores, notes, bias guardrails. |
+| `workflow.html` | Board stages, communication log, calendar, family portal, commitments, transfer portal, scholarship budget. |
+| `scoring.html` | How the six scores work, with objective and subjective kept separate. |
+| `sport-guide.html` | Expandable guide for eight sports. |
+| `internal-preview.html` | Product preview with clearly labeled **fictional** baseball data (8 switchable views). |
+| `coach-dashboard.html`, `coach-rankings.html`, `coach-player-card.html`, `coach-h2h.html`, `coach-team-needs.html`, `coach-fit.html`, `coach-recruiting-board.html`, `coach-commitments.html`, `coach-analytics.html`, `coach-regional-insights.html` | Coach workspace preview built from the owner workbook, with **fictional** baseball data generated by `coach.js` and a shared coach sub-navigation. Rankings sort and filter, H2H has working Player A/B dropdowns. |
+| `owner.html` | Unlinked, `noindex`, owner-only page. Its content (internal formulas and reference tables) is stored **encrypted** and only opens with the owner passphrase. Do not link it from public pages. |
+| `department-overview.html` | Athletic Department Workspace (navy tab band, fictional): all programs at a glance, who is recruiting whom, link to the coach workspace. |
+| `department-programs.html` | Every program: needs by position/class, targets, commitments, open spots, assigned coach (fictional). |
+| `department-finances.html` | Sample scholarship, travel, camp/visit budget vs spend, cost per commitment, plus a try-your-own-numbers calculator (fictional). |
+| `department-schedule.html` | Sample recruiting calendar and contact/dead-period reminders (fictional; confirm real dates with your compliance office). |
+| `pricing.html` | Plans from the owner pricing document: Athlete Basic/Verified, Individual Coach, Verified Data Providers, institution table (standard) with a price selector (`pricing.js`, reads the visible tables). No payments are live. |
+| `faq.html` | FAQ plus comparison against spreadsheets and other tools. |
+| `security.html` | Roles, minors' data protection, FERPA awareness, visibility controls. |
+| `resources.html` + `article-*.html` | Resource index and three starter articles. |
+| `success-stories.html` | Placeholder; no testimonials exist yet. |
+| `privacy.html`, `terms.html` | **Draft placeholder text — needs lawyer review.** |
+| `sitemap.xml`, `robots.txt` | SEO basics. |
 
-Open index.html in a browser, or use the VS Code Live Server extension for automatic refresh while editing.
+## Behavior
+
+- All request forms validate required fields in the browser (with inline error messages).
+- On a valid submit the form opens a prefilled email to hello@thereadathletics.com. Nothing is stored on a server; no accounts or billing exist.
+- `institution-signup.html` supports `?role=Head%20Coach`, `?application=upgrade`, and `?sport=baseball` (also `softball`, `football`, `basketball`, `soccer`, `volleyball`, `trackfield`, `wrestling`). Sports require at least one selection and include Select all.
+- The product preview uses fictional data only. Its menu switches the active view and page heading (links like `internal-preview.html#scores` open a specific view).
+- The sport guide and FAQ use native expand/collapse sections; the sport guide also has Expand all / Collapse all.
+- The header collapses to a Menu button on small screens. The footer year is filled in automatically.
+
+## Recruit Score, Player Tier, And Confidence
+
+All logic lives in one shared module, `classification.js` (`window.TheReadClassification`). Pages call it; thresholds and colors are never duplicated.
+
+- **Recruit Score** is 0.0-100.0, shown with one decimal. Missing is shown as an em dash, never 0. Out-of-range values throw (`RangeError`/`TypeError`) and are never clamped.
+- **Player Tier** uses the full stored score before rounding: 95.0+ Platinum, 85.0+ Gold, 70.0+ Silver, below 70.0 Bronze, missing = Not Rated (never Bronze). Stored 94.96 displays 95.0 but is Gold.
+- **Confidence** uses the full stored percentage: 90.0%+ High, 60.0%+ Medium, below 60.0% Low, missing = Unknown (never Low). Stored 89.96% displays 90.0% but is Medium.
+- **Confidence display rule (owner decision):** the Confidence Percentage is shown FLOORED (truncated) to one decimal by one shared helper, `TheReadClassification.formatConfidencePercentage`, so 89.96 shows as 89.9% and never 90.0%. The Level still comes from the full unrounded value. Recruit Score keeps normal one-decimal rounding.
+- Tier and Confidence are separate badges and columns (Recruit Score | Tier | Confidence), with visible labels, accessible names, and tooltips. Color is never the only signal and never fills a whole cell or row.
+- Platinum badge is a shiny blue-tinted metallic (bg #A9C4E4 with gradient #E3EEFA to #8FB0D8, border #5F86B5, text #0B1F3A, contrast at least 7.4:1) so it reads differently from neutral gray Silver (#A7ADB4). Colors live only in `classification.js`.
+- **Adding a prospect by hand** in the Master Database also puts them on your Recruiting Board automatically (logged as Added, Coach-Entered). Athlete-signup players and existing players still need the green (+).
+- Tier sorts semantically (Platinum, Gold, Silver, Bronze, Not Rated last in both directions); Confidence sorts by percentage with Unknown last. Tier and Confidence filters are multi-select (OR within a group, AND across groups and search).
+- Staff Score, Coach Fit, Team Need, Adjusted Recruit Score, Priority Score, GPA, Confidence, and payment/founding status never change Tier. H2H and THE READ summaries never call a player more talented because of higher Confidence.
+- Tests: open `tests.html` in a browser (runs `classification.tests.js` plus sample-data checks). No Node or build step is needed.
+- Server-side derivation, storage rules, and API validation are documented for a future backend; this static site derives everything in the browser from sample data.
+
+## Master Database
+
+`coach-master-database.html` is the first tab of the coach workspace and the single player data source: Rankings, Player Card, H2H, Dashboard and the other coach pages all read from it (via `coach.js`). It lists every sample player with the input columns from the owner workbook and has search, filters, sorting and an Add Prospect form, meant for college coaches bringing in prospects from their offline recruiting board. Those entries are the coach's private, coach-entered, unverified data (not athlete-verified), not accounts; high school coaches and private instructors creating athlete accounts use the separate athlete signup flow. Added prospects are saved in this browser's localStorage only (a labeled demo); blank values stay blank, never 0. Coaches enter only raw data; Frame Score, projection grades, OPG/SOPG/DPG/SDPG/PPG, Athletic Score, Recruit Score, Tier, Confidence and ranks are calculated fields (not editable) and show Not Rated / Unknown until the calculation service exists. Real shared storage needs a backend (see ROADMAP.md).
+
+## Team Needs, Coach Fit And Priority Scores
+
+No score in the coach workspace is random. Team Need Score, Coach Fit Score, Adjusted Recruit Score and Priority Score are computed in `coach.js` from documented formulas using the program's ranked inputs (positional needs, position and skill priorities, and the 1-5 Recruiting Philosophy ranking, which must use each rank once). The Coach Fit tab's Adjusted Priority Score is the simple average of Recruit Score, Coach Fit Score and Priority Score. Missing inputs are skipped or leave the score blank, never 0. Staff Score and HC/PC/AC grades are coach opinions and stay blank until entered. The formulas are shown on the Team Needs, Coach Fit and Rankings pages under How This Is Calculated. None of these scores change Player Tier or Confidence. Program settings are sample data saved only in the browser.
+
+## Coach Workspace Additions
+
+- **Player pop-up:** clicking any player name in the coach or department workspace opens a pop-up player card (close button, Esc, focus kept inside, scrolls on phones) with an "Open Full Player Card" link. It does not leave the page.
+- **Profile photo:** the pop-up and Player Card show a photo only if one was provided for the player (Add Prospect has an athlete-provided photo URL field); otherwise a plain silhouette. No stock or fake photos. Real athlete uploads need a backend.
+- **Current Playing Level:** High School, JUCO, 4-Year College / Transfer Portal, or Other. It is on Add Prospect, Master Database, Rankings (filter and column), Recruiting Board (filter and column) and the Player Card. A few fictional JUCO and transfer players are in the sample data.
+- **Coach Grading tab:** staff members enter a grade on the scale the Head Coach chooses (Letter A+ to F, or Numeric 0-100; every grade is stored as a 0-100 number, so switching scales keeps existing grades; letters convert by a table shown on the page: A+ 98, A 95, A- 92, B+ 88, B 85, B- 82, C+ 78, C 75, C- 72, D+ 68, D 65, D- 62, F 50) plus notes and a date. The Head Coach (demo role switch) sets a weight per staff member, with optional overrides per position group (Pitchers, Catchers, Infielders, Outfielders). Staff Score is the weighted average of the grades entered, re-scaled across only the coaches who graded (missing graders are left out, never an F), and stays blank until one grade exists (never 0). Saved in this browser only (demo). Grades never change Tier or Confidence. Staff Score is not yet part of Priority Score; the owner must confirm a weight.
+- **Connect tab:** a sample directory of high school coaches, private instructors, JUCO coaches, 4-year coaches and players with a role filter and a JUCO / transfer portal list. Messaging is not live; all entries are fictional.
+- **Player Card Connect button (full page and pop-up):** opens a panel with the athlete's shared contact info (only fields the athlete chose to share; otherwise `Not shared`), current school/club/level, and the verifier of each metric (name, role, organization, metrics verified, date, contact) with a placeholder Request Intro link to the Connect tab. Metrics with no verifier, and all college-coach board entries, show `Unverified / Coach-Entered`. All sample entries are fictional.
+- **Recruiting Board is per program, not auto-filled:** the board starts with a few removable demo seeds and otherwise holds only prospects the coach adds (only from the Master Database page, via a per-row "Add To Board" button or checkbox plus "Add Selected To Board", or "Add To Board" on a Rankings row/Player Card; the Recruiting Board page itself has no add/search picker and only manages priority, stage, notes and "Remove From Board"; its empty state links to the Master Database). It stores only player ids plus program-only fields (priority tier, stage, notes, staff notes) in localStorage `theReadDemoBoard`; player data stays in the Master Database. Dashboard, Coach Fit (Top Coach Fit) and Team Needs (Board Coverage) use board membership; Rankings and Master Database remain the full lists.
+- **Coach Grading uses the signed-in coach:** there is no staff-member picker; grades are stamped with the signed-in demo coach ("Signed in as ..."). A "Demo Controls" box lets the owner preview other staff roles; only the Head Coach identity can edit weights and the grading scale.
+- **Connect = messaging inbox (DEMO):** the Connect tab is a FieldLevel-style inbox (thread list, conversation view, compose, role filter, search, unread state, block/report) between athletes, HS coaches, private instructors, showcase staff, JUCO and 4-year coaches. The Player Card Connect button (page and pop-up) opens a composer to the athlete and, optionally, the metric verifier. **Messages are NOT encrypted, sent or delivered today**: everything is saved in this browser's localStorage with fictional sample conversations, behind a `MessageService` object in `coach.js` (`window.TheReadMessaging`) so a real encrypted backend can replace it. Athletes control who can message them; board-only prospects can't be messaged.
+- **Adjusted Recruit Score:** Recruit Score plus ((Coach Fit + Team Need) / 2 - 50) / 20 (limited to +/- 2.5) plus a staff adjustment of (Staff Score - 80) / 6 (limited to +/- 3; 0 when no staff grades yet), kept within 0-100. It updates immediately as grades are added, changed or removed. It is always a formula, never random, and never changes Tier or Confidence.
+- **THE READ AI notes:** every workspace page except H2H has a short rule-based note labeled "THE READ AI Preview - Generated From Sample Data". It explains the page and never overrides a score or tier.
+- **Header:** workspace pages show the sample program name, a Coach / Athletic Dept. switch, notifications placeholder, Settings, Public Site and Sign Out (placeholder) instead of Sign In / Get Started.
+## Files
+
+- `classification.js` and `classification.tests.js` - shared Tier/Confidence/Recruit Score module and its tests (`tests.html`).
+
+- `styles.css` — bright scarlet (#E41E3F), navy, and white design system (Barlow Condensed + Inter fonts, notched-corner buttons and tiles), responsive.
+- `coach.js` — fictional sample data and rendering for the coach workspace and department pages (sorting, filters, H2H).
+- `script.js` — navigation toggle, form validation and mailto, query parameters, select-all, preview switching.
+
+## Local preview
+
+Open `index.html` in a browser, or run a simple static server from this folder, for example `python -m http.server 8000` and visit http://localhost:8000.
+
+- **Add To Board control:** a green circle with a white + adds a prospect to your Recruiting Board; it turns into a green circle with a white checkmark (On Board). Clicking the checkmark removes the prospect and shows an Undo toast. It is a real button with aria-pressed and an aria-label, a 32px target and a visible focus ring.
+
+- **Recruiting Board automation (demo):** no row checkboxes anywhere; the green +/check button is the only add control. Priority Tier is computed from Coach Fit and Team Need (average; 85+ = Priority 1, 75-84.9 = Priority 2, below 75 = Priority 3; blank data shows "Not Enough Data") and explained in a "How This Is Calculated" panel. Stage is derived from the per-prospect activity log (Added, Message Sent, Grade, Visit Scheduled/Completed, Offer, Committed, Declined) stamped with the signed-in coach; the furthest action wins and Declined only applies when it is the latest. The timeline shows on the board row and the Player Card.
+- **Calendar (demo):** `coach-calendar.html`, `department-calendar.html` and `athlete-calendar.html` offer month/week/agenda views, add/edit/delete events, and `.ics` export. "Schedule Visit" creates the event and logs Visit Scheduled; "Mark Completed" logs Visit Completed. Saved in browser localStorage only (sample events are labeled); real shared calendars need a backend.
+
+- **Level / Class and Eligibility Left:** player lists show a compact code (`HS 2027`, `JUCO 2028`, `Tr 2029`; Tr = 4-year college transfer portal) plus Years Of Eligibility Left. Eligibility is an Add Prospect input, not calculated (rules vary): high school shows N/A, unknown shows Not Provided, never 0. Rankings keeps its separate Grad Class column. Sample values are fictional.
+- **Bulleted descriptions:** tab and page intros use short bullet lists with a bold key term instead of long paragraphs.
+
+- **Board breakdown (THE READ AI preview):** the Recruiting Board panel summarizes only the prospects on your board (by position vs top needs, Level/Class and eligibility, Priority mix, pipeline stage, Tier/Confidence, upcoming visits). It updates when you add/remove players or log actions, and never changes scores.
+
+- **workflow.html:** shows the built workflow and a per-role section; stages match the automated action-logged model. Unbuilt roles/features are labeled Coming Soon.
+
+- **Athlete signup (demo):** `player-signup.html` is a 7-step wizard with parent/guardian verification for minors (`guardian-verify.html`, demo code 000000). Logic lives in `athlete-signup.js` and saves to localStorage only; no email is sent, nothing is truly verified and passwords are never stored. Athlete-created players join the Master Database only when allowed (adults who opt in; minors after guardian verification).
+- **Role preference (baseball):** athlete-entered two-way / preferred role and coach-entered Projected College Role are context only and never change scores, Tier or Confidence.
+
+## Athlete Profile (athlete-profile.html)
+
+First draft of the athlete's own screen, built only from the signup record in this browser (no signup = prompt to sign up, never fake data). Extra optional fields (GPA, tests, major, video links, achievements, messaging preference) are stored in `theReadDemoAthleteExtras`. Each section is tagged Required or Optional so it is easy to keep or cut: Overview (header, sport switcher, completeness), Scores (per sport, what would raise Confidence), Metrics (verification status, request verification), Guardian (status, resend, simulated), Privacy, Messages, Calendar, Interest (real logged coach activity only), Academics (never affects Tier), Media (video links, achievements), Account (contact, quick edit, Athlete Basic plan).
+
+## Recruit Score Calculator (recruit-score.js)
+
+Athlete-created baseball entries get a computed Recruit Score, Tier and Confidence (athlete profile > Scores > How Your Recruit Score Was Calculated, plus Master Database, Rankings and Player Card). Weights come from the workbook (hitters: Avg EV 45%, Max EV 30%, Position-Adjusted Speed 15%, Frame Score 10%; pitchers: Avg FBV 40%, Max FBV 30%, Frame Score 30%). Frame Score uses the workbook Grade Tables. Missing components are re-weighted, never zeroed; with no exit/fastball velocity the result is Not Rated. The workbook does not define how a raw metric becomes a 0-100 score or how many metrics are expected, so the founder decided that hitter metrics are graded against the shared THE READ Progressive Raw-Measurable Benchmarks v0.5 (Provisional, enchmarks-config.js; OF is the only outfield position (no LF/CF/RF, DH or UT); blank or unsupported positions are Benchmark Missing and left out) with component score = grade value x 10, and Confidence uses an expected-metric list (verified = 1, self-reported = 0.25). These assumptions are listed in the panel and in `recruit-score.js` (`ASSUMPTIONS`) for the owner to confirm. It recalculates whenever metrics are edited on the profile.
+
+**Benchmarks (single shared config: benchmarks-config.js).** THE READ Progressive Raw-Measurable Benchmarks v0.5 (Provisional): Avg EV v0.4, Max EV v0.4, Throwing Velocity v0.4, 60-Yard v0.5, Pop Time v0.4, Avg FBV v0.4, Max FBV v0.4. Each table is stored independently (Max EV is not derived from Avg EV). Progressive spacing is applied once, at the raw-measurable layer; OPG/DPG/PPG/Athletic Score/Recruit Score stay linear weighted combinations and tier ranges are unchanged. Not approved as final production scoring logic. The v0.2 tables are kept as Retired (`RETIRED` plus a `compare()` helper) and are not used for grading. The only valid baseball positions are P, C, 1B, 2B, 3B, SS and OF (no LF/CF/RF, DH or UT); stored LF/CF/RF values migrate to OF on load and stored DH/UT become a listed secondary position if one exists, otherwise blank.
+
+**Unit integrity (Metric Registry in benchmarks-config.js).** 60-Yard and Pop Time are ElapsedTime in seconds (LowerIsBetter, shown as s, never mph); Avg/Max EV, Throwing Velocity and Avg/Max FBV are Velocity in mph (HigherIsBetter). Benchmark tables are validated against the registry at load; a measurement with a missing or wrong unit is UnitMismatch, excluded from every grade (never F, Not Rated or zero) and never converted. Backend, API, import, export and spreadsheet requirements need a server and are documented as Requires Founder Decision. Tests: unit-integrity.tests.js.
+
+
+**Max FBV grade table (owner-supplied):** in `recruit-score.js` (`MAX_FBV_BANDS`, single place). Bands use the unrounded mph, >= band minimum and < next band minimum: 95.0+ A+ 10; 92.0 A 9.5; 89.0 A- 9; 86.0 B+ 8.5; 83.0 B 8; 80.0 B- 7.5; 77.0 C+ 7; 74.0 C 6; 71.0 C- 5; 68.0 D 3; below 68.0 F 1. Negative/non-numeric is rejected; missing has no grade (never F or 0). Pitching score = Max FBV grade x10 (30%) + Frame Score (30%); no Avg FBV table exists yet, so Avg FBV (40%) is not scored and its weight is re-scaled away.
+
+The Max FBV lookup is `TheReadScore.getMaxFBVGrade(maxFBV)`, a port of the owner's reference: missing/non-finite returns `{letterGrade:null, gradeValue:null, status:'Missing'}`, negative throws `RangeError('Max FBV cannot be negative.')`, otherwise `{letterGrade, gradeValue, status:'Graded'}`.
+
+**Avg FBV grade table (owner-supplied):** `TheReadScore.getAvgFBVGrade` (same shape as Max FBV; negative throws `RangeError('Avg FBV cannot be negative.')`). Bands: 92+ A+ 10, 89 A 9.5, 86 A- 9, 83 B+ 8.5, 80 B 8, 77 B- 7.5, 74 C+ 7, 71 C 6, 68 C- 5, 65 D 3, below 65 F 1. Pitching Potential Grade = Avg FBV 40% + Max FBV 30% + Frame Score 30%; missing parts are re-scaled, never zeroed. This replaces the earlier note that Avg FBV was not scored.
+
+## Per-Metric Verification, Interests And Notifications
+
+- Each Recruit Score input is verified **individually** (`verifier-verify.html`: Confirm/Decline per row with a method, no verify-all). Status per metric: Unverified / Pending / Verified / Declined, with verifier, date and method.
+- Confidence = weighted share of verified inputs (hitters Avg EV 45, Max EV 30, 60 Time 15, Height 5, Weight 5; pitchers Avg FBV 40, Max FBV 30, Height 15, Weight 15). Self-reported earns 25% of an input weight (`SELF_CREDIT` in `recruit-score.js`); missing earns 0. The athlete profile shows a What Would Raise My Confidence list.
+- Athlete profile > Interest tab: add schools (list in `sports-config.js` `TheReadSchools`, free text allowed; not-on-THE-READ schools are saved but not notified). Programs on THE READ get a Notifications bell and an Interested Athletes page (`coach-interested.html`), a Dashboard card and a Department rollup. Minors show only after guardian verification and listing consent. Everything is saved in this browser only; no email or push is sent.
+
+## Athletic Department Workspace (Sports > Program)
+
+- **All Sports view** (department tabs only): Overview, Sports, Finances, Roster & Scholarships, Compliance, Staff & Permissions, Calendar, Reports & Data, Billing, Settings. Cross-sport items (Billing, Settings, Sports list) stay here.
+- **Pick a sport** (`department-sports.html`) to open that program: the page shows a breadcrumb (Athletic Department > Sports > Baseball), a back link, a sport switcher, a navy **Athletic Department** tab row and a scarlet **Program: <Sport>** row with every coach tab. The existing coach pages are reused with `?dsport=<sport id>`; `coach.js` filters the player list to that sport, and the context follows every in-workspace link.
+- Shell and department pages live in `dept.js`. Only sports the school keeps active in Billing appear. Sports come from `sports-config.js`.
+- Everything entered (roster limits, scholarship equivalencies, Title IX numbers, key dates, staff, settings) is saved in this browser only and starts blank; NCAA limits and compliance dates are never invented. The Department Access (read-only / edit) setting is recorded but not enforced until real accounts exist.
+
+## Division-Aware Athletic Department
+
+- `divisions-config.js` is the ONE config for NCAA Division I (FBS/FCS/Non-Football), Division II, Division III, NAIA and NJCAA/JUCO (Division I/II/III). It sets tab names, finance/aid model, roster fields, eligibility status field, Overview KPIs, compliance sections, official links and reminder text. Pick the division at institution signup or in Department Settings; the Division View selector in the department header previews each one.
+- No rule numbers are hardcoded. Limits, counts and dates are entered by the department (stored in this browser) and every division page carries a Verify With Your Compliance Office / Official Governing Body note with links to ncaa.org, naia.org and njcaa.org.
+- Division III hides scholarship equivalency and athletic aid and shows admissions/academic fit and a recruiting budget instead. JUCO tracks transfers placed to 4-year schools as a key metric. Eligibility statuses (NCAA/NAIA/NJCAA/admissions) are staff- or athlete-entered, not verified.
+
+## Sign In, Account Settings And Demo Session
+
+- `account.js` (loaded on every page) keeps a demo session in this browser (`theReadSession`). Roles: Athlete, Guardian, High School Coach, Private Instructor, Verified Data Provider, College Coach, Athletic Department. Each role goes to its own home after sign-in.
+- Pages: `sign-in.html`, `forgot-password.html`, `reset-password.html` (demo code 000000), `account-settings.html` (profile, email, password check, notification preferences, sign out). The header shows Sign In / Get Started when signed out and an account menu with Sign Out when signed in.
+- **Demo only, not real security.** No password is stored or checked, no email is sent, and nothing is encrypted. Athlete, guardian and verifier sign-ins must match a profile saved in this browser. Workspace pages redirect to Sign In unless you are signed in or use Continue In Preview Mode (or `?demo=1`). Set `REQUIRE_SIGN_IN: false` in `site-config.js` to turn the guard off.
+- Coach Grading "Signed in as" and the coach/department identity come from the session.
+
+## Verifier Signup And Workspace
+
+- `verifier-signup.html`: High School Coach, Private Instructor or Verified Data Provider (free for providers per pricing). Approval of verifiers is an admin step on the roadmap; profiles show Pending Approval and nothing is checked.
+- `verifier-dashboard.html` (`verifier.js`): four tabs (Verification Queue, Bulk Entry, My Athletes, History & Profile) plus Connect and Calendar in a utility area. The queue has new requests with inline Accept/Decline, expandable athlete rows with Confirm / Confirm With Edit / Decline per metric (keyboard Y / E / N), a reported-vs-observed view, remembered method defaults, Undo Last and a sticky summary bar. Bulk Entry is a spreadsheet-style grid with one Session Details header (event, date, device, location), paste from Excel, CSV template / import / export with range validation (blank is never 0) and autosave. Add Athlete uses a share code or name search and the athlete approves from their profile. History is collapsed on the same page as Profile. Every metric is confirmed or declined individually with a method; statuses feed Confidence. Athletes reach it from Request Verification.
+
+## JUCO / Transfer Signup Path
+
+- Choosing JUCO or 4-Year College / Transfer Portal as Current Playing Level adds a Transfer Details step in `player-signup.html`: current college, association/division, eligibility left, seasons played, redshirt/medical hardship, portal status and date, graduation and credits, academic standing, release to contact, college stats, coach reference, intended transfer year and NCAA/NAIA/NJCAA statuses. All entered by the athlete and unchecked.
+- Feeds Master Database (Current College, Transfer Portal Status), the coach Transfer Portal / JUCO view and the department Transfer Portal / JUCO Watch.
+
+## Connect For All Roles
+
+One shared module (`connect.js` + `connect-config.js`) powers Connect for Athlete, Guardian, HS Coach, Private Instructor, Verified Data Provider, College Coach and Athletic Department (`connect.html`, `coach-connect.html`, `department-connect.html`). The permission matrix lives only in `connect-config.js` (direct / intro / interest / visible / verifier rules); unmet conditions fall back to Request Introduction. Threads are keyed by participant ids so both sides see the same conversation; guardians see a minor's threads read-only unless turned off; the Athletic Department has read-only oversight. Includes unread badges, role/sport/search filters, block/report and in-app notifications. Demo only: stored in localStorage, no encryption, delivery, email or push is claimed. Use the View-As switcher to preview other roles.
+
+
+## Finance Clarity
+
+Department Finances (`department-finances.html`, built in `dept.js`) now labels every figure with units and period, separates Inputs (typed by the department, with source and last-updated date) from Calculated values, and shows a 'How This Is Calculated' formula under each. Athletic aid, recruiting expense budget, program operating budget and the THE READ subscription are four separate pots and are never added together. Totals list the line items (Travel + Camps + Visits); blank inputs show Not Entered and are excluded, never counted as $0. No NCAA/NAIA/NJCAA limits are supplied. Includes a Finance Glossary; the made-up example table is kept in a collapsed 'Not Your Data' section.
+
+## Guardians And Verified Data Providers
+- Guardians have no account. A minor's signup creates a simulated email (private link + one-time code, demo code 000000). The link opens `guardian-verify.html?m=<token>`, where the guardian gives consent, sets visibility and contact rules, reads messages read-only, answers introduction requests, and can revoke. Nothing is emailed in this static demo; tokens are not real secrets.
+- Connect roles are Athlete, Verified Data Provider, College Coach, Athletic Department. Guardian consent is an attribute of the minor athlete (Verified / Pending / Declined / Revoked).
+- Verified Data Provider is one free role with a Provider Type (High School Coach, Private Instructor / Trainer, Showcase / Event Organizer, Other).
+
+## Sport Pages, Verifiers And Private Founding Rates
+- `sport-<id>.html` (all 8 launch sports) are rendered by `sport-page.js` from `sports-config.js`: positions, placeholder metric names, grade-table and blurb stubs, and a TODO checklist. Fill each sport in by editing its entry in `sports-config.js` (metrics) and the scoring tables later. Home tiles link to these pages; the sport guide stays at `sport-guide.html`.
+- In the Athletic Department sport view, a collapsed "Sport Setup (Stub)" panel shows the same structure for sports without scoring.
+- High School Coaches and Private Instructors are Verified Data Providers (verifiers); the note appears on signup, sign-in, workflow, FAQ, pricing and the athlete Request Verification form.
+- Founding rates are not public. `owner-rates.html` (linked from the owner page, passphrase check, demo only) lets the owner grant a rate to one institution or coach; only that account sees "Founding Rate" on its Billing page. Grants live in localStorage (`theReadFoundingGrants`).
+
+## Owner Batch: Sports Separation, Grades And Import
+- **Each sport has its own Master Database.** Entered players are stored per sport (`theReadDemoMasterDb:<sport id>`; the old single key is migrated once). Coach pages show one sport at a time (Sport selector, remembered for the session). A multi-sport athlete has one profile per sport, linked by athlete id, and the Player Card only says "also plays X". Athletic Department pages without `?dsport=` are labeled by sport.
+- **OPG, SOPG, DPG, SDPG, PPG** show as letter grades (hover for the number); sorting stays numeric. Their formulas are provisional until the owner confirms the weights.
+- **Confidence** counts only the metrics required for the player role (Pitcher Only, Hitter, Two-Way), each role summing to 100. Unscoreable inputs earn nothing, so Confidence can no longer be 100% with grades or Athletic Score missing. Display is floored to one decimal.
+- GPA flows from the athlete profile to the Player Card; Player Notes start blank; Evaluation Date is automatic.
+- Master Database and Board have Secondary Position filters. Role Preference and Projected College Role are not Master Database columns.
+- **Import:** Master Database > Import A Board Or Prospect List (CSV) checks every row for Exact / Possible / New matches before saving, keeps an import log with undo, and flags new players "Coach-Entered (Imported)". Add Prospect also warns about possible duplicates.
+- Gold, Silver, Bronze and Platinum use metallic gradients; Coach Grading evaluator notes have a color, initials, role and time per coach, plus a filter.
+- Tests: `tests.html` and `tests-sports.html` (sport leakage, owner sample athlete, role parity, duplicate matcher).

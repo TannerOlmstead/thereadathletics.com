@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Request THE READ access for your athletic department: institution details, sports, roles, and individual-account upgrades." />
+    <title>Institution access request | THE READ Athletics</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,600;0,700;1,700;1,800;1,900&family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="styles.css" />
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 120'%3E%3Crect width='120' height='120' rx='28' fill='%239E1B32'/%3E%3Ctext x='50%25' y='52%25' dominant-baseline='middle' text-anchor='middle' font-size='54' font-family='Arial, sans-serif' fill='white'%3ER%3C/text%3E%3C/svg%3E" />
+  <script src="site-config.js"></script><script src="sports-config.js"></script><script src="divisions-config.js"></script></head>
+  <body>
+    <a class="skip-link" href="#main">Skip to main content</a>
+    
+    <header class="site-header">
+      <div class="container nav-wrap">
+        <a class="brand" href="index.html" aria-label="THE READ Athletics home">
+          <svg class="brand-emblem" viewBox="0 0 110 110" aria-hidden="true" focusable="false"><circle cx="55" cy="55" r="52" fill="#fff" stroke="#E41E3F" stroke-width="3"/><circle cx="55" cy="55" r="45" fill="none" stroke="#E41E3F" stroke-width="1"/><text x="55" y="68" text-anchor="middle" font-family="'Barlow Condensed','Arial Narrow',Impact,sans-serif" font-style="italic" font-weight="900" font-size="46" letter-spacing="-2"><tspan fill="#14284B">T</tspan><tspan fill="#E41E3F">R</tspan><tspan fill="#14284B">A</tspan></text></svg>
+          <span class="wordmark"><span class="wordmark-main">THE READ</span><span class="wordmark-sub">ATHLETICS</span></span>
+        </a>
+        <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="main-nav"><span class="nav-toggle-bars" aria-hidden="true"></span><span>Menu</span></button>
+        <nav class="main-nav" id="main-nav" aria-label="Main navigation">
+          <a class="role-link" href="player-signup.html">Athlete</a>
+          <a class="role-link" href="individual-signup.html">Coach</a>
+          <a class="role-link" href="institution-signup.html">Athletic Department</a>
+          <a class="role-link" href="coach-dashboard.html">For Coaches</a><a class="role-link" href="department-overview.html">Dept. Workspace</a>
+          <a href="features.html">Features</a>
+          <a href="scoring.html">Scoring</a>
+          <a href="sport-guide.html">Sports</a>
+          <a href="pricing.html">Pricing</a>
+          <details class="nav-more desktop-only">
+            <summary>More</summary>
+            <div class="nav-more-menu">
+              <a href="internal-preview.html">Preview</a><a href="athlete-calendar.html">Athlete Calendar</a><a href="athlete-profile.html">Athlete Profile</a>
+              <a href="resources.html">Resources</a>
+              <a href="faq.html">FAQ</a>
+              <a href="security.html">Security</a>
+              <a href="contact.html">Contact</a>
+            </div>
+          </details>
+          <a class="mobile-only" href="internal-preview.html">Preview</a><a class="mobile-only" href="athlete-calendar.html">Athlete Calendar</a><a class="mobile-only" href="athlete-profile.html">Athlete Profile</a>
+          <a class="mobile-only" href="resources.html">Resources</a>
+          <a class="mobile-only" href="faq.html">FAQ</a>
+          <a class="mobile-only" href="security.html">Security</a>
+          <a class="mobile-only" href="contact.html">Contact</a>
+          <a class="narrow-only" href="sign-in.html">Sign In</a>
+          <a class="narrow-only" href="index.html#paths">Get Started</a>
+        </nav>
+        <div class="nav-actions">
+          <a class="button button-outline-light" href="sign-in.html">Sign In</a>
+          <a class="button button-primary" href="index.html#paths">Get Started</a>
+        </div>
+      </div>
+    </header>
+
+    <main id="main">
+      <section class="page-hero">
+        <div class="container">
+          <div class="eyebrow">For institutions</div>
+          <h1>Request access for your athletic department.</h1>
+          <p>Give your staff one shared board, locked objective grades, and private evaluations. Choose the sports that need access and we will follow up with next steps.</p>
+          
+        </div>
+      </section>
+      <section class="section section-tight coach-link-section"><div class="container"><div class="link-banner card"><div><h2>Are You An Athletic Director Who Also Coaches?</h2><p>See which coaches are recruiting whom, the recruiting schedule, and program needs in the <a href="department-overview.html">Department Overview</a> &mdash; or open the full <a href="coach-dashboard.html">Coach Workspace</a> (fictional preview) for rankings, player cards, and your recruiting board.</p></div><a class="button button-primary" href="coach-dashboard.html">Open Coach Workspace</a></div></div></section>
+      <section class="section"><div class="container"><div class="form-wrap"><div class="notice navy" id="upgrade-note" hidden role="note"><strong>Upgrade request.</strong> Tell us the email of your existing individual workspace in the notes so we can link it to your institution.</div><form class="form-card" id="institution-form" data-mailto data-subject="Institution access request" data-intro="Athletic department access request" novalidate>
+          <p class="hint">Fields marked <span class="req">*</span> are required. When you submit, your email app opens with everything filled in &mdash; nothing is stored on this website.</p>
+          <div class="form-grid"><div class="field"><label for="application">Type of request <span class="req" aria-hidden="true">*</span></label><select id="application" name="application" required><option value="">Select one</option><option>New institution account</option><option>Upgrade an individual account</option></select></div><div class="field"><label for="institution">Institution name <span class="req" aria-hidden="true">*</span></label><input id="institution" name="institution" type="text" required autocomplete="organization" /></div><div class="field"><label for="level">Division / level <span class="req" aria-hidden="true">*</span></label><select id="level" name="level" required><option value="">Select one</option><option value="d1">NCAA Division I</option><option value="d2">NCAA Division II</option><option value="d3">NCAA Division III</option><option value="naia">NAIA</option><option value="njcaa">NJCAA / JUCO</option></select></div><div class="field"><label for="subdiv">Subdivision / NJCAA Division (if applicable)</label><select id="subdiv" name="subdivision"><option value="">Not applicable</option></select></div><div class="field"><label for="conference">Conference (optional)</label><input id="conference" name="conference" type="text" /></div><div class="field"><label for="contact">Your name <span class="req" aria-hidden="true">*</span></label><input id="contact" name="contact" type="text" required autocomplete="name" /></div><div class="field"><label for="title">Title</label><input id="title" name="title" type="text" autocomplete="organization-title" /></div><div class="field"><label for="role">Your role <span class="req" aria-hidden="true">*</span></label><select id="role" name="role" required><option value="">Select one</option><option>Athletic Director</option><option>Head Coach</option><option>Assistant Coach</option><option>Recruiting Coordinator</option><option>School Admin</option><option>Compliance</option><option>Other</option></select></div><div class="field"><label for="email">Work email <span class="req" aria-hidden="true">*</span></label><input id="email" name="email" type="email" required autocomplete="email" /><p class="hint">Please use your school email address.</p></div><div class="field"><label for="phone">Phone (optional)</label><input id="phone" name="phone" type="tel" autocomplete="tel" /></div><div class="field"><label for="staff">Approximate staff users</label><select id="staff" name="staff"><option value="">Select one</option><option>1 - 5</option><option>6 - 15</option><option>16 - 40</option><option>More than 40</option></select></div><fieldset class="full" data-require-one><legend>Sports needing access <span class="req" aria-hidden="true">*</span></legend><p class="hint">Choose at least one, or use Select all.</p><div class="check-grid"><label class="check all"><input type="checkbox" data-select-all data-skip="true" /> Select all</label><label class="check"><input type="checkbox" name="sports" value="Baseball" /> Baseball</label><label class="check"><input type="checkbox" name="sports" value="Softball" /> Softball</label><label class="check"><input type="checkbox" name="sports" value="Football" /> Football</label><label class="check"><input type="checkbox" name="sports" value="Basketball" /> Basketball</label><label class="check"><input type="checkbox" name="sports" value="Soccer" /> Soccer</label><label class="check"><input type="checkbox" name="sports" value="Volleyball" /> Volleyball</label><label class="check"><input type="checkbox" name="sports" value="Track &amp; Field" /> Track &amp; Field</label><label class="check"><input type="checkbox" name="sports" value="Wrestling" /> Wrestling</label></div></fieldset><div class="field full"><label for="notes">Anything else about your program?</label><textarea id="notes" name="notes"></textarea></div><div class="field full"><label class="check"><input type="checkbox" id="consent" name="consent" value="Yes" required data-label="Confirms authority to request access for the department" /> I am authorized to request access for this department, and <span class="tr">THE READ</span> may contact me. <span class="req" aria-hidden="true">*</span></label></div></div>
+          <div class="form-actions"><button class="button button-primary" type="submit">Prepare institution request</button></div>
+          <div class="form-status" role="status" aria-live="polite"></div>
+        </form><p class="price-note">Institution pricing is based on the number of active sports, with up to 6 users per sport. See <a href="pricing.html#selector"><strong>pricing</strong></a>. Payments are not live; billing is handled after approval.</p><p class="price-note">Tip: share links like <code>institution-signup.html?role=Head%20Coach&amp;sport=baseball</code> or <code>?application=upgrade</code> to pre-fill this form.</p></div></div></section>
+    <section class="section section-tight" id="verifier-note"><div class="container"><div class="notice navy" role="note"><span class="pill navy">Verifier</span> <strong>High School Coaches and Private Instructors verify athlete metrics as Verified Data Providers.</strong> It is one free role with a Provider Type. <a href="verifier-signup.html">Become a Verified Data Provider</a></div></div></section>
+    </main>
+
+    <footer class="site-footer">
+      <div class="container">
+        <div class="footer-cols">
+          <div>
+            <a class="brand footer-brand" href="index.html" aria-label="THE READ Athletics home">
+              <svg class="brand-emblem" viewBox="0 0 110 110" aria-hidden="true" focusable="false"><circle cx="55" cy="55" r="52" fill="#fff" stroke="#E41E3F" stroke-width="3"/><circle cx="55" cy="55" r="45" fill="none" stroke="#E41E3F" stroke-width="1"/><text x="55" y="68" text-anchor="middle" font-family="'Barlow Condensed','Arial Narrow',Impact,sans-serif" font-style="italic" font-weight="900" font-size="46" letter-spacing="-2"><tspan fill="#14284B">T</tspan><tspan fill="#E41E3F">R</tspan><tspan fill="#14284B">A</tspan></text></svg>
+              <span class="wordmark"><span class="wordmark-main">THE READ</span><span class="wordmark-sub">ATHLETICS</span></span>
+            </a>
+            <p>Recruiting intelligence for institutions, coaches, athletes, and trusted programs.</p>
+            <p><a href="mailto:hello@thereadathletics.com"><strong>hello@thereadathletics.com</strong></a></p>
+          </div>
+          <div class="footer-col"><h4>Get started</h4><a href="player-signup.html">Athletes</a><a href="individual-signup.html">Coaches &amp; evaluators</a><a href="institution-signup.html" aria-current="page">Institutions</a><a href="contact.html#demo">Request a demo</a></div>
+          <div class="footer-col"><h4>Product</h4><a href="features.html">Features</a><a href="scoring.html">How scoring works</a><a href="sport-guide.html">Sport guide</a><a href="internal-preview.html">Product preview</a><a href="pricing.html">Pricing</a></div>
+          <div class="footer-col"><h4>Company</h4><a href="resources.html">Resources</a><a href="faq.html">FAQ</a><a href="security.html">Security &amp; privacy</a><a href="success-stories.html">Success stories</a><a href="contact.html">Contact</a></div>
+        </div>
+        <div class="footer-bottom">
+          <span>&copy; <span data-year>2026</span> <span class="tr">THE READ</span> Athletics</span>
+          <span><a href="privacy.html">Privacy</a> &middot; <a href="terms.html">Terms</a> &middot; <a href="contact.html">Contact</a></span>
+        </div>
+      </div>
+    </footer>
+
+    <script src="account.js"></script>
+<script src="connect-config.js"></script>
+<script src="connect.js"></script>
+
+    <script src="script.js"></script>
+    <script>(function(){var l=document.getElementById("level"),s=document.getElementById("subdiv"),D=window.TheReadDivisions;if(!l||!D)return;function fill(){var x=D.get(l.value);s.innerHTML='<option value="">Not applicable</option>'+(x?x.subs:[]).map(function(y){return"<option>"+y+"</option>"}).join("");s.disabled=!x||!x.subs.length}l.addEventListener("change",function(){fill();if(l.value)D.set(l.value,"")});s.addEventListener("change",function(){if(l.value)D.set(l.value,s.value)});fill();})();</script>
+  </body>
+</html>

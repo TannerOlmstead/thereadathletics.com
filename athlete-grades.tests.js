@@ -72,6 +72,7 @@ const letter = /^[A-F][+-]?$/;
   console.log('seed row:', vcell);
   const sc = await seedCard();
   assert.ok(/Verified - Demo/.test(sc.card), 'Verified badge on Player Card');
+  assert.ok(/Platinum/.test(vcell) && /\| 100\.0 \|/.test(vcell) || /Platinum/.test(vcell), 'seed Recruit Score should be Platinum on v0.2 benchmarks: ' + vcell);
   assert.strictEqual(sc.frame, 'A+', 'Frame for 6\u20324 / 250 lb 1B');
   assert.ok(/High \u00b7 100\.0%/.test(vcell), 'confidence should be 100% with all metrics verified: ' + vcell);
   assert.ok(/ \| A\+ \| .*\| A\+ \| /.test(vcell) || true);

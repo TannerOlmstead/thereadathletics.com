@@ -118,7 +118,7 @@ This site is plain HTML/CSS/JS with no build step. There is **no backend**: form
 - [x] Removed the Primary Sport concept (all sports equal; positions stay per sport)
 - [x] Athlete Profile screen (athlete-profile.html) first draft: overview/completeness, per-sport scores, metrics and verification, guardian status, privacy, messages, calendar, interest, academics, media/achievements, account. Owner to keep/cut sections
 - [x] Recruit Score calculator for athlete-created baseball entries (workbook weights, Grade Table Frame Score, step-by-step panel, Confidence from metric credit)
-- [ ] Owner to confirm: metric-to-0-100 scoring method (currently percentile vs Master Database), expected-metric list for Confidence, self-reported credit of 0.5, pop time / two-way handling
+- [ ] Owner to confirm: metric-to-0-100 scoring (now v0.2 position benchmark grade x 10, provisional), expected-metric list for Confidence, self-reported credit of 0.5, pop time / two-way handling
 - [x] Max FBV grade table (owner-supplied) added to the shared scoring module with band-edge tests
 - [x] Per-metric verification (verifier page), weighted Confidence, athlete Interest tab, program Notifications bell, Interested Athletes list/dashboard card/department rollup
 - [x] Athletic Department restructure: All Sports tabs plus Sports > sport picker with breadcrumb, switcher, department row + coach row scoped to the sport; Roster & Scholarships, Title IX snapshot, Compliance (reminders, own dates, messaging oversight), Staff & Permissions (seats vs 6 per sport), Reports & Data (CSV, board import, transfer/JUCO watch), Billing, Settings

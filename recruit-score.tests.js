@@ -95,7 +95,7 @@ console.log('ok - two-way entry validation present');
   const sp = r.inputs.filter((i) => i.key === 't60')[0];
   assert.ok(sp.scored && sp.credit === 1 && /Verified/.test(sp.status), '60 time scored from v0.2 benchmark when pool is thin');
   assert.ok(r.inputs.every((i) => i.simulated), 'simulated flag on every verified input');
-  console.log('ok - verified demo seed, frame A+, 60 time falls back to v0.2 benchmark');
+  console.log('ok - verified demo seed, frame A+, 60 time scored from v0.2 benchmark');
 }
 
 {
@@ -103,4 +103,21 @@ console.log('ok - two-way entry validation present');
   T.MAX_EV.rows.forEach((row, i) => row.forEach((v, j) => assert.strictEqual(v, T.AVG_EV.rows[i][j] + 6, 'MAX_EV = AVG_EV + 6 at row ' + i + ' col ' + j)));
   assert.strictEqual(BMc.gradeMetric('MAX_EV', '1B', 100).letter, 'A+'); assert.strictEqual(BMc.gradeMetric('MAX_EV', '1B', 99.9).letter, 'A'); assert.strictEqual(BMc.gradeMetric('MAX_EV', '1B', 80).letter, 'D');
   console.log('ok - MAX_EV table is AVG_EV + 6 (1B A+ 100 ... D 80)');
+}
+
+{
+  const seed = { pos: '1B', twoWay: true, rolePref: { twoWay: 'Yes' }, metrics: { ht: 76, wt: 250, t60: 6.9, tv: 94, avgEV: 94, maxEV: 102, avgFBV: 90, maxFBV: 93 } };
+  const huge = []; for (let i = 0; i < 50; i++) huge.push({ pos: '1B', avgEV: 110, maxEV: 125, t60: 6.0, tv: 99 });
+  const a = S.compute(seed, []), b = S.compute(seed, huge);
+  assert.strictEqual(a.rs, b.rs, 'Recruit Score must not depend on the Master Database pool');
+  assert.ok(a.rs >= 95 && a.rs <= 100, 'seed two-way 1B should be Platinum, got ' + a.rs);
+  assert.deepStrictEqual(a.comps.map((c) => c.letter), ['A+', 'A+', 'A+', 'A+']);
+  assert.ok(a.comps.every((c) => c.pts === 100), 'A+ = 10 x 10');
+  assert.ok(/v0\.2/.test(a.comps[0].detail) && /Provisional/.test(a.comps[0].detail), 'benchmark source in detail');
+  const TRCs = { renderTierBadge: () => 'tier', renderConfidenceBadge: () => 'conf', formatConfidencePercentage: () => '100%', renderGrade: () => 'g' };
+  const ph = S.panel(a, TRCs); assert.ok(/Benchmark Grade/.test(ph) && !/percentile|same-position players/i.test(ph + S.ASSUMPTIONS.join(' ')), 'panel shows benchmark grade; no pool-percentile text');
+  const lf = S.compute({ pos: 'LF', metrics: { avgEV: 94, maxEV: 102, t60: 6.9, ht: 76, wt: 240 } }, []); assert.strictEqual(lf.comps[0].letter, S.compute({ pos: 'OF', metrics: { avgEV: 94, maxEV: 102, t60: 6.9, ht: 76, wt: 240 } }, []).comps[0].letter, 'LF uses OF table');
+  const dh = S.compute({ pos: 'DH', metrics: { avgEV: 94, maxEV: 102, t60: 6.9 } }, []); assert.strictEqual(dh.rs, null, 'DH has no table: Benchmark Missing, not zero'); assert.ok(/Benchmark Missing/.test(dh.comps[0].detail));
+  const w = S.compute({ pos: 'SS', metrics: { avgEV: 88, maxEV: 96, t60: 7.0, ht: 72, wt: 185 } }, []); assert.ok(w.rs > 85 && w.rs < 95, 'SS 88/96/7.0 Gold on v0.2: ' + w.rs);
+  console.log('ok - Recruit Score uses v0.2 position benchmarks (seed ' + a.rs.toFixed(1) + ' Platinum), pool-independent, LF->OF, DH Benchmark Missing');
 }

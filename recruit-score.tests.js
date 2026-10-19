@@ -57,6 +57,27 @@ t('two-way, 1B primary, pitching not selected anywhere: OPG/DPG/PPG', () => {
   const r = S.compute({ pos: '1B', sec: '', rolePref: { twoWay: 'Yes' }, metrics }, bench);
   assert.ok(r.grades.opg != null && r.grades.dpg != null && r.grades.ppg != null);
 });
+t('regression: two-way 1B (6-4, 215, 60=6.9, EV 94/102, throw 94) is graded on v0.2 position benchmarks, not the sample pool', () => {
+  const rec = { pos: '1B', twoWay: true, metrics: { ht: 76, wt: 215, t60: 6.9, tv: 94, avgEV: 94, maxEV: 102, avgFBV: 86, maxFBV: 90 } };
+  // A weak pool must not change the grade: v0.2 thresholds are the only benchmark.
+  const weak = []; for (let i = 0; i < 20; i++) weak.push({ pos: '1B', avgEV: 99, maxEV: 110, t60: 6.0, tv: 99 });
+  [[], weak, bench].forEach((pool) => {
+    const r = S.compute(rec, pool), L = (k) => global.window.TheReadBenchmarks.letterFor(r.gradeValue[k]);
+    assert.strictEqual(L('opg'), 'A'); assert.strictEqual(L('dpg'), 'A');
+    assert.ok(Math.abs(r.gradeValue.opg - 9.75) < 1e-9 && Math.abs(r.gradeValue.dpg - 9.75) < 1e-9);
+    const o = r.breakdown.opg.map((c) => c.letter + '@' + c.weight).join(',');
+    assert.strictEqual(o, 'A+@0.45,A+@0.3,A+@0.15,B-@0.1');
+    assert.strictEqual(r.breakdown.dpg.map((c) => c.letter + '@' + c.weight).join(','), 'A+@0.45,A+@0.45,B-@0.1');
+    assert.strictEqual(r.grades.sopg, null);
+  });
+});
+
+t('missing Frame is re-weighted, never F/zero; missing core inputs are Not Rated', () => {
+  const r = S.compute({ pos: '1B', metrics: { t60: 6.9, tv: 94, avgEV: 94, maxEV: 102 } }, []);
+  assert.ok(Math.abs(r.gradeValue.opg - 10) < 1e-9 && Math.abs(r.gradeValue.dpg - 10) < 1e-9);
+  const n = S.compute({ pos: '1B', metrics: { ht: 76, wt: 215 } }, []);
+  assert.strictEqual(n.grades.opg, null); assert.strictEqual(n.grades.dpg, null);
+});
 console.log(n + ' tests passed');
 
 const fs = require('fs');

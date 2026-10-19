@@ -19,7 +19,7 @@
     'Velocity policy from the workbook: if only Avg exists it is used for Avg and Max; if only Max exists it is used for both.',
     'Missing components are left out and the remaining weights are re-scaled to 100% (workbook rule: reweight when data is missing). At least one exit velocity (hitters) or one fastball velocity (pitchers) is required, otherwise the result is Not Rated.',
     'Role parity: Confidence counts only the metrics REQUIRED for the player role (REQUIRED config above). Pitcher Only (PO): pitching set. Hitter: hitting/speed/frame set. Two-Way: both sets, each counted fully and averaged. The weights in every set sum to 100, so no role is easier or harder to reach 100%. An input that cannot be scored (for example too few benchmark players) earns no Confidence, so Confidence is never 100% while Recruit Score components are missing.',
-    'Projection grades (provisional, final workbook weights are an open question): OPG = Avg EV 45 / Max EV 30 percentiles re-scaled; SOPG = the same against secondary-position benchmarks; DPG = Frame Score 50 / Throwing Velocity percentile 50; SDPG = same at the secondary position; PPG = Avg FBV 40 / Max FBV 30 / Frame 30 (owner tables); Athletic Score = 60 Time percentile 40 / Throwing Velocity percentile 30 / Frame Score 30. All on 0-100, shown as letters via the Universal Grade Conversion table. Missing parts are left out, never zeroed; no inputs means Not Rated.',
+    'Projection grades (provisional, final workbook weights are an open question): OPG (Working v0.1) = Avg EV 45 / Max EV 30 / 60 Time 15 / Frame 10 and DPG = Throwing Velocity 45 / 60 Time 45 / Frame 10, each graded against the shared THE READ Baseball Position Benchmarks v0.2 (Provisional) for the position, with Frame provisional; SOPG/SDPG use the same formulas at the secondary position; PPG = Avg FBV 40 / Max FBV 30 / Frame 30 (owner tables); Athletic Score = 60 Time percentile 40 / Throwing Velocity percentile 30 / Frame Score 30. All on 0-100, shown as letters via the Universal Grade Conversion table. Missing parts are left out, never zeroed; no inputs means Not Rated.',
     'Confidence % = weighted share of Recruit Score inputs that are verified. Each input is weighted by its share of the score: hitters Avg EV 45, Max EV 30, 60 Time 15, Height 5, Weight 5 (Frame Score 10 split between height and weight); pitchers Avg FBV 40, Max FBV 30, Height 15, Weight 15. Each input must be verified individually. A verified input earns its full weight, a self-reported input earns 25% of its weight (documented choice, easy to change: SELF_CREDIT), a missing input earns 0. Confidence never changes the Recruit Score or Tier.',
     'Pitching Potential Grade: Avg FBV (40%) and Max FBV (30%) are graded with the owner-supplied tables (Avg: A+ at 92.0 mph and up down to F below 65.0; Max: A+ at 95.0 and up down to F below 68.0), using the unrounded mph; grade value times 10 is the component score. Frame Score is 30%. A missing component is left out and the others re-scaled, never zeroed.',
     'GPA and every other non-baseball input are never used.'
@@ -135,22 +135,40 @@
     var grade = function (key, parts, why) { var v = reweight(parts); out.grades[key] = v; if (v == null) out.gradeWhy[key] = why; };
     var fr = function (at) { var f = frame(at, m.ht, m.wt); return { pts: f.pts == null ? null : f.pts, w: 1 }; };
     var tvv = get('tv');
-    var offense = function (at) { var a = P('avgEV', avgEV, false, at), x = P('maxEV', maxEV, false, at); return [{ pts: a.pts, w: 45 }, { pts: x.pts, w: 30 }]; };
-    var defense = function (at) { var f = fr(at), t = P('tv', tvv, false, at); return [{ pts: f.pts, w: 50 }, { pts: t.pts, w: 50 }]; };
-    var needOff = 'Needs Avg or Max Exit Velocity and enough benchmark players', needDef = 'Needs Height and Weight (Grade Table) or Throwing Velocity';
+    var BM = (typeof window !== 'undefined' && window.TheReadBenchmarks) || require('./benchmarks-config.js');
+    out.breakdown = {}; out.gradeValue = {}; out.benchmarkVersion = BM.VERSION;
+    var rawFor = { AVG_EV: avgEV, MAX_EV: maxEV, SIXTY_TIME: get('t60'), THROW_VELO: tvv };
+    // OPG/DPG use the shared v0.2 position benchmark tables (benchmarks-config.js), not the sample-player pool. Missing components are left out and the rest re-weighted; never F/zero.
+    var posGrade = function (fkey, at, outKey) {
+      var f = BM.FORMULAS[fkey], core = fkey === 'OPG' ? ['AVG_EV', 'MAX_EV'] : ['THROW_VELO', 'SIXTY_TIME'], rows = [];
+      f.parts.forEach(function (c) {
+        var r = { key: c[0], label: c[1], weight: c[2], raw: null, letter: null, value: null, source: null };
+        if (c[0] === 'FRAME') { var fm = frame(at, m.ht, m.wt); if (fm.grade) { r.raw = m.ht + ' in, ' + m.wt + ' lb'; r.letter = fm.grade; r.value = fm.score; r.source = 'Workbook Grade Table (Provisional)'; } }
+        else { var g = BM.gradeMetric(c[0], at, rawFor[c[0]]); if (g) { r.raw = rawFor[c[0]]; r.letter = g.letter; r.value = g.value; r.source = BM.VERSION + ', ' + at + ', ' + g.letter + ' at ' + g.threshold; } }
+        rows.push(r);
+      });
+      out.breakdown[outKey] = rows;
+      var hasCore = rows.some(function (r) { return core.indexOf(r.key) >= 0 && r.value != null; });
+      var v = hasCore ? reweight(rows.map(function (r) { return { pts: r.value, w: r.weight }; })) : null;
+      if (v == null) { out.grades[outKey] = null; return; }
+      out.gradeValue[outKey] = v; out.grades[outKey] = BM.DISPLAY_SCORE[BM.letterFor(v)];
+    };
+    var offense = function (at, k) { posGrade('OPG', at, k); };
+    var defense = function (at, k) { posGrade('DPG', at, k); };
+    var needOff = 'Needs Avg or Max Exit Velocity (and a baseball position with v0.2 benchmarks)', needDef = 'Needs Throwing Velocity or 60 Time (and a baseball position with v0.2 benchmarks)';
     // Role decides which grades apply. Pitcher-only: PPG only. Two-way: OPG/DPG at the hitting position (primary if not P, else the non-P secondary) plus PPG from pitching metrics; SOPG/SDPG Not Applicable. Hitter: OPG/DPG plus SOPG/SDPG for a non-pitcher secondary.
     var NA = function (k, why) { out.grades[k] = null; out.gradeWhy[k] = why; };
     var NA_TW = 'Not Applicable (two-way players are graded at one hitting position)';
     if (role === 'PO') { ['opg', 'sopg', 'dpg', 'sdpg'].forEach(function (k) { NA(k, 'Not Applicable (pitcher-only player)'); }); }
     else if (role === 'TwoWay') {
       var hp = pos !== 'P' ? pos : (rec.sec && rec.sec !== 'P' ? rec.sec : null);
-      if (hp) { grade('opg', offense(hp), needOff); grade('dpg', defense(hp), needDef); }
+      if (hp) { offense(hp, 'opg'); defense(hp, 'dpg'); if (out.grades.opg == null) out.gradeWhy.opg = needOff; if (out.grades.dpg == null) out.gradeWhy.dpg = needDef; }
       else { NA('opg', 'Not Rated (two-way player needs a non-pitcher position to grade hitting)'); NA('dpg', 'Not Rated (two-way player needs a non-pitcher position to grade hitting)'); }
       NA('sopg', NA_TW); NA('sdpg', NA_TW);
       out.hitPos = hp;
     } else {
-      grade('opg', offense(pos), needOff); grade('dpg', defense(pos), needDef);
-      if (rec.sec && rec.sec !== 'P') { grade('sopg', offense(rec.sec), needOff); grade('sdpg', defense(rec.sec), needDef); }
+      offense(pos, 'opg'); defense(pos, 'dpg'); if (out.grades.opg == null) out.gradeWhy.opg = needOff; if (out.grades.dpg == null) out.gradeWhy.dpg = needDef;
+      if (rec.sec && rec.sec !== 'P') { offense(rec.sec, 'sopg'); defense(rec.sec, 'sdpg'); if (out.grades.sopg == null) out.gradeWhy.sopg = needOff; if (out.grades.sdpg == null) out.gradeWhy.sdpg = needDef; }
       else { NA('sopg', 'Not Applicable (no non-pitcher secondary position)'); NA('sdpg', 'Not Applicable (no non-pitcher secondary position)'); }
     }    if (hasPit) {
       var ag2 = avgFbvGrade(avgFB), mg2 = maxFbvGrade(maxFB), f2 = frame('P', m.ht, m.wt);

@@ -46,6 +46,7 @@ const letter = /^[A-F][+-]?$/;
   const seeded = await load(null);
   const demo = seeded.rows.filter((r) => r.join('|').includes('ATH-MOSEED'))[0];
   assert.ok(demo, 'demo seed athlete missing when storage is empty');
-  console.log('ok - demo seed shown when no athlete exists');
+  ['OPG', 'DPG'].forEach((k) => assert.ok(/^A[+-]?$/.test(demo[seeded.col(k)]), 'seed ' + k + ' should be A-range under v0.2, got ' + demo[seeded.col(k)]));
+  console.log('ok - demo seed shown when no athlete exists, OPG/DPG A-range (' + demo[seeded.col('OPG')] + '/' + demo[seeded.col('DPG')] + ')');
   process.exit(0);
 })().catch((e) => { console.error('FAIL', e.message); process.exit(1); });

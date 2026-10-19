@@ -138,13 +138,15 @@
     var offense = function (at) { var a = P('avgEV', avgEV, false, at), x = P('maxEV', maxEV, false, at); return [{ pts: a.pts, w: 45 }, { pts: x.pts, w: 30 }]; };
     var defense = function (at) { var f = fr(at), t = P('tv', tvv, false, at); return [{ pts: f.pts, w: 50 }, { pts: t.pts, w: 50 }]; };
     var needOff = 'Needs Avg or Max Exit Velocity and enough benchmark players', needDef = 'Needs Height and Weight (Grade Table) or Throwing Velocity';
-    // Pitcher-primary players get PPG only; position-player grades are Not Applicable (never a computed or placeholder letter).
-    var secOk = !!rec.sec && rec.sec !== 'P' && !isP;
-    if (isP) { ['opg', 'sopg', 'dpg', 'sdpg'].forEach(function (k) { out.grades[k] = null; out.gradeWhy[k] = 'Not Applicable (pitcher-primary player)'; }); }
+    // Role + primary position decide which grades apply. Pitcher-primary: PPG only. Two-way: OPG/DPG at the primary position plus PPG (SOPG/SDPG Not Applicable). Hitter: OPG/DPG plus SOPG/SDPG for a non-pitcher secondary.
+    var NA_P = 'Not Applicable (pitcher-primary player)', NA_TW = 'Not Applicable (two-way players are graded at their primary position only)';
+    var secOk = !!rec.sec && rec.sec !== 'P' && !isP && role === 'Hitter';
+    if (isP) { ['opg', 'sopg', 'dpg', 'sdpg'].forEach(function (k) { out.grades[k] = null; out.gradeWhy[k] = NA_P; }); }
     else {
       if (hasHit) grade('opg', offense(pos), needOff);
       if (hasHit) grade('dpg', defense(pos), needDef);
       if (secOk) { grade('sopg', offense(rec.sec), needOff); grade('sdpg', defense(rec.sec), needDef); }
+      else { ['sopg', 'sdpg'].forEach(function (k) { out.grades[k] = null; out.gradeWhy[k] = role === 'TwoWay' ? NA_TW : 'Not Applicable (no non-pitcher secondary position)'; }); }
     }
     if (hasPit) {
       var ag2 = avgFbvGrade(avgFB), mg2 = maxFbvGrade(maxFB), f2 = frame('P', m.ht, m.wt);

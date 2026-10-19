@@ -23,7 +23,7 @@ t('pitcher-only with a secondary position still gets no hitter grades', () => {
 t('position player with secondary P gets no SOPG/SDPG', () => {
   const r = S.compute({ pos: 'SS', sec: 'P', metrics }, bench);
   assert.ok(r.grades.opg != null);
-  assert.ok(!('sopg' in r.grades) && !('sdpg' in r.grades));
+  assert.strictEqual(r.grades.sopg, null); assert.strictEqual(r.grades.sdpg, null);
 });
 t('missing data is never a grade (null, not 0/D/F)', () => {
   const r = S.compute({ pos: 'SS', sec: '2B', metrics: {} }, bench);
@@ -32,5 +32,15 @@ t('missing data is never a grade (null, not 0/D/F)', () => {
 t('regular position player still gets OPG and SOPG', () => {
   const r = S.compute({ pos: 'SS', sec: '2B', metrics }, bench);
   assert.ok(r.grades.opg != null && r.grades.sopg != null);
+});
+t('two-way non-pitcher primary: OPG/DPG/PPG yes, SOPG/SDPG Not Applicable', () => {
+  const r = S.compute({ pos: '1B', sec: 'SS', twoWay: true, metrics }, bench);
+  assert.ok(r.grades.opg != null && r.grades.dpg != null && r.grades.ppg != null);
+  ['sopg', 'sdpg'].forEach((k) => { assert.strictEqual(r.grades[k], null); assert.ok(/^Not Applicable/.test(r.gradeWhy[k])); });
+});
+t('two-way via rolePref Yes behaves as two-way', () => {
+  const r = S.compute({ pos: '1B', sec: 'SS', rolePref: { twoWay: 'Yes' }, metrics }, bench);
+  assert.strictEqual(r.grades.sopg, null);
+  assert.ok(r.grades.ppg != null);
 });
 console.log(n + ' tests passed');

@@ -22,6 +22,9 @@
   const confBadge = (p, o) => TRC.renderConfidenceBadge(p.conf, o);
   const GK = ['opg', 'sopg', 'dpg', 'sdpg', 'ppg'];
   const gl = (v) => TRC.renderGrade(v);
+  // Role + primary position decide which grades apply: pitcher-primary = PPG only; two-way = primary-position OPG/DPG + PPG (no SOPG/SDPG).
+  const gradeNA = (p, k) => (p.pos === 'P' ? /^(opg|dpg|sopg|sdpg)$/.test(k) : (p.twoWay === true && /^(sopg|sdpg)$/.test(k)));
+  const glk = (p, k) => (gradeNA(p, k) ? '<span class="muted">Not Applicable</span>' : gl(p[k]));
   const rk = (v) => (v == null ? '&mdash;' : '#' + v);
   const letter = (s) => { let best = 'F', bd = Infinity; GRADES.forEach((g) => { const d = Math.abs(GRADE_TABLE[g] - s); if (d < bd) { bd = d; best = g; } }); return best; };
   const $ = (s, r) => (r || document).querySelector(s);
@@ -217,6 +220,7 @@
     });
   })();
   players.forEach((p) => { if (!p.sport) p.sport = 'Baseball'; if (!p.athKey && p.athleteCreated) p.athKey = p.id; if (p.pref === undefined) p.pref = null; if (p.projRole === undefined) p.projRole = ''; });
+  players.forEach((p) => { ['opg', 'dpg', 'sopg', 'sdpg'].forEach((k) => { if (gradeNA(p, k)) p[k] = null; }); });
   players.forEach((p) => { p.tier = TRC.getPlayerTier(p.rsRaw != null ? p.rsRaw : p.rs); p.confLevel = TRC.getConfidenceLevel(p.conf); p.recruitScore = p.rs; p.confidencePercentage = p.conf; });
   // ---------- Program scores: documented formulas, no random numbers ----------
   const PHIL_OPTS = ['Prefer Pitching', 'Prefer Position Players', 'Balanced Approach', 'Best Player Available', 'Need-Based Recruiting'];
@@ -720,7 +724,7 @@
     ['rs', 'Recruit Score', (p) => TRC.formatRecruitScore(p.rs), 'c-rs rd-num', TRC.TEXT.recruitScoreTooltip],
     ['tier', 'Tier', (p) => tierBadge(p), 'c-tier', TRC.TEXT.tierTooltip],
     ['conf', 'Confidence', (p) => confBadge(p), 'c-conf', TRC.TEXT.confidenceTooltip],
-    ['opg', 'OPG', (p) => gl(p.opg), 'c-grade rd-num'],
+    ['opg', 'OPG', (p) => glk(p, 'opg'), 'c-grade rd-num'],
     ['dpg', 'DPG', (p) => gl(p.dpg), 'c-grade rd-num'],
     ['ppg', 'PPG', (p) => gl(p.ppg), 'c-grade rd-num'],
     ['board', 'Board', (p) => boardBtn(p), 'c-board']
@@ -813,7 +817,7 @@
         card('Rankings', field('Overall Rank', rk(p.overall)) + field('Class Rank', rk(p.classRank)) + field('Athletic Score', num(p.ath)), 'kvs') +
         card('Recruit Score, Player Tier, And Confidence', field('Recruit Score', '<span class="rd-num" title="' + esc(TRC.TEXT.recruitScoreTooltip) + '">' + TRC.formatRecruitScore(p.rs) + '</span>') + field('Player Tier', tierBadge(p, { focusable: true, size: 'large' })) + field('Confidence', confBadge(p, { focusable: true, size: 'large' })) +
           '<p class="coach-note">' + TRC.TEXT.cardTier + ' ' + TRC.TEXT.cardConfidence + ' Missing data lowers Confidence, not Recruit Score.</p>', 'kvs rd-triple') +
-        card('Grades', (p.pos === 'P' ? field('OPG', 'Not Applicable') + field('SOPG', 'Not Applicable') + field('DPG', 'Not Applicable') + field('SDPG', 'Not Applicable') : field('OPG', gl(p.opg)) + field('SOPG', gl(p.sopg)) + field('DPG', gl(p.dpg)) + field('SDPG', gl(p.sdpg))) + field('PPG', gl(p.ppg)), 'kvs') +
+        card('Grades', field('OPG', glk(p, 'opg')) + field('SOPG', glk(p, 'sopg')) + field('DPG', glk(p, 'dpg')) + field('SDPG', glk(p, 'sdpg')) + field('PPG', gl(p.ppg)), 'kvs') +
         card('Team Evaluation', field('HC Grade', nv(p.hc)) + field('PC Grade', nv(p.pc)) + field('AC Grade', nv(p.ac)) + field('Staff Score', staffTxt(p)) + field('Coach Fit Score', nv(p.fit)) + field('Team Need Score', nv(p.need)) + field('Adjusted Recruit Score', num(p.adj)) + field('Priority Score', nv(p.pri)), 'kvs') +
         pcActCard(p.id) +
         card('Measurables', field('Avg EV', num(p.avgEV) + ' mph') + field('Max EV', num(p.maxEV) + ' mph') + field('Avg FBV', num(p.avgFBV) + ' mph') + field('Max FBV', num(p.maxFBV) + ' mph') + field('Throwing Velo', num(p.tv) + ' mph') + field('60 Time', num(p.t60, 2) + ' s') + field('Pop Time', num(p.pop, 2) + ' s'), 'kvs') +
@@ -1024,7 +1028,7 @@
     const show = (d, p) => {
       if (d[2] === 'tier') return tierBadge(p, { focusable: true });
       if (d[2] === 'data') return confBadge(p, { focusable: true });
-      const v = p[d[1]]; if (v == null || v === '') return '&mdash;'; return d[3] ? d[3](v) : (typeof v === 'number' ? num(v) : esc(v));
+      if (/^(opg|sopg|dpg|sdpg)$/.test(d[1]) && gradeNA(p, d[1])) return 'Not Applicable'; const v = p[d[1]]; if (v == null || v === '') return '&mdash;'; return d[3] ? d[3](v) : (typeof v === 'number' ? num(v) : esc(v));
     };
     const tierOrder = (p) => TRC.PLAYER_TIER_CONFIG[p.tier].sortOrder;
     function cmpOf(d, pa, pb) {
@@ -1392,7 +1396,7 @@
       ['avgFBV', 'Avg FBV', (p) => p.avgFBV, n2('avgFBV')], ['maxFBV', 'Max FBV', (p) => p.maxFBV, n2('maxFBV')],
       ['tv', 'Throwing Velo', (p) => p.tv, n2('tv')],
       ['t60', '60 Time', (p) => p.t60, n2('t60', 2)], ['pop', 'Pop Time', (p) => p.pop, n2('pop', 2)],
-      ['opg', 'OPG', (p) => p.opg, (p) => gl(p.opg)], ['sopg', 'SOPG', (p) => p.sopg, (p) => gl(p.sopg)], ['dpg', 'DPG', (p) => p.dpg, (p) => gl(p.dpg)], ['sdpg', 'SDPG', (p) => p.sdpg, (p) => gl(p.sdpg)], ['ppg', 'PPG', (p) => p.ppg, (p) => gl(p.ppg)],
+      ['opg', 'OPG', (p) => p.opg, (p) => glk(p, 'opg')], ['sopg', 'SOPG', (p) => p.sopg, (p) => glk(p, 'sopg')], ['dpg', 'DPG', (p) => p.dpg, (p) => glk(p, 'dpg')], ['sdpg', 'SDPG', (p) => p.sdpg, (p) => glk(p, 'sdpg')], ['ppg', 'PPG', (p) => p.ppg, (p) => gl(p.ppg)],
       ['ath', 'Athletic Score', (p) => p.ath, n2('ath')],
       ['rs', 'Recruit Score', (p) => p.rs, (p) => TRC.formatRecruitScore(p.rs)],
       ['tier', 'Tier', (p) => (p.rs == null ? null : TRC.PLAYER_TIER_CONFIG[p.tier].sortOrder), (p) => tierBadge(p)],

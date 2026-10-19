@@ -87,3 +87,13 @@ assert.ok(/pos === 'P'\) bad\('sp\.' \+ x\.id \+ '\.pos', 'Two-way players need 
 assert.ok(/sec === 'P'\) bad\(/.test(su), 'signup rejects P secondary for two-way');
 assert.ok(/rec\.twoWay && rec\.sport === 'Baseball'[\s\S]{0,120}rec\.pos === 'P'/.test(co), 'coach entry rejects P primary for two-way');
 console.log('ok - two-way entry validation present');
+
+{
+  const ks = ['ht', 'wt', 't60', 'tv', 'avgEV', 'maxEV', 'avgFBV', 'maxFBV'], vv = {}; ks.forEach((k) => { vv[k] = { by: 'Demo Verifier (simulated)', method: 'Simulated demo verification' }; });
+  const r = S.compute({ pos: '1B', twoWay: true, rolePref: { twoWay: 'Yes' }, metrics: { ht: 76, wt: 250, t60: 6.9, tv: 94, avgEV: 94, maxEV: 102, avgFBV: 86, maxFBV: 90 }, verified: vv }, []);
+  assert.strictEqual(S.frame('1B', 76, 250).grade, 'A+', 'frame recomputes from 250 lb');
+  const sp = r.inputs.filter((i) => i.key === 't60')[0];
+  assert.ok(sp.scored && sp.credit === 1 && /Verified/.test(sp.status), '60 time scored from v0.2 benchmark when pool is thin');
+  assert.ok(r.inputs.every((i) => i.simulated), 'simulated flag on every verified input');
+  console.log('ok - verified demo seed, frame A+, 60 time falls back to v0.2 benchmark');
+}

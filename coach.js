@@ -27,6 +27,7 @@
   const glk = (p, k) => (gradeNA(p, k) ? gl(null) : gl(p[k]));
   // Two-way players list their hitting position; pitching is implied, so it is never shown as a position.
   const twTag = (p) => (p.twoWay ? ' <span class="pill navy">Two-Way</span>' : '');
+  const vTag = (p) => (p.simVerified ? ' <span class="pill green" title="Simulated demo verification by ' + esc(p.simVerified) + '">Verified - Demo</span>' : '');
   const posHtml = (p) => esc(p.pos) + twTag(p);
   const roleOk = (p, v) => !v || (v === 'tw' ? !!p.twoWay : !p.twoWay);
   const roleCtl = (id) => '<label>Role<select id="' + id + '"><option value="">All</option><option value="tw">Two-Way</option><option value="no">Not Two-Way</option></select></label>';
@@ -198,10 +199,11 @@
   (() => {
     let recs = [];
     try { recs = JSON.parse(localStorage.getItem('theReadDemoAthletes') || '[]'); } catch (e) { recs = []; }
+    const DEMO_VERIFIED = {}; ['ht', 'wt', 't60', 'tv', 'avgEV', 'maxEV', 'avgFBV', 'maxFBV'].forEach((k) => { DEMO_VERIFIED[k] = { by: 'Demo Verifier (simulated)', role: 'Demo Verified Data Provider', date: '2026-01-15', method: 'Simulated demo verification', vid: 'demo-verifier' }; });
     // Demo seed: shown only when this browser has no athlete records (never written to storage, so it cannot overwrite real records).
     if (Array.isArray(recs) && !recs.length) recs = [{ id: 'ath-demoseed', submitted: true, name: 'Two-Way Player', email: '', dob: '2000-01-01', age: 25, path: 'adult', sport: 'Baseball', pos: '1B', sec: '',
       sports: [{ id: 'baseball', name: 'Baseball', pos: '1B', sec: '' }], grad: 2027, level: 'High School', school: 'Demo High School', state: 'NE', rolePref: { twoWay: 'Yes', emphasis: '', role: '', pos: '' },
-      metrics: { ht: 76, wt: 215, t60: 6.9, tv: 94, avgEV: 94, maxEV: 102, avgFBV: 86, maxFBV: 90 }, guardian: null, verifiers: [], verified: {}, privacy: { list: true, contact: true, photo: true, metrics: true }, terms: true }];
+      metrics: { ht: 76, wt: 250, t60: 6.9, tv: 94, avgEV: 94, maxEV: 102, avgFBV: 86, maxFBV: 90 }, guardian: null, verifiers: [], verified: DEMO_VERIFIED, privacy: { list: true, contact: true, photo: true, metrics: true }, terms: true }];
     if (!Array.isArray(recs) || !window.TheReadAthlete) return;
     const ents = [];
     recs.forEach((r0) => {
@@ -219,7 +221,7 @@
       const p = { id: 'ATH-' + r.id.replace(/[^a-z0-9]/gi, '').slice(-6).toUpperCase() + r._sx, sport: r.sport, athKey: 'ATH-' + r._aid.replace(/[^a-z0-9]/gi, '').slice(-6).toUpperCase(), name: r.name, grad: r.grad, pos: r.pos, sec: r.sec || '', twoWay: !!(r.rolePref && r.rolePref.twoWay === 'Yes'), state: r.state || '', hs: r.school || '',
         method: 'Athlete-Created (Self-Reported' + (A.anyVerified(r) ? ', some metrics verified by third party (demo)' : ', Unverified') + ')', notes: '',
         evalTs: ((r.vlog || []).map((x) => x.ts || '').sort().pop()) || '', eval: '', links: {}, ht: null, wt: null, gpa: athGpa(r._aid), staff: null, fit: null, need: null, adj: null, pri: null, hc: null, pc: null, ac: null, committed: '', coach: '', action: '',
-        level: LEVELS.indexOf(r.level) < 0 ? 'Other' : r.level, photo: share('photo') ? r.photo || '' : '', elig: r.elig == null ? null : r.elig, xfer: r.transfer || null, entered: true, athleteCreated: true, guardianVerified: gv, pref: r.rolePref || null, projRole: '' };
+        level: LEVELS.indexOf(r.level) < 0 ? 'Other' : r.level, photo: share('photo') ? r.photo || '' : '', elig: r.elig == null ? null : r.elig, xfer: r.transfer || null, entered: true, athleteCreated: true, guardianVerified: gv, simVerified: (r.verified && Object.keys(r.verified).length && /simulated/i.test(r.verified[Object.keys(r.verified)[0]].method || '')) ? r.verified[Object.keys(r.verified)[0]].by : '', pref: r.rolePref || null, projRole: '' };
       ['opg', 'sopg', 'dpg', 'sdpg', 'ppg', 'ath', 'rs', 'conf', 'pop', 'avgEV', 'maxEV', 'avgFBV', 'maxFBV', 'tv', 't60'].forEach((k) => { p[k] = share('metrics') && m[k] != null && !/^(opg|sopg|dpg|sdpg|ppg|ath|rs|conf)$/.test(k) ? m[k] : null; });
       if (share('metrics')) { p.ht = m.ht == null ? null : m.ht; p.wt = m.wt == null ? null : m.wt; }
       ['rs', 'conf', 'ath'].forEach((k) => { p[k] = null; });
@@ -726,7 +728,7 @@
   const RK_COLS = [
     ['overall', 'Overall Rank', (p) => rk(p.overall), 'c-rank'],
     ['classRank', 'Class Rank', (p) => rk(p.classRank), 'c-crank'],
-    ['name', 'Player Name', (p) => cardLink(p) + '<small class="rd-mobile-meta">' + posHtml(p) + ' &middot; Class of ' + p.grad + ' &middot; ' + p.state + '</small>', 'c-name'],
+    ['name', 'Player Name', (p) => cardLink(p) + vTag(p) + '<small class="rd-mobile-meta">' + posHtml(p) + ' &middot; Class of ' + p.grad + ' &middot; ' + p.state + '</small>', 'c-name'],
     ['grad', 'Grad Class', (p) => p.grad, 'c-grad'],
     ['lvl', 'Level / Class', (p) => lvlCell(p), 'c-level'],
     ['elig', 'Eligibility Left', (p) => esc(eligTxt(p)), 'c-elig'],
@@ -967,7 +969,7 @@
   });
   function photoHead(p) {
     const img = p.photo ? '<img src="' + esc(p.photo) + '" alt="Profile photo of ' + esc(p.name) + '" loading="lazy" referrerpolicy="no-referrer">' : SIL;
-    return '<div class="pc-head"><div class="pc-photo">' + img + '</div><div><h2 class="pc-name">' + esc(p.name) + '</h2><p class="pc-sub">' + esc(p.sport) + ' ' + posHtml(p) + ' \u00b7 Class of ' + p.grad + ' \u00b7 ' + esc(p.state) + ' \u00b7 ' + esc(LEVEL_SHORT[p.level] || p.level) + '</p>' + sportSwitch(p) + '<p class="pc-sub pc-role">Role Preference: ' + esc(prefTxt(p)) + ' <span class="pill gray">Athlete Preference, Not A Rating</span> &middot; Projected College Role: ' + esc(projTxt(p)) + ' <span class="pill amber">Coach-Entered</span>' + (p.athleteCreated ? ' <span class="pill navy">Athlete-Created</span>' + (p.guardianVerified ? ' <span class="pill green">Guardian-Verified (Demo)</span>' : '') : '') + '</p><p class="coach-note">' + (p.photo ? 'Photo provided with the profile.' : 'No athlete-provided photo yet. Photos appear here only when the athlete adds one.') + ' Sample Data / Fictional Example.</p><button type="button" class="button button-primary pc-connect-btn" data-connect aria-expanded="false" aria-controls="pc-connect-' + p.id + '">Connect</button></div></div>' + connectHtml(p);
+    return '<div class="pc-head"><div class="pc-photo">' + img + '</div><div><h2 class="pc-name">' + esc(p.name) + vTag(p) + '</h2><p class="pc-sub">' + esc(p.sport) + ' ' + posHtml(p) + ' \u00b7 Class of ' + p.grad + ' \u00b7 ' + esc(p.state) + ' \u00b7 ' + esc(LEVEL_SHORT[p.level] || p.level) + '</p>' + sportSwitch(p) + '<p class="pc-sub pc-role">Role Preference: ' + esc(prefTxt(p)) + ' <span class="pill gray">Athlete Preference, Not A Rating</span> &middot; Projected College Role: ' + esc(projTxt(p)) + ' <span class="pill amber">Coach-Entered</span>' + (p.athleteCreated ? ' <span class="pill navy">Athlete-Created</span>' + (p.guardianVerified ? ' <span class="pill green">Guardian-Verified - Demo</span>' : '') : '') + '</p><p class="coach-note">' + (p.photo ? 'Photo provided with the profile.' : 'No athlete-provided photo yet. Photos appear here only when the athlete adds one.') + ' Sample Data / Fictional Example.</p><button type="button" class="button button-primary pc-connect-btn" data-connect aria-expanded="false" aria-controls="pc-connect-' + p.id + '">Connect</button></div></div>' + connectHtml(p);
   }
   function openCardModal(id, opener) {
     const p = byId[id]; if (!p) return;
@@ -1385,9 +1387,9 @@
     const n2 = (k, d) => (p) => num(p[k], d);
     const COLS = [
       ['board', 'Recruiting Board', (p) => (Board.has(p.id) ? 1 : 0), (p) => boardBtn(p)],
-      ['src', 'Source', (p) => (p.athleteCreated ? 'Athlete-Created' : p.entered ? 'Coach-Entered (Demo)' : 'Sample'), (p) => (p.athleteCreated ? '<span class="pill navy">Athlete-Created</span>' + (p.guardianVerified ? ' <span class="pill green">Guardian-Verified (Demo)</span>' : '') : p.entered ? '<span class="pill amber">' + (p.imported ? 'Coach-Entered (Imported)' : 'Coach-Entered (Demo)') + '</span> <button type="button" class="md-del" data-del="' + esc(p.id) + '" aria-label="Remove ' + esc(p.name) + '">Remove</button>' : '<span class="pill gray">Sample</span>')],
+      ['src', 'Source', (p) => (p.athleteCreated ? 'Athlete-Created' : p.entered ? 'Coach-Entered (Demo)' : 'Sample'), (p) => (p.athleteCreated ? '<span class="pill navy">Athlete-Created</span>' + (p.guardianVerified ? ' <span class="pill green">Guardian-Verified - Demo</span>' : '') : p.entered ? '<span class="pill amber">' + (p.imported ? 'Coach-Entered (Imported)' : 'Coach-Entered (Demo)') + '</span> <button type="button" class="md-del" data-del="' + esc(p.id) + '" aria-label="Remove ' + esc(p.name) + '">Remove</button>' : '<span class="pill gray">Sample</span>')],
       ['id', 'Player ID', (p) => p.id, (p) => esc(p.id)],
-      ['name', 'Player Name', (p) => p.name, (p) => cardLink(p)],
+      ['name', 'Player Name', (p) => p.name, (p) => cardLink(p) + vTag(p)],
       ['grad', 'Grad Year', (p) => p.grad, (p) => p.grad],
       ['level', 'Current Playing Level', (p) => p.level, (p) => esc(p.level)],
       ['xcollege', 'Current College', (p) => (p.xfer ? p.xfer.college : ''), (p) => esc(p.xfer ? p.xfer.college : 'Not Provided')],

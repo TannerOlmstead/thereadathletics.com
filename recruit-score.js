@@ -89,6 +89,7 @@
   var compute = function (rec, bench) {
     var pos = rec.pos, m = rec.metrics || {}, ver = rec.verified || {}, role = roleOf(rec), isP = pos === 'P';
     var out = { pos: pos, isP: isP, role: role, roleLabel: ROLE_LABEL[role], assumptions: ASSUMPTIONS, comps: [], inputs: [], rs: null, conf: null, needed: [], grades: {}, gradeWhy: {} };
+    var BM = (typeof window !== 'undefined' && window.TheReadBenchmarks) || require('./benchmarks-config.js');
     var b = bench || [];
     var get = function (k) { return num(m[k]); };
     var avgEV = get('avgEV'), maxEV = get('maxEV'), avgFB = get('avgFBV'), maxFB = get('maxFBV');
@@ -104,14 +105,16 @@
       } else {
         add(comps, 'Avg Exit Velocity', 45, avgEV == null ? { why: 'Not entered' } : pct(b, pos, 'avgEV', avgEV, false, true), avgEV + ' mph vs ' + pos + ' benchmarks');
         add(comps, 'Max Exit Velocity', 30, maxEV == null ? { why: 'Not entered' } : pct(b, pos, 'maxEV', maxEV, false, true), maxEV + ' mph vs ' + pos + ' benchmarks');
-        var t = get('t60'); add(comps, 'Position-Adjusted Speed (60 Time)', 15, t == null ? { why: 'Not entered' } : pct(b, pos, 't60', t, true), t + ' sec vs ' + pos + ' benchmarks (lower is better)');
+        var t = get('t60'), tr = t == null ? { why: 'Not entered' } : pct(b, pos, 't60', t, true), tg = t != null && tr.pts == null ? BM.gradeMetric('SIXTY_TIME', pos, t) : null;
+        if (tg) tr = { pts: tg.value * 10 };
+        add(comps, 'Position-Adjusted Speed (60 Time)', 15, tr, t + ' sec vs ' + pos + (tg ? ' ' + BM.VERSION + ' (provisional) benchmark = grade ' + tg.letter + ' (too few same-position players for a percentile)' : ' benchmarks (lower is better)'));
         fp = frame(pos, m.ht, m.wt); add(comps, 'Frame Score', 10, fp, fp.grade ? 'Grade ' + fp.grade + ', Frame Score ' + fp.score + ' of 10' : fp.why);
       }
       var idx = kind === 'pit' ? { avgFBV: 0, maxFBV: 1, ht: 2, wt: 2 } : { avgEV: 0, maxEV: 1, t60: 2, ht: 3, wt: 3 };
       var credit = 0, inputs = [];
       REQUIRED[kind].forEach(function (e) {
         var has = get(e[0]) != null, v = !!ver[e[0]], scored = has && comps[idx[e[0]]].pts != null, cr = !has ? 0 : !scored ? 0 : v ? 1 : SELF_CREDIT, w = e[2];
-        inputs.push({ key: e[0], label: e[1] + (role === 'TwoWay' ? (kind === 'pit' ? ' (Pitching Set)' : ' (Hitting Set)') : ''), value: get(e[0]), status: !has ? 'Missing' : v ? 'Verified' : 'Self-Reported', scored: scored, weight: w, credit: cr, earned: round1(w * cr), gain: round1(w * (1 - cr)), blocked: has && !scored });
+        inputs.push({ key: e[0], label: e[1] + (role === 'TwoWay' ? (kind === 'pit' ? ' (Pitching Set)' : ' (Hitting Set)') : ''), value: get(e[0]), status: !has ? 'Missing' : v ? 'Verified' : 'Self-Reported', simulated: v && /simulated/i.test(ver[e[0]].method || '') ? ver[e[0]].by || 'demo source' : '', scored: scored, weight: w, credit: cr, earned: round1(w * cr), gain: round1(w * (1 - cr)), blocked: has && !scored });
         credit += w * cr;
       });
       return { comps: comps, inputs: inputs, credit: credit };
@@ -135,7 +138,7 @@
     var grade = function (key, parts, why) { var v = reweight(parts); out.grades[key] = v; if (v == null) out.gradeWhy[key] = why; };
     var fr = function (at) { var f = frame(at, m.ht, m.wt); return { pts: f.pts == null ? null : f.pts, w: 1 }; };
     var tvv = get('tv');
-    var BM = (typeof window !== 'undefined' && window.TheReadBenchmarks) || require('./benchmarks-config.js');
+
     out.breakdown = {}; out.gradeValue = {}; out.benchmarkVersion = BM.VERSION;
     var rawFor = { AVG_EV: avgEV, MAX_EV: maxEV, SIXTY_TIME: get('t60'), THROW_VELO: tvv };
     // OPG/DPG use the shared v0.2 position benchmark tables (benchmarks-config.js), not the sample-player pool. Missing components are left out and the rest re-weighted; never F/zero.
@@ -185,7 +188,7 @@
   var esc = function (s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); };
   var panel = function (r, TRC) {
     var h = '<h3>Inputs Used</h3><div class="table-wrap"><table><thead><tr><th scope="col">Metric</th><th scope="col">Value</th><th scope="col">Status</th></tr></thead><tbody>' +
-      r.inputs.map(function (i) { return '<tr><th scope="row">' + esc(i.label) + '</th><td>' + (i.value == null ? 'Not Provided' : esc(i.value)) + '</td><td>' + esc(i.status) + '</td></tr>'; }).join('') + '</tbody></table></div>';
+      r.inputs.map(function (i) { return '<tr><th scope="row">' + esc(i.label) + '</th><td>' + (i.value == null ? 'Not Provided' : esc(i.value)) + '</td><td>' + esc(i.status) + (i.simulated ? ' <span class="pill green">Verified - Demo</span> <span class="muted">simulated, by ' + esc(i.simulated) + '</span>' : '') + '</td></tr>'; }).join('') + '</tbody></table></div>';
     h += '<h3>Component Scores And Weights</h3><div class="table-wrap"><table><thead><tr><th scope="col">Component</th><th scope="col">Workbook Weight</th><th scope="col">Component Score (0-100)</th><th scope="col">Weight Used</th><th scope="col">Points</th></tr></thead><tbody>' +
       r.comps.map(function (c) { return '<tr><th scope="row">' + esc(c.label) + '<br /><span class="muted">' + esc(c.detail) + '</span></th><td>' + c.weight + '%</td><td>' + (c.used ? round1(c.pts) : 'Not Available') + '</td><td>' + (c.used ? round1(c.scaled) + '%' : '&ndash;') + '</td><td>' + (c.used ? round1(c.contrib) : '&ndash;') + '</td></tr>'; }).join('') + '</tbody></table></div>';
     if (r.rs == null) {

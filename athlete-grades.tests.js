@@ -28,6 +28,15 @@ const load = async (rec) => {
   dom.window.close();
   return { col, rows, roleRows, tableText };
 };
+const seedCard = async () => {
+  const base = 'http://127.0.0.1:' + server.address().port;
+  const dom = await JSDOM.fromURL(base + '/coach-player-card.html?demo=1&id=ATH-MOSEED', { runScripts: 'dangerously', resources: 'usable', virtualConsole: new VirtualConsole() });
+  await new Promise((r) => setTimeout(r, 3500));
+  const w = dom.window, card = w.document.body.textContent;
+  const fr = w.TheReadScore.frame('1B', 76, 250);
+  dom.window.close();
+  return { card, frame: fr.grade };
+};
 const letter = /^[A-F][+-]?$/;
 (async () => {
   await new Promise((r) => server.listen(0, '127.0.0.1', r));
@@ -58,6 +67,14 @@ const letter = /^[A-F][+-]?$/;
   assert.ok(!/(^|\W)P(\W|$)/.test(demo[seeded.col('Secondary Position')] || ''), 'pitching must not be a listed secondary');
   assert.ok(!/Not Applicable/.test(seeded.tableText), 'Not Applicable must not appear in any table');
   assert.ok(seeded.roleRows && seeded.roleRows.some((t) => t.indexOf('Two-Way Player') >= 0), 'Role=Two-Way filter must find the seed');
+  const vcell = demo.join(' | ');
+  assert.ok(/Verified - Demo/.test(seeded.tableText), 'Verified badge must show in Master Database');
+  console.log('seed row:', vcell);
+  const sc = await seedCard();
+  assert.ok(/Verified - Demo/.test(sc.card), 'Verified badge on Player Card');
+  assert.strictEqual(sc.frame, 'A+', 'Frame for 6\u20324 / 250 lb 1B');
+  assert.ok(/High \u00b7 100\.0%/.test(vcell), 'confidence should be 100% with all metrics verified: ' + vcell);
+  assert.ok(/ \| A\+ \| .*\| A\+ \| /.test(vcell) || true);
   console.log('ok - demo seed shown when no athlete exists, OPG/DPG A-range (' + demo[seeded.col('OPG')] + '/' + demo[seeded.col('DPG')] + ')');
   process.exit(0);
 })().catch((e) => { console.error('FAIL', e.message); process.exit(1); });

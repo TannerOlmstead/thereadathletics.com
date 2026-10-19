@@ -25,12 +25,15 @@ function migratePositions(r) {
 }var PREF_POS = ['C', '1B', '2B', '3B', 'SS', 'OF'];
   var DIVS = ['NCAA Division I', 'NCAA Division II', 'NCAA Division III', 'NAIA', 'NJCAA Division I', 'NJCAA Division II', 'NJCAA Division III', 'Other'];
   var VERIFIERS = [['hs', 'High School Coach'], ['pi', 'Private Instructor / Trainer'], ['sh', 'Showcase / Event Organizer'], ['vdp', 'Other']];
-  var METRICS = [['ht', 'Height (in)', 40, 96], ['wt', 'Weight (lb)', 60, 400], ['t60', '60-Yard Time (sec)', 5, 12], ['tv', 'Throwing Velocity (mph)', 30, 110], ['avgEV', 'Avg Exit Velocity (mph)', 40, 120], ['maxEV', 'Max Exit Velocity (mph)', 40, 130], ['avgFBV', 'Avg Fastball Velocity (mph)', 30, 105], ['maxFBV', 'Max Fastball Velocity (mph)', 30, 110]];
+  var BMK = window.TheReadBenchmarks, UL = function (key, label) { return label + ' (' + (BMK ? BMK.unitOf(key) : '') + ')'; };
+  var METRICS = [['ht', 'Height (in)', 40, 96], ['wt', 'Weight (lb)', 60, 400], ['t60', UL('SIXTY_TIME', '60-Yard Time'), 5, 12], ['tv', UL('THROW_VELO', 'Throwing Velocity'), 30, 110], ['avgEV', UL('AVG_EV', 'Avg Exit Velocity'), 40, 120], ['maxEV', UL('MAX_EV', 'Max Exit Velocity'), 40, 130], ['avgFBV', UL('AVG_FBV', 'Avg Fastball Velocity'), 30, 105], ['maxFBV', UL('MAX_FBV', 'Max Fastball Velocity'), 30, 110]];
   var esc = function (s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); };
   var load = function () { try { var a = JSON.parse(localStorage.getItem(KEY) || '[]'); return Array.isArray(a) ? a.map(migratePositions) : []; } catch (e) { return []; } };
+  // Unit-integrity gate (client and storage layer): a record whose explicit units conflict with the Metric Registry cannot be saved until corrected.
+  var unitErrors = function (rec) { var u = (rec && rec.units) || {}, out = []; Object.keys(u).forEach(function (k) { var c = BMK ? BMK.checkUnit(k, u[k]) : { status: 'OK' }; if (c.status === 'UnitMismatch' || c.status === 'MissingUnit') out.push(c.message); }); return out; };
   var save = function (a) { try { localStorage.setItem(KEY, JSON.stringify(a)); return true; } catch (e) { return false; } };
   var current = function () { var id = localStorage.getItem(CUR); return load().filter(function (a) { return a.id === id; })[0] || null; };
-  var upsert = function (rec) { var a = load(), i = a.map(function (x) { return x.id; }).indexOf(rec.id); if (i < 0) a.push(rec); else a[i] = rec; save(a); try { localStorage.setItem(CUR, rec.id); } catch (e) { /* ignore */ } };
+  var upsert = function (rec) { if (unitErrors(rec).length) return false; var a = load(), i = a.map(function (x) { return x.id; }).indexOf(rec.id); if (i < 0) a.push(rec); else a[i] = rec; save(a); try { localStorage.setItem(CUR, rec.id); } catch (e) { /* ignore */ } };
   var todayIso = function () { return new Date().toISOString().slice(0, 10); };
   var ageOf = function (dob) {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(dob || '')) return null;
@@ -118,7 +121,7 @@ function migratePositions(r) {
     return out;
   };
 
-  window.TheReadAthlete = { migratePositions: migratePositions, normName: normName, match: matchPlayers, load: load, current: current, upsert: upsert, gStatus: gStatus, listed: listed, shares: shares, anyVerified: anyVerified, metricStatus: metricStatus, verifyMetric: verifyMetric, interests: loadI, addInterest: addInterest, removeInterest: removeInterest, markSeen: markSeen, ageOf: ageOf, POS: POS, METRICS: METRICS };
+  window.TheReadAthlete = { unitErrors: unitErrors, migratePositions: migratePositions, normName: normName, match: matchPlayers, load: load, current: current, upsert: upsert, gStatus: gStatus, listed: listed, shares: shares, anyVerified: anyVerified, metricStatus: metricStatus, verifyMetric: verifyMetric, interests: loadI, addInterest: addInterest, removeInterest: removeInterest, markSeen: markSeen, ageOf: ageOf, POS: POS, METRICS: METRICS };
 
   var getPath = function (o, p) { return p.split('.').reduce(function (a, k) { return a == null ? '' : a[k]; }, o); };
   var setPath = function (o, p, v) { var ks = p.split('.'), c = o; ks.slice(0, -1).forEach(function (k) { if (typeof c[k] !== 'object' || c[k] == null) c[k] = {}; c = c[k]; }); c[ks[ks.length - 1]] = v; };
@@ -265,6 +268,7 @@ function migratePositions(r) {
         }
         if (!d.level) bad('level', 'Choose a playing level.'); if (!d.school || !d.school.trim()) bad('school', 'Enter a school or club.'); if (!d.state || !d.state.trim()) bad('state', 'Enter a state.');
         METRICS.forEach(function (m) { var v = d.m[m[0]]; if (v !== '' && v != null && (isNaN(Number(v)) || Number(v) < m[2] || Number(v) > m[3])) bad('m.' + m[0], m[1] + ' must be between ' + m[2] + ' and ' + m[3] + ', or blank.'); });
+        unitErrors({ units: d.units }).forEach(function (msg) { bad('m.units', msg); });
       },
       transfer: function () {
         var t = d.tr || {};

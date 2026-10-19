@@ -37,7 +37,7 @@
   var getMaxFBVGrade = function (v) { return fbvGrade('MAX_FBV', 'Max FBV', v); };
   var getAvgFBVGrade = function (v) { return fbvGrade('AVG_FBV', 'Avg FBV', v); };
   var fbvComp = function (g, why) {
-    return g.letterGrade ? { grade: g.letterGrade, letter: g.letterGrade, score: g.gradeValue, pts: g.gradeValue * 10, source: g.version + ' (' + BM.STATUS + '), ' + g.letterGrade + ' at ' + g.threshold + ' mph' } : { none: true, why: why };
+    return g.letterGrade ? { grade: g.letterGrade, letter: g.letterGrade, score: g.gradeValue, pts: g.gradeValue * 10, source: g.version + ' (' + BM.STATUS + '), ' + g.letterGrade + ' at ' + g.threshold + ' ' + BM.unitOf('AVG_FBV') } : { none: true, why: why };
   };
   var avgFbvGrade = function (mph) {
     try { var g = getAvgFBVGrade(mph); } catch (e) { return { error: e.message }; }
@@ -87,28 +87,34 @@
   var compute = function (rec, bench) {
     var pos = rec.pos, m = rec.metrics || {}, ver = rec.verified || {}, role = roleOf(rec), isP = pos === 'P';
     var out = { pos: pos, isP: isP, role: role, roleLabel: ROLE_LABEL[role], assumptions: ASSUMPTIONS, comps: [], inputs: [], rs: null, conf: null, needed: [], grades: {}, gradeWhy: {} };
-    var get = function (k) { return num(m[k]); };
+    // A measurement with an explicit, incompatible unit (e.g. 60-Yard Time in mph) is UnitMismatch: excluded from every grade, never F/zero, never converted.
+    var unitBad = {}, units = rec.units || {};
+    Object.keys(units).forEach(function (k) { var c = BM.checkUnit(k, units[k]); if (c.status === 'UnitMismatch' || c.status === 'MissingUnit') { if (m[k] != null) unitBad[k] = c.message; } });
+    out.unitMismatches = Object.keys(unitBad).map(function (k) { return { field: k, message: unitBad[k] }; });
+    var get = function (k) { return unitBad[k] ? null : num(m[k]); };
     var avgEV = get('avgEV'), maxEV = get('maxEV'), avgFB = get('avgFBV'), maxFB = get('maxFBV');
-    if (avgEV == null && maxEV != null) avgEV = maxEV; if (maxEV == null && get('avgEV') != null) maxEV = get('avgEV');
-    if (avgFB == null && maxFB != null) avgFB = maxFB; if (maxFB == null && get('avgFBV') != null) maxFB = get('avgFBV');
+    if (avgEV == null && maxEV != null && !unitBad.avgEV) avgEV = maxEV; if (maxEV == null && get('avgEV') != null && !unitBad.maxEV) maxEV = get('avgEV');
+    if (avgFB == null && maxFB != null && !unitBad.avgFBV) avgFB = maxFB; if (maxFB == null && get('avgFBV') != null && !unitBad.maxFBV) maxFB = get('avgFBV');
     var add = function (list, label, weight, r, detail) { list.push({ label: label, weight: weight, pts: r.pts == null ? null : r.pts, letter: r.pts == null ? null : (r.letter || r.grade || null), source: r.pts == null ? null : (r.source || null), detail: r.pts == null ? r.why : detail }); };
     var side = function (kind) {
       var comps = [], fp;
       if (kind === 'pit') {
-        var ag = avgFbvGrade(avgFB); add(comps, 'Avg Fastball Velocity', 40, ag.grade ? ag : { why: ag.error || ag.why }, ag.grade ? avgFB + ' mph = grade ' + ag.grade + ', grade value ' + ag.score + ' of 10 (Avg FBV table)' : '');
-        var mg = maxFbvGrade(maxFB); add(comps, 'Max Fastball Velocity', 30, mg.grade ? mg : { why: mg.error || mg.why }, mg.grade ? maxFB + ' mph = grade ' + mg.grade + ', grade value ' + mg.score + ' of 10 (Max FBV table)' : '');
+        var ag = avgFbvGrade(avgFB); add(comps, 'Avg Fastball Velocity', 40, ag.grade ? ag : { why: ag.error || ag.why }, ag.grade ? avgFB + ' ' + BM.unitOf('AVG_FBV') + ' = grade ' + ag.grade + ', grade value ' + ag.score + ' of 10 (Avg FBV table)' : '');
+        var mg = maxFbvGrade(maxFB); add(comps, 'Max Fastball Velocity', 30, mg.grade ? mg : { why: mg.error || mg.why }, mg.grade ? maxFB + ' ' + BM.unitOf('MAX_FBV') + ' = grade ' + mg.grade + ', grade value ' + mg.score + ' of 10 (Max FBV table)' : '');
         fp = frame('P', m.ht, m.wt); add(comps, 'Frame Score', 30, fp, fp.grade ? 'Grade ' + fp.grade + ', Frame Score ' + fp.score + ' of 10' : fp.why);
       } else {
-        var ae = bm('AVG_EV', pos, avgEV, ' mph'); add(comps, 'Avg Exit Velocity', 45, ae, avgEV + ' mph = grade ' + ae.letter + ' (' + ae.source + ')');
-        var me = bm('MAX_EV', pos, maxEV, ' mph'); add(comps, 'Max Exit Velocity', 30, me, maxEV + ' mph = grade ' + me.letter + ' (' + me.source + ')');
-        var t = get('t60'), tr = bm('SIXTY_TIME', pos, t, ' sec'); add(comps, 'Position-Adjusted Speed (60 Time)', 15, tr, t + ' sec = grade ' + tr.letter + ' (' + tr.source + ')');
+        var ae = bm('AVG_EV', pos, avgEV, ' ' + BM.unitOf('AVG_EV')); add(comps, 'Avg Exit Velocity', 45, ae, avgEV + ' ' + BM.unitOf('AVG_EV') + ' = grade ' + ae.letter + ' (' + ae.source + ')');
+        var me = bm('MAX_EV', pos, maxEV, ' ' + BM.unitOf('MAX_EV')); add(comps, 'Max Exit Velocity', 30, me, maxEV + ' ' + BM.unitOf('MAX_EV') + ' = grade ' + me.letter + ' (' + me.source + ')');
+        var t = get('t60'), tr = bm('SIXTY_TIME', pos, t, ' ' + BM.unitOf('SIXTY_TIME')); add(comps, 'Position-Adjusted Speed (60 Time)', 15, tr, t + ' ' + BM.unitOf('SIXTY_TIME') + ' = grade ' + tr.letter + ' (' + tr.source + ')');
         fp = frame(pos, m.ht, m.wt); add(comps, 'Frame Score', 10, fp, fp.grade ? 'Grade ' + fp.grade + ', Frame Score ' + fp.score + ' of 10' : fp.why);
       }
       var idx = kind === 'pit' ? { avgFBV: 0, maxFBV: 1, ht: 2, wt: 2 } : { avgEV: 0, maxEV: 1, t60: 2, ht: 3, wt: 3 };
+      var UB = { avgEV: 'avgEV', maxEV: 'maxEV', t60: 't60', avgFBV: 'avgFBV', maxFBV: 'maxFBV' };
+      Object.keys(unitBad).forEach(function (k) { if (idx[k] != null && UB[k]) { var cp = comps[idx[k]]; if (cp && cp.pts == null) cp.detail = unitBad[k] + ' Excluded from grades; correct the unit to score it.'; } });
       var credit = 0, inputs = [];
       REQUIRED[kind].forEach(function (e) {
         var has = get(e[0]) != null, v = !!ver[e[0]], scored = has && comps[idx[e[0]]].pts != null, cr = !has ? 0 : !scored ? 0 : v ? 1 : SELF_CREDIT, w = e[2];
-        inputs.push({ key: e[0], label: e[1] + (role === 'TwoWay' ? (kind === 'pit' ? ' (Pitching Set)' : ' (Hitting Set)') : ''), value: get(e[0]), status: !has ? 'Missing' : v ? 'Verified' : 'Self-Reported', simulated: v && /simulated/i.test(ver[e[0]].method || '') ? ver[e[0]].by || 'demo source' : '', scored: scored, weight: w, credit: cr, earned: round1(w * cr), gain: round1(w * (1 - cr)), blocked: has && !scored });
+        inputs.push({ key: e[0], label: e[1] + (role === 'TwoWay' ? (kind === 'pit' ? ' (Pitching Set)' : ' (Hitting Set)') : ''), value: get(e[0]), status: !has ? (unitBad[e[0]] ? 'UnitMismatch' : 'Missing') : v ? 'Verified' : 'Self-Reported', simulated: v && /simulated/i.test(ver[e[0]].method || '') ? ver[e[0]].by || 'demo source' : '', scored: scored, weight: w, credit: cr, earned: round1(w * cr), gain: round1(w * (1 - cr)), blocked: has && !scored });
         credit += w * cr;
       });
       return { comps: comps, inputs: inputs, credit: credit };
@@ -182,7 +188,7 @@
   var panel = function (r, TRC) {
     var h = '<h3>Inputs Used</h3><div class="table-wrap"><table><thead><tr><th scope="col">Metric</th><th scope="col">Value</th><th scope="col">Status</th></tr></thead><tbody>' +
       r.inputs.map(function (i) { return '<tr><th scope="row">' + esc(i.label) + '</th><td>' + (i.value == null ? 'Not Provided' : esc(i.value)) + '</td><td>' + esc(i.status) + (i.simulated ? ' <span class="pill green">Verified - Demo</span> <span class="muted">simulated, by ' + esc(i.simulated) + '</span>' : '') + '</td></tr>'; }).join('') + '</tbody></table></div>';
-    h += '<p class="coach-note"><strong>'+BM.PROVISIONAL_LABEL+'</strong> ('+esc(BM.GROUP)+'). '+esc(BM.PROVISIONAL_TEXT)+'</p>' + '<h3>Component Scores And Weights</h3><div class="table-wrap"><table><thead><tr><th scope="col">Component</th><th scope="col">Workbook Weight</th><th scope="col">Benchmark Grade</th><th scope="col">Component Score (0-100)</th><th scope="col">Weight Used</th><th scope="col">Points</th></tr></thead><tbody>' +
+    h += (r.unitMismatches && r.unitMismatches.length ? '<div class="notice" role="alert"><strong>Unit error (UnitMismatch):</strong> ' + r.unitMismatches.map(function (u) { return esc(u.message); }).join(' ') + ' These values are excluded from every grade and cannot be saved again until the unit is corrected. Nothing is converted automatically.</div>' : '') + '<p class="coach-note"><strong>'+BM.PROVISIONAL_LABEL+'</strong> ('+esc(BM.GROUP)+'). '+esc(BM.PROVISIONAL_TEXT)+'</p>' + '<h3>Component Scores And Weights</h3><div class="table-wrap"><table><thead><tr><th scope="col">Component</th><th scope="col">Workbook Weight</th><th scope="col">Benchmark Grade</th><th scope="col">Component Score (0-100)</th><th scope="col">Weight Used</th><th scope="col">Points</th></tr></thead><tbody>' +
       r.comps.map(function (c) { return '<tr><th scope="row">' + esc(c.label) + '<br /><span class="muted">' + esc(c.detail) + '</span></th><td>' + c.weight + '%</td><td>' + (c.letter ? esc(c.letter) : '&ndash;') + '</td><td>' + (c.used ? round1(c.pts) : 'Not Available') + '</td><td>' + (c.used ? round1(c.scaled) + '%' : '&ndash;') + '</td><td>' + (c.used ? round1(c.contrib) : '&ndash;') + '</td></tr>'; }).join('') + '</tbody></table></div>';
     if (r.rs == null) {
       h += '<p><strong>Result: Not Rated.</strong> ' + esc(r.reason) + ' Nothing is estimated or set to zero.</p>';

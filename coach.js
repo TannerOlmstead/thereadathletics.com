@@ -65,6 +65,7 @@
   const noteHtml = (c, e) => '<div class="ev-note" style="background:' + c.bg + ';border-left:6px solid ' + c.bd + '"><strong class="ev-who"><span class="ev-ini" style="background:' + c.bd + '">' + esc(c.ini) + '</span> ' + esc(c.name) + '</strong> <small>' + esc(c.role) + ' &middot; ' + esc(String(e.ts ? e.ts.replace('T', ' ').slice(0, 16) + ' UTC' : (e.date || 'Date Not Recorded'))) + '</small><span class="ev-text">' + esc(e.note) + '</span></div>';
   const ACTIONS = ['Schedule Live Evaluation', 'Verify Final Metrics', 'Send Program Questionnaire', 'Plan Campus Visit', 'Review New Video'];
 
+  const BMK = window.TheReadBenchmarks, U = (f) => ' ' + (BMK ? BMK.unitOf(f) : '');
   const players = [];
   for (let i = 0; i < 40; i++) {
     const pos = POSCYC[i];
@@ -840,7 +841,7 @@
         card('Grades', [['OPG', 'opg'], ['SOPG', 'sopg'], ['DPG', 'dpg'], ['SDPG', 'sdpg']].filter((g) => !gradeNA(p, g[1])).map((g) => field(g[0], gl(p[g[1]]))).join('') + field('PPG', gl(p.ppg)), 'kvs') +
         card('Team Evaluation', field('HC Grade', nv(p.hc)) + field('PC Grade', nv(p.pc)) + field('AC Grade', nv(p.ac)) + field('Staff Score', staffTxt(p)) + field('Coach Fit Score', nv(p.fit)) + field('Team Need Score', nv(p.need)) + field('Adjusted Recruit Score', num(p.adj)) + field('Priority Score', nv(p.pri)), 'kvs') +
         pcActCard(p.id) +
-        card('Measurables', field('Avg EV', num(p.avgEV) + ' mph') + field('Max EV', num(p.maxEV) + ' mph') + field('Avg FBV', num(p.avgFBV) + ' mph') + field('Max FBV', num(p.maxFBV) + ' mph') + field('Throwing Velo', num(p.tv) + ' mph') + field('60 Time', num(p.t60, 2) + ' s') + field('Pop Time', num(p.pop, 2) + ' s'), 'kvs') +
+        card('Measurables', field('Avg EV', num(p.avgEV) + U('avgEV')) + field('Max EV', num(p.maxEV) + U('maxEV')) + field('Avg FBV', num(p.avgFBV) + U('avgFBV')) + field('Max FBV', num(p.maxFBV) + U('maxFBV')) + field('Throwing Velo', num(p.tv) + U('tv')) + field('60 Time', num(p.t60, 2) + U('t60')) + field('Pop Time', num(p.pop, 2) + U('pop')), 'kvs') +
         card('Database Benchmarks', field('Avg EV vs Avg', bench('avgEV', p)) + field('Max EV vs Avg', bench('maxEV', p)) + field('Avg FBV vs Avg', bench('avgFBV', p)) + field('60 Time vs Avg', bench('t60', p, true, 2)) + field('Overall Standing', stand), 'kvs') +
         card('External Profile Links', field('PBR', 'Not linked in demo') + field('PG', 'Not linked in demo') + field('NCSA', 'Not linked in demo') + field('Fieldlevel', 'Not linked in demo') + field('Video', 'Not linked in demo'), 'kvs') +
         '</div>' +
@@ -1027,7 +1028,7 @@
       team: [['HC Grade', 'hc', 'grade'], ['PC Grade', 'pc', 'grade'], ['AC Grade', 'ac', 'grade'], ['Staff Score', 'staff', 'high'], ['Coach Fit Score', 'fit', 'high'], ['Team Need Score', 'need', 'high'], ['Adjusted Recruit Score', 'adj', 'high'], ['Priority Score', 'pri', 'high']] };
 
     // Database Benchmarks: [label, key, lowerIsBetter, unit, decimals]
-    const B = [['Avg EV vs Avg', 'avgEV', false, ' mph', 1], ['Max EV vs Avg', 'maxEV', false, ' mph', 1], ['Avg FBV vs Avg', 'avgFBV', false, ' mph', 1], ['Max FBV vs Avg', 'maxFBV', false, ' mph', 1], ['60 Time vs Avg', 't60', true, ' s', 2], ['Pop Time vs Avg', 'pop', true, ' s', 2]];
+    const B = [['Avg EV vs Avg', 'avgEV', false, U('avgEV'), 1], ['Max EV vs Avg', 'maxEV', false, U('maxEV'), 1], ['Avg FBV vs Avg', 'avgFBV', false, U('avgFBV'), 1], ['Max FBV vs Avg', 'maxFBV', false, U('maxFBV'), 1], ['60 Time vs Avg', 't60', true, U('t60'), 2], ['Pop Time vs Avg', 'pop', true, U('pop'), 2]];
     const dbAvg = {}, dbN = {};
     B.forEach((b) => { const vals = players.map((p) => p[b[1]]).filter((v) => v != null); dbN[b[1]] = vals.length; dbAvg[b[1]] = vals.length ? vals.reduce((s, v) => s + v, 0) / vals.length : null; });
     const diffOf = (b, p) => (p[b[1]] == null || dbAvg[b[1]] == null ? null : p[b[1]] - dbAvg[b[1]]);
@@ -1390,7 +1391,7 @@
     const NUMS = [
       ['gpa', 'GPA', 0, 5, 0.01], ['ht', 'Height (inches)', 48, 90, 1], ['wt', 'Weight (lbs)', 80, 350, 1],
       ['avgEV', 'Avg EV', 40, 130, 0.1], ['maxEV', 'Max EV', 40, 130, 0.1], ['avgFBV', 'Avg FBV', 40, 110, 0.1], ['maxFBV', 'Max FBV', 40, 110, 0.1],
-      ['tv', 'Throwing Velo', 40, 110, 0.1], ['t60', '60 Time (sec)', 5, 12, 0.01], ['pop', 'Pop Time (sec)', 1.5, 4, 0.01]
+      ['tv', 'Throwing Velo', 40, 110, 0.1], ['t60', '60 Time (' + U('t60').trim() + ')', 5, 12, 0.01], ['pop', 'Pop Time (' + U('pop').trim() + ')', 1.5, 4, 0.01]
     ];
     const LINKS = [['pbr', 'PBR Link'], ['pg', 'PG Link'], ['ncsa', 'NCSA Link'], ['video', 'Video Link'], ['twitter', 'Twitter/X']];
     const dupKey = (p) => String(p.name).trim().toLowerCase() + '|' + p.grad;

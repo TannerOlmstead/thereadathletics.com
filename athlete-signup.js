@@ -6,12 +6,28 @@
   var KEY = 'theReadDemoAthletes', CUR = 'theReadDemoAthleteCurrent', DEMO_CODE = '000000', DAY = 86400000;
   var POS = ['P', 'C', '1B', '2B', '3B', 'SS', 'OF'];
   var LEVELS = ['High School', 'JUCO', '4-Year College / Transfer Portal', 'Other'];
-  var PREF_POS = ['C', '1B', '2B', '3B', 'SS', 'LF', 'CF', 'RF', 'DH/UT'];
+  // Founder rule: the only outfield position is OF, and there is no DH/UT. Stored LF/CF/RF become OF; stored DH/UT become a listed secondary
+// position when one exists, otherwise blank (never invented).
+function migratePositions(r) {
+  var VALID = ['P', 'C', '1B', '2B', '3B', 'SS', 'OF'], OUT = { LF: 1, CF: 1, RF: 1 }, GONE = { DH: 1, UT: 1, 'DH/UT': 1, DP: 1, FLEX: 1, 'DP/FLEX': 1 };
+  var fix = function (o, pk, sk) {
+    if (!o || typeof o !== 'object') return;
+    if (OUT[o[pk]]) o[pk] = 'OF';
+    if (sk && OUT[o[sk]]) o[sk] = 'OF';
+    if (GONE[o[pk]]) o[pk] = sk && VALID.indexOf(o[sk]) >= 0 && o[sk] !== 'P' ? o[sk] : (sk && o[sk] === 'P' ? 'P' : '');
+    if (sk && (GONE[o[sk]] || o[sk] === o[pk])) o[sk] = '';
+  };
+  if (!r || typeof r !== 'object') return r;
+  fix(r, 'pos', 'sec');
+  (r.sports || []).forEach(function (s) { fix(s, 'pos', 'sec'); });
+  if (r.rolePref) fix(r.rolePref, 'pos', null);
+  return r;
+}var PREF_POS = ['C', '1B', '2B', '3B', 'SS', 'OF'];
   var DIVS = ['NCAA Division I', 'NCAA Division II', 'NCAA Division III', 'NAIA', 'NJCAA Division I', 'NJCAA Division II', 'NJCAA Division III', 'Other'];
   var VERIFIERS = [['hs', 'High School Coach'], ['pi', 'Private Instructor / Trainer'], ['sh', 'Showcase / Event Organizer'], ['vdp', 'Other']];
   var METRICS = [['ht', 'Height (in)', 40, 96], ['wt', 'Weight (lb)', 60, 400], ['t60', '60-Yard Time (sec)', 5, 12], ['tv', 'Throwing Velocity (mph)', 30, 110], ['avgEV', 'Avg Exit Velocity (mph)', 40, 120], ['maxEV', 'Max Exit Velocity (mph)', 40, 130], ['avgFBV', 'Avg Fastball Velocity (mph)', 30, 105], ['maxFBV', 'Max Fastball Velocity (mph)', 30, 110]];
   var esc = function (s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); };
-  var load = function () { try { var a = JSON.parse(localStorage.getItem(KEY) || '[]'); return Array.isArray(a) ? a : []; } catch (e) { return []; } };
+  var load = function () { try { var a = JSON.parse(localStorage.getItem(KEY) || '[]'); return Array.isArray(a) ? a.map(migratePositions) : []; } catch (e) { return []; } };
   var save = function (a) { try { localStorage.setItem(KEY, JSON.stringify(a)); return true; } catch (e) { return false; } };
   var current = function () { var id = localStorage.getItem(CUR); return load().filter(function (a) { return a.id === id; })[0] || null; };
   var upsert = function (rec) { var a = load(), i = a.map(function (x) { return x.id; }).indexOf(rec.id); if (i < 0) a.push(rec); else a[i] = rec; save(a); try { localStorage.setItem(CUR, rec.id); } catch (e) { /* ignore */ } };
@@ -102,7 +118,7 @@
     return out;
   };
 
-  window.TheReadAthlete = { normName: normName, match: matchPlayers, load: load, current: current, upsert: upsert, gStatus: gStatus, listed: listed, shares: shares, anyVerified: anyVerified, metricStatus: metricStatus, verifyMetric: verifyMetric, interests: loadI, addInterest: addInterest, removeInterest: removeInterest, markSeen: markSeen, ageOf: ageOf, POS: POS, METRICS: METRICS };
+  window.TheReadAthlete = { migratePositions: migratePositions, normName: normName, match: matchPlayers, load: load, current: current, upsert: upsert, gStatus: gStatus, listed: listed, shares: shares, anyVerified: anyVerified, metricStatus: metricStatus, verifyMetric: verifyMetric, interests: loadI, addInterest: addInterest, removeInterest: removeInterest, markSeen: markSeen, ageOf: ageOf, POS: POS, METRICS: METRICS };
 
   var getPath = function (o, p) { return p.split('.').reduce(function (a, k) { return a == null ? '' : a[k]; }, o); };
   var setPath = function (o, p, v) { var ks = p.split('.'), c = o; ks.slice(0, -1).forEach(function (k) { if (typeof c[k] !== 'object' || c[k] == null) c[k] = {}; c = c[k]; }); c[ks[ks.length - 1]] = v; };

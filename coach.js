@@ -29,7 +29,7 @@
   const twTag = (p) => (p.twoWay ? ' <span class="pill navy">Two-Way</span>' : '');
   const vTag = (p) => (p.simVerified ? ' <span class="pill green" title="Simulated demo verification by ' + esc(p.simVerified) + '">Verified - Demo</span>' : '');
   // Baseball position order used for sorting and filter lists; a two-way player with P primary sorts by the hitting position.
-  const POSNUM = { P: 1, C: 2, '1B': 3, '2B': 4, '3B': 5, SS: 6, LF: 7, CF: 8, RF: 9, OF: 7, DH: 10, UT: 11 };
+  const POSNUM = { P: 1, C: 2, '1B': 3, '2B': 4, '3B': 5, SS: 6, OF: 7 };
   const posNum = (x) => (x && POSNUM[x] != null ? POSNUM[x] : 99);
   const posRank = (p) => (p.twoWay && p.pos === 'P' && p.sec && p.sec !== 'P' ? posNum(p.sec) : posNum(p.pos));
   const secRank = (p) => (p.sec ? posNum(p.sec) : null);
@@ -135,7 +135,7 @@
   const lvlSort = (p) => (LVL_ORDER[p.level] || 4) * 10000 + (p.grad || 0);
   const eligSort = (p) => (p.level === 'High School' || p.elig == null || p.elig === '' ? null : Number(p.elig));
   // Role preference is what the ATHLETE wants in college (an athlete preference, not a rating). Projected College Role is the coach's own entry. Neither changes Recruit Score, Tier or Confidence.
-  const PREF_POS = ['C', '1B', '2B', '3B', 'SS', 'LF', 'CF', 'RF', 'DH/UT'];
+  const PREF_POS = ['C', '1B', '2B', '3B', 'SS', 'OF'];
   const PROJ_ROLES = ['Pitcher', 'Position Player', 'Two-Way'];
   const prefTxt = (p) => {
     const r = p.pref;
@@ -170,6 +170,7 @@
   const sportId = (n) => { const x = SPORTS.filter((y) => y.name === n)[0]; return x ? x.id : 'baseball'; };
   const sportKey = (n) => STORE_KEY + ':' + sportId(n);
   const readList = (k) => { try { const a = JSON.parse(localStorage.getItem(k) || '[]'); return Array.isArray(a) ? a : []; } catch (e) { return []; } };
+  const migratePos = (a) => (window.TheReadAthlete && window.TheReadAthlete.migratePositions ? window.TheReadAthlete.migratePositions(a) : a);
   const loadAdded = () => {
     const legacy = readList(STORE_KEY);
     if (legacy.length || localStorage.getItem(STORE_KEY) !== null) {
@@ -178,7 +179,7 @@
         localStorage.removeItem(STORE_KEY);
       } catch (e) { /* ignore */ }
     }
-    return SPORT_NAMES.reduce((all, n) => all.concat(readList(sportKey(n)).map((a) => Object.assign(a, { sport: n }))), []);
+    return SPORT_NAMES.reduce((all, n) => all.concat(readList(sportKey(n)).map((a) => migratePos(Object.assign(a, { sport: n })))), []);
   };
   const saveAdded = (a) => {
     try {
@@ -203,7 +204,7 @@
   const athGpa = (aid) => { try { const x = JSON.parse(localStorage.getItem('theReadDemoAthleteExtras') || '{}')[aid]; const g = x && parseFloat(x.gpa); return isFinite(g) && g >= 0 && g <= 5 ? g : null; } catch (e) { return null; } };
   (() => {
     let recs = [];
-    try { recs = JSON.parse(localStorage.getItem('theReadDemoAthletes') || '[]'); } catch (e) { recs = []; }
+    try { recs = JSON.parse(localStorage.getItem('theReadDemoAthletes') || '[]'); if (Array.isArray(recs)) recs = recs.map(migratePos); } catch (e) { recs = []; }
     const DEMO_VERIFIED = {}; ['ht', 'wt', 't60', 'tv', 'avgEV', 'maxEV', 'avgFBV', 'maxFBV'].forEach((k) => { DEMO_VERIFIED[k] = { by: 'Demo Verifier (simulated)', role: 'Demo Verified Data Provider', date: '2026-01-15', method: 'Simulated demo verification', vid: 'demo-verifier' }; });
     // Demo seed: shown only when this browser has no athlete records (never written to storage, so it cannot overwrite real records).
     if (Array.isArray(recs) && !recs.length) recs = [{ id: 'ath-demoseed', submitted: true, name: 'Two-Way Player', email: '', dob: '2000-01-01', age: 25, path: 'adult', sport: 'Baseball', pos: '1B', sec: '',

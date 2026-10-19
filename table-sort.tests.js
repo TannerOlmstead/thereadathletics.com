@@ -4,8 +4,8 @@ let JSDOM, VirtualConsole;
 try { ({ JSDOM, VirtualConsole } = require(process.env.JSDOM_PATH || 'jsdom')); } catch (e) { console.log('SKIPPED: jsdom not installed'); process.exit(0); }
 const server = http.createServer((q, res) => { fs.readFile(path.join(__dirname, decodeURIComponent(q.url.split('?')[0])), (e, b) => { if (e) { res.statusCode = 404; res.end(); } else res.end(b); }); });
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
-const ORDER = ['P', 'C', '1B', '2B', '3B', 'SS', 'LF', 'CF', 'RF', 'OF', 'DH', 'UT'];
-const rank = (x) => { const i = ORDER.indexOf(x); return x === 'OF' ? 6 : i < 0 ? 99 : i + 1; };
+const ORDER = ['P', 'C', '1B', '2B', '3B', 'SS', 'OF'];
+const rank = (x) => { const i = ORDER.indexOf(x); return i < 0 ? 99 : i + 1; };
 const open = async (page) => {
   const dom = await JSDOM.fromURL('http://127.0.0.1:' + server.address().port + '/' + page + '?demo=1', { runScripts: 'dangerously', resources: 'usable', virtualConsole: new VirtualConsole() });
   await wait(3500);

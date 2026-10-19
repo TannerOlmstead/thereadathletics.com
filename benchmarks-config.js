@@ -1,4 +1,4 @@
-/* THE READ Baseball Position Benchmarks v0.2 (Provisional). Single shared config for OPG/DPG thresholds and weights.
+/* THE READ Progressive Raw-Measurable Benchmarks v0.5 (Provisional; v0.2 retired and preserved below). Single shared config for OPG/DPG thresholds and weights.
    No other file may hard-code these numbers. Rows are A+ .. D; columns are C, 1B, 2B, 3B, SS, OF. Below the D row is F. */
 (function (root, factory) {
   var api = factory();
@@ -13,36 +13,65 @@
   // Position on the site's 0-100 grade-display scale, so letters render the same everywhere (see classification.js).
   var DISPLAY_SCORE = { 'A+': 98, A: 95, 'A-': 92, 'B+': 88, B: 85, 'B-': 82, 'C+': 78, C: 75, 'C-': 72, D: 65, F: 50 };
   var POSITIONS = ['C', '1B', '2B', '3B', 'SS', 'OF'];
-  var VERSION = 'THE READ Baseball Position Benchmarks v0.2';
+  var GROUP = 'THE READ Progressive Raw-Measurable Benchmarks v0.5';
+  var VERSION = GROUP;
   var STATUS = 'Provisional';
-  // v0.2 (Provisional): every MAX_EV cell = the matching AVG_EV cell + 6 mph. THROW_VELO and SIXTY_TIME are separate tables.
+  var PROVISIONAL_LABEL = 'Provisional Benchmark';
+  var PROVISIONAL_TEXT = 'This benchmark uses Progressive Tier Spacing and has not been approved as final production scoring logic.';
+  // Every table is stored independently (MAX_EV is NOT derived from AVG_EV). Rows A+ .. D; columns C, 1B, 2B, 3B, SS, OF. Below the D row is F.
+  // Position-free tables (FBV) use a single column. POP_TIME is catcher only.
   var TABLES = {
-    AVG_EV: { label: 'Average Exit Velocity', unit: 'mph', lower: false, rows: [[90, 94, 91, 94, 92, 94], [88, 92, 89, 92, 90, 92], [86, 90, 87, 90, 88, 90], [84, 88, 85, 88, 86, 88], [82, 86, 83, 86, 84, 86], [80, 84, 81, 84, 82, 84], [78, 82, 79, 82, 80, 82], [76, 80, 77, 80, 78, 80], [74, 78, 75, 78, 76, 78], [70, 74, 71, 74, 72, 74]] },
-    MAX_EV: { label: 'Maximum Exit Velocity', unit: 'mph', lower: false, rows: [[96, 100, 97, 100, 98, 100], [94, 98, 95, 98, 96, 98], [92, 96, 93, 96, 94, 96], [90, 94, 91, 94, 92, 94], [88, 92, 89, 92, 90, 92], [86, 90, 87, 90, 88, 90], [84, 88, 85, 88, 86, 88], [82, 86, 83, 86, 84, 86], [80, 84, 81, 84, 82, 84], [76, 80, 77, 80, 78, 80]] },
-    SIXTY_TIME: { label: '60-Yard Time', unit: 'seconds', lower: true, rows: [[6.90, 6.90, 6.60, 6.75, 6.60, 6.55], [7.05, 7.05, 6.75, 6.90, 6.75, 6.70], [7.20, 7.20, 6.90, 7.05, 6.90, 6.85], [7.35, 7.35, 7.05, 7.20, 7.05, 7.00], [7.50, 7.50, 7.20, 7.35, 7.20, 7.15], [7.65, 7.65, 7.35, 7.50, 7.35, 7.30], [7.80, 7.80, 7.50, 7.65, 7.50, 7.45], [7.95, 7.95, 7.65, 7.80, 7.65, 7.60], [8.10, 8.10, 7.80, 7.95, 7.80, 7.75], [8.40, 8.40, 8.10, 8.25, 8.10, 8.05]] },
-    THROW_VELO: { label: 'Throwing Velocity', unit: 'mph', lower: false, rows: [[85, 86, 88, 90, 91, 93], [83, 84, 86, 88, 89, 91], [81, 82, 84, 86, 87, 89], [79, 80, 82, 84, 85, 87], [77, 78, 80, 82, 83, 85], [75, 76, 78, 80, 81, 83], [73, 74, 76, 78, 79, 81], [71, 72, 74, 76, 77, 79], [69, 70, 72, 74, 75, 77], [65, 66, 68, 70, 71, 73]] }
+    AVG_EV: { label: 'Average Exit Velocity', unit: 'mph', lower: false, decimals: 1, version: 'THE READ Average EV Benchmarks v0.4', rows: [[94, 98, 95, 98, 96, 98], [91, 95, 92, 95, 93, 95], [89, 93, 90, 93, 91, 93], [88, 92, 89, 92, 90, 92], [87, 91, 88, 91, 89, 91], [86, 90, 87, 90, 88, 90], [85, 89, 86, 89, 87, 89], [84, 88, 85, 88, 86, 88], [83, 87, 84, 87, 85, 87], [80, 84, 81, 84, 82, 84]] },
+    MAX_EV: { label: 'Maximum Exit Velocity', unit: 'mph', lower: false, decimals: 1, version: 'THE READ Maximum EV Benchmarks v0.4', rows: [[102, 106, 103, 106, 104, 106], [99, 103, 100, 103, 101, 103], [97, 101, 98, 101, 99, 101], [96, 100, 97, 100, 98, 100], [95, 99, 96, 99, 97, 99], [94, 98, 95, 98, 96, 98], [93, 97, 94, 97, 95, 97], [92, 96, 93, 96, 94, 96], [91, 95, 92, 95, 93, 95], [88, 92, 89, 92, 90, 92]] },
+    SIXTY_TIME: { label: '60-Yard Time', unit: 'seconds', lower: true, decimals: 2, version: 'THE READ Position-Adjusted 60-Yard Benchmarks v0.5', rows: [[6.85, 6.85, 6.50, 6.65, 6.50, 6.45], [7.05, 7.05, 6.70, 6.85, 6.70, 6.65], [7.20, 7.20, 6.85, 7.00, 6.85, 6.80], [7.35, 7.35, 7.00, 7.15, 7.00, 6.95], [7.50, 7.50, 7.15, 7.30, 7.15, 7.10], [7.60, 7.60, 7.25, 7.40, 7.25, 7.20], [7.70, 7.70, 7.35, 7.50, 7.35, 7.30], [7.80, 7.80, 7.45, 7.60, 7.45, 7.40], [7.90, 7.90, 7.55, 7.70, 7.55, 7.50], [8.00, 8.00, 7.70, 7.85, 7.70, 7.65]] },
+    THROW_VELO: { label: 'Throwing Velocity', unit: 'mph', lower: false, decimals: 1, version: 'THE READ Position-Player Throwing Velocity Benchmarks v0.4', rows: [[85, 86, 88, 90, 91, 93], [82, 83, 85, 87, 88, 90], [80, 81, 83, 85, 86, 88], [78, 79, 81, 83, 84, 86], [76, 77, 79, 81, 82, 84], [74, 75, 77, 79, 80, 82], [72, 73, 75, 77, 78, 80], [70, 71, 73, 75, 76, 78], [68, 69, 71, 73, 74, 76], [65, 66, 68, 70, 71, 73]] },
+    POP_TIME: { label: 'Catcher Pop Time', unit: 'seconds', lower: true, decimals: 2, version: 'THE READ Catcher Pop Time Benchmarks v0.4', positions: ['C'], rows: [[1.82], [1.90], [1.95], [2.00], [2.05], [2.10], [2.15], [2.20], [2.25], [2.35]] },
+    AVG_FBV: { label: 'Average Fastball Velocity', unit: 'mph', lower: false, decimals: 1, version: 'THE READ Average FBV Benchmarks v0.4', positions: ['P'], rows: [[95], [92], [90], [88], [86], [84], [82], [80], [78], [75]] },
+    MAX_FBV: { label: 'Maximum Fastball Velocity', unit: 'mph', lower: false, decimals: 1, version: 'THE READ Maximum FBV Benchmarks v0.4', positions: ['P'], rows: [[98], [95], [93], [91], [89], [87], [85], [83], [81], [78]] }
   };
-  // Weights per spec Part 1. Frame Score is provisional (workbook Grade Table). Each set totals 1.0.
+  // Retired, preserved history: v0.2 position benchmarks (MAX_EV was AVG_EV + 6). Not used for grading; kept for before/after comparison.
+  var RETIRED = {
+    'THE READ Baseball Position Benchmarks v0.2': { status: 'Retired', tables: {
+      AVG_EV: { lower: false, rows: [[90, 94, 91, 94, 92, 94], [88, 92, 89, 92, 90, 92], [86, 90, 87, 90, 88, 90], [84, 88, 85, 88, 86, 88], [82, 86, 83, 86, 84, 86], [80, 84, 81, 84, 82, 84], [78, 82, 79, 82, 80, 82], [76, 80, 77, 80, 78, 80], [74, 78, 75, 78, 76, 78], [70, 74, 71, 74, 72, 74]] },
+      MAX_EV: { lower: false, rows: [[96, 100, 97, 100, 98, 100], [94, 98, 95, 98, 96, 98], [92, 96, 93, 96, 94, 96], [90, 94, 91, 94, 92, 94], [88, 92, 89, 92, 90, 92], [86, 90, 87, 90, 88, 90], [84, 88, 85, 88, 86, 88], [82, 86, 83, 86, 84, 86], [80, 84, 81, 84, 82, 84], [76, 80, 77, 80, 78, 80]] },
+      SIXTY_TIME: { lower: true, rows: [[6.90, 6.90, 6.60, 6.75, 6.60, 6.55], [7.05, 7.05, 6.75, 6.90, 6.75, 6.70], [7.20, 7.20, 6.90, 7.05, 6.90, 6.85], [7.35, 7.35, 7.05, 7.20, 7.05, 7.00], [7.50, 7.50, 7.20, 7.35, 7.20, 7.15], [7.65, 7.65, 7.35, 7.50, 7.35, 7.30], [7.80, 7.80, 7.50, 7.65, 7.50, 7.45], [7.95, 7.95, 7.65, 7.80, 7.65, 7.60], [8.10, 8.10, 7.80, 7.95, 7.80, 7.75], [8.40, 8.40, 8.10, 8.25, 8.10, 8.05]] },
+      THROW_VELO: { lower: false, rows: [[85, 86, 88, 90, 91, 93], [83, 84, 86, 88, 89, 91], [81, 82, 84, 86, 87, 89], [79, 80, 82, 84, 85, 87], [77, 78, 80, 82, 83, 85], [75, 76, 78, 80, 81, 83], [73, 74, 76, 78, 79, 81], [71, 72, 74, 76, 77, 79], [69, 70, 72, 74, 75, 77], [65, 66, 68, 70, 71, 73]] },
+      AVG_FBV: { lower: false, rows: [[92], [89], [86], [83], [80], [77], [74], [71], [68], [65]] },
+      MAX_FBV: { lower: false, rows: [[95], [92], [89], [86], [83], [80], [77], [74], [71], [68]] }
+    } }
+  };  // Weights per spec Part 1. Frame Score is provisional (workbook Grade Table). Each set totals 1.0.
   var FORMULAS = {
     OPG: { version: 'Working v0.1', parts: [['AVG_EV', 'Average Exit Velocity', 0.45], ['MAX_EV', 'Maximum Exit Velocity', 0.30], ['SIXTY_TIME', 'Position-Adjusted 60-Yard', 0.15], ['FRAME', 'Frame Score (provisional)', 0.10]] },
     DPG: { version: 'Working v0.1', parts: [['THROW_VELO', 'Throwing Velocity', 0.45], ['SIXTY_TIME', 'Position-Adjusted 60-Yard', 0.45], ['FRAME', 'Frame Score (provisional)', 0.10]] }
   };
-  var threshold = function (key, pos, i) { var c = POSITIONS.indexOf(pos); return c < 0 ? null : TABLES[key].rows[i][c]; };
-  // Returns { letter, value, threshold } for a raw measurement, or null when the value or position is missing (never F/zero).
-  var gradeMetric = function (key, pos, raw) {
-    var v = raw == null || raw === '' ? NaN : Number(raw), t = TABLES[key];
-    if (!t || !isFinite(v) || POSITIONS.indexOf(pos) < 0) return null;
+  var posList = function (t) { return t.positions || POSITIONS; };
+  var colOf = function (t, pos) { return posList(t).indexOf(pos); };
+  var threshold = function (key, pos, i, tables) { var t = (tables || TABLES)[key], c = colOf(t, pos); return c < 0 ? null : t.rows[i][c]; };
+  // One shared lookup. Returns { letter, value, threshold, version, status } for a valid raw measurement (full stored precision),
+  // or null when the value is missing/invalid/negative or the position has no table (Not Rated; never F/zero). Pass tables=RETIRED[...].tables for comparison.
+  var gradeMetric = function (key, pos, raw, tables) {
+    var v = raw == null || raw === '' || typeof raw === 'boolean' ? NaN : Number(raw), t = (tables || TABLES)[key], meta = TABLES[key];
+    if (!t || !isFinite(v) || v < 0) return null;
+    var p = meta.positions && meta.positions.length === 1 && meta.positions[0] === 'P' && !pos ? 'P' : pos;
+    if (colOf(meta, p) < 0) return null;
     for (var i = 0; i < GRADES.length; i++) {
-      var th = threshold(key, pos, i);
-      if (t.lower ? v <= th : v >= th) return { letter: GRADES[i], value: GRADE_VALUES[GRADES[i]], threshold: th };
+      var th = threshold(key, p, i, tables);
+      if (t.lower ? v <= th : v >= th) return { letter: GRADES[i], value: GRADE_VALUES[GRADES[i]], threshold: th, version: tables ? 'v0.2 (Retired)' : meta.version, status: tables ? 'Retired' : STATUS };
     }
-    return { letter: 'F', value: GRADE_VALUES.F, threshold: threshold(key, pos, GRADES.length - 1) };
+    return { letter: 'F', value: GRADE_VALUES.F, threshold: threshold(key, p, GRADES.length - 1, tables), version: tables ? 'v0.2 (Retired)' : meta.version, status: tables ? 'Retired' : STATUS };
   };
-  var letterFor = function (value) {
+  // Before/after comparison (comparison mode only; never writes official scores). inputs = { AVG_EV: n, ... }.
+  var compare = function (pos, inputs) {
+    var old = RETIRED['THE READ Baseball Position Benchmarks v0.2'].tables;
+    return Object.keys(inputs).map(function (k) {
+      var a = gradeMetric(k, pos, inputs[k], old), b = gradeMetric(k, pos, inputs[k]);
+      return { metric: k, raw: inputs[k], existing: a && a.letter, proposed: b && b.letter, changed: !!(a && b && a.letter !== b.letter) };
+    });
+  };  var letterFor = function (value) {
     if (value == null || !isFinite(value)) return null;
     var v = Number(Number(value).toPrecision(12));
     for (var i = 0; i < LETTER_FLOORS.length; i++) if (v >= LETTER_FLOORS[i][0]) return LETTER_FLOORS[i][1];
     return 'F';
   };
-  return { VERSION: VERSION, STATUS: STATUS, GRADES: GRADES, GRADE_VALUES: GRADE_VALUES, DISPLAY_SCORE: DISPLAY_SCORE, POSITIONS: POSITIONS, TABLES: TABLES, FORMULAS: FORMULAS, gradeMetric: gradeMetric, letterFor: letterFor };
+  return { VERSION: VERSION, GROUP: GROUP, STATUS: STATUS, PROVISIONAL_LABEL: PROVISIONAL_LABEL, PROVISIONAL_TEXT: PROVISIONAL_TEXT, RETIRED: RETIRED, compare: compare, GRADES: GRADES, GRADE_VALUES: GRADE_VALUES, DISPLAY_SCORE: DISPLAY_SCORE, POSITIONS: POSITIONS, TABLES: TABLES, FORMULAS: FORMULAS, gradeMetric: gradeMetric, letterFor: letterFor };
 });

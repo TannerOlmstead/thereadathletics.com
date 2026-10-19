@@ -6,48 +6,47 @@
   /* Grade Tables copied from The READ Formulas For Website Reference.xlsx (Grade Tables sheet). Rows: [grade, minH, maxH, minW, maxW]. */
   var FRAME_TABLES = {"Pitcher":[["F",0,71,0,999],["D",72,73,150,180],["C-",72,74,170,195],["C",73,75,180,210],["C+",74,76,190,220],["B-",74,77,200,230],["B",75,78,210,240],["B+",75,79,220,250],["A-",76,80,225,260],["A",76,81,235,270],["A+",77,83,245,280]],"Catcher":[["F",0,69,0,999],["D",70,71,170,190],["C-",70,72,180,200],["C",71,73,190,210],["C+",71,74,195,215],["B-",72,75,200,220],["B",72,76,205,225],["B+",72,76,210,230],["A-",73,76,215,235],["A",73,76,220,240],["A+",74,76,225,245]],"1B":[["F",0,71,0,999],["D",72,73,180,205],["C-",72,74,190,215],["C",73,75,200,225],["C+",73,76,210,235],["B-",74,77,215,240],["B",74,78,220,245],["B+",74,78,225,250],["A-",75,78,230,255],["A",75,79,235,260],["A+",74,80,240,265]],"2B":[["F",0,67,0,999],["D",68,69,150,170],["C-",69,70,160,175],["C",69,71,170,185],["C+",70,72,175,190],["B-",70,73,180,195],["B",71,74,185,200],["B+",71,74,190,205],["A-",72,74,195,210],["A",72,74,200,215],["A+",71,74,205,220]],"3B":[["F",0,70,0,999],["D",71,72,170,190],["C-",71,73,180,200],["C",72,74,190,210],["C+",72,75,200,220],["B-",73,76,205,225],["B",73,77,210,230],["B+",73,77,215,235],["A-",74,77,220,240],["A",74,78,225,245],["A+",73,78,230,250]],"SS":[["F",0,68,0,999],["D",69,70,155,170],["C-",69,71,165,180],["C",70,72,175,190],["C+",70,73,180,195],["B-",71,74,185,200],["B",71,74,190,205],["B+",71,75,195,210],["A-",72,75,200,215],["A",72,75,205,220],["A+",71,75,210,225]],"OF":[["F",0,70,0,999],["D",71,72,165,185],["C-",71,73,175,195],["C",72,74,185,205],["C+",72,75,190,210],["B-",73,76,195,220],["B",73,77,205,225],["B+",73,78,210,230],["A-",74,78,215,235],["A",74,79,220,240],["A+",74,80,225,245]]};
   var FRAME_SCORE = {"F":1,"D":3,"C-":5,"C":6,"C+":7,"B-":7.5,"B":8,"B+":8.5,"A-":9,"A":9.5,"A+":10};
-  /* Max FBV grade table supplied by the owner (not in the workbook). Rows: [min mph, letter, grade value], highest first. A band is >= its min and < the next band's min, tested on the unrounded mph. */
-  var MAX_FBV_BANDS = [[95,'A+',10],[92,'A',9.5],[89,'A-',9],[86,'B+',8.5],[83,'B',8],[80,'B-',7.5],[77,'C+',7],[74,'C',6],[71,'C-',5],[68,'D',3],[0,'F',1]];
-  /* Avg FBV grade table supplied by the owner. Same band rule as Max FBV. */
-  var AVG_FBV_BANDS = [[92,'A+',10],[89,'A',9.5],[86,'A-',9],[83,'B+',8.5],[80,'B',8],[77,'B-',7.5],[74,'C+',7],[71,'C',6],[68,'C-',5],[65,'D',3],[0,'F',1]];
+  var BM = (typeof window !== 'undefined' && window.TheReadBenchmarks) || require('./benchmarks-config.js');
+  /* Fastball tables live in benchmarks-config.js (AVG_FBV / MAX_FBV v0.4). Bands below are derived read-only views: [min mph, letter, grade value]. */
+  var bands = function (key) { return BM.GRADES.map(function (g, i) { return [BM.TABLES[key].rows[i][0], g, BM.GRADE_VALUES[g]]; }).concat([[0, 'F', 1]]); };
+  var MAX_FBV_BANDS = bands('MAX_FBV'), AVG_FBV_BANDS = bands('AVG_FBV');
   var SELF_CREDIT = 0.25;
   var ASSUMPTIONS = [
     'Weights come from the workbook: position players use Avg EV 45%, Max EV 30%, Position-Adjusted Speed 15%, Frame Score 10%. Pitchers use Avg FBV 40%, Max FBV 30%, Frame Score 30%. Speed does not apply to pitchers.',
-    'Founder decision: hitter components are measured against the shared THE READ Baseball Position Benchmarks v0.2 (Provisional, benchmarks-config.js) for the player position, not against the Master Database. Avg EV, Max EV and 60 Time (and Throwing Velocity in Athletic Score) are looked up in the position table to get a letter grade; component score = grade value (A+ 10 ... F 1) x 10. LF/CF/RF use the OF table. Positions with no table (DH, UT, etc.) are Benchmark Missing: the component is left out and re-scaled, never zero.',
-    'Frame Score (1-10) comes from the position Grade Table: the highest grade whose height and weight ranges both match, else F. It is multiplied by 10 to sit on the 0-100 scale. Positions without a Grade Table (DH/UT) have no Frame Score.',
+    'Founder decision: hitter components are measured against the shared THE READ Baseball Position Benchmarks v0.5 (Provisional, benchmarks-config.js) for the player position, not against the Master Database. Avg EV, Max EV and 60 Time (and Throwing Velocity in Athletic Score) are looked up in the position table to get a letter grade; component score = grade value (A+ 10 ... F 1) x 10. OF is the only outfield position. A blank or unsupported position is Benchmark Missing: the component is left out and re-scaled, never zero.',
+    'Frame Score (1-10) comes from the position Grade Table: the highest grade whose height and weight ranges both match, else F. It is multiplied by 10 to sit on the 0-100 scale. A blank or unsupported position has no Frame Score.',
     'Velocity policy from the workbook: if only Avg exists it is used for Avg and Max; if only Max exists it is used for both.',
     'Missing components are left out and the remaining weights are re-scaled to 100% (workbook rule: reweight when data is missing). At least one exit velocity (hitters) or one fastball velocity (pitchers) is required, otherwise the result is Not Rated.',
     'Role parity: Confidence counts only the metrics REQUIRED for the player role (REQUIRED config above). Pitcher Only (PO): pitching set. Hitter: hitting/speed/frame set. Two-Way: both sets, each counted fully and averaged. The weights in every set sum to 100, so no role is easier or harder to reach 100%. An input that cannot be scored (for example too few benchmark players) earns no Confidence, so Confidence is never 100% while Recruit Score components are missing.',
-    'Projection grades (provisional, final workbook weights are an open question): OPG (Working v0.1) = Avg EV 45 / Max EV 30 / 60 Time 15 / Frame 10 and DPG = Throwing Velocity 45 / 60 Time 45 / Frame 10, each graded against the shared THE READ Baseball Position Benchmarks v0.2 (Provisional) for the position, with Frame provisional; SOPG/SDPG use the same formulas at the secondary position; PPG = Avg FBV 40 / Max FBV 30 / Frame 30 (owner tables); Athletic Score = 60 Time 40 / Throwing Velocity 30 / Frame Score 30, each graded on the v0.2 position tables. All on 0-100, shown as letters via the Universal Grade Conversion table. Missing parts are left out, never zeroed; no inputs means Not Rated.',
+    'Projection grades (provisional, final workbook weights are an open question): OPG (Working v0.1) = Avg EV 45 / Max EV 30 / 60 Time 15 / Frame 10 and DPG = Throwing Velocity 45 / 60 Time 45 / Frame 10, each graded against the shared THE READ Progressive Raw-Measurable Benchmarks v0.5 (Provisional) for the position, with Frame provisional; SOPG/SDPG use the same formulas at the secondary position; PPG = Avg FBV 40 / Max FBV 30 / Frame 30 (FBV v0.4 tables); Athletic Score = 60 Time 40 / Throwing Velocity 30 / Frame Score 30, each graded on the v0.5 benchmark tables. All on 0-100, shown as letters via the Universal Grade Conversion table. Missing parts are left out, never zeroed; no inputs means Not Rated.',
     'Confidence % = weighted share of Recruit Score inputs that are verified. Each input is weighted by its share of the score: hitters Avg EV 45, Max EV 30, 60 Time 15, Height 5, Weight 5 (Frame Score 10 split between height and weight); pitchers Avg FBV 40, Max FBV 30, Height 15, Weight 15. Each input must be verified individually. A verified input earns its full weight, a self-reported input earns 25% of its weight (documented choice, easy to change: SELF_CREDIT), a missing input earns 0. Confidence never changes the Recruit Score or Tier.',
-    'Pitching Potential Grade: Avg FBV (40%) and Max FBV (30%) are graded with the owner-supplied tables (Avg: A+ at 92.0 mph and up down to F below 65.0; Max: A+ at 95.0 and up down to F below 68.0), using the unrounded mph; grade value times 10 is the component score. Frame Score is 30%. A missing component is left out and the others re-scaled, never zeroed.',
+    'Pitching Potential Grade: Avg FBV (40%) and Max FBV (30%) are graded with the v0.4 FBV tables in benchmarks-config.js (Avg: A+ at 95.0 mph and up down to F below 75.0; Max: A+ at 98.0 and up down to F below 78.0), using the unrounded mph; grade value times 10 is the component score. Frame Score is 30%. A missing component is left out and the others re-scaled, never zeroed.',
+    'Provisional Benchmark: ' + BM.PROVISIONAL_TEXT + ' Progressive spacing is applied once, at the raw-measurable layer only; OPG, DPG, PPG, Athletic Score, Frame and Recruit Score stay linear weighted combinations of grade values. Self-reported inputs get a provisional grade at 25% confidence credit.',
     'GPA and every other non-baseball input are never used.'
   ];
-  var BM = (typeof window !== 'undefined' && window.TheReadBenchmarks) || require('./benchmarks-config.js');
   var round1 = function (n) { return Math.round(n * 10) / 10; };
   var num = function (v) { return v == null || v === '' || isNaN(Number(v)) ? null : Number(v); };
 
-  var getMaxFBVGrade = function (maxFBV) {
-    var v = maxFBV == null || maxFBV === '' ? NaN : Number(maxFBV);
-    if (!isFinite(v)) return { letterGrade: null, gradeValue: null, status: 'Missing' };
-    if (v < 0) throw new RangeError('Max FBV cannot be negative.');
-    for (var i = 0; i < MAX_FBV_BANDS.length; i++) if (v >= MAX_FBV_BANDS[i][0]) return { letterGrade: MAX_FBV_BANDS[i][1], gradeValue: MAX_FBV_BANDS[i][2], status: 'Graded' };
+  var fbvGrade = function (key, label, v) {
+    var raw = v == null || v === '' ? NaN : Number(v);
+    if (!isFinite(raw)) return { letterGrade: null, gradeValue: null, status: 'Missing' };
+    if (raw < 0) throw new RangeError(label + ' cannot be negative.');
+    var g = BM.gradeMetric(key, 'P', raw);
+    return { letterGrade: g.letter, gradeValue: g.value, status: 'Graded', threshold: g.threshold, version: g.version };
   };
-  var getAvgFBVGrade = function (avgFBV) {
-    var v = avgFBV == null || avgFBV === '' ? NaN : Number(avgFBV);
-    if (!isFinite(v)) return { letterGrade: null, gradeValue: null, status: 'Missing' };
-    if (v < 0) throw new RangeError('Avg FBV cannot be negative.');
-    for (var i = 0; i < AVG_FBV_BANDS.length; i++) if (v >= AVG_FBV_BANDS[i][0]) return { letterGrade: AVG_FBV_BANDS[i][1], gradeValue: AVG_FBV_BANDS[i][2], status: 'Graded' };
+  var getMaxFBVGrade = function (v) { return fbvGrade('MAX_FBV', 'Max FBV', v); };
+  var getAvgFBVGrade = function (v) { return fbvGrade('AVG_FBV', 'Avg FBV', v); };
+  var fbvComp = function (g, why) {
+    return g.letterGrade ? { grade: g.letterGrade, letter: g.letterGrade, score: g.gradeValue, pts: g.gradeValue * 10, source: g.version + ' (' + BM.STATUS + '), ' + g.letterGrade + ' at ' + g.threshold + ' mph' } : { none: true, why: why };
   };
   var avgFbvGrade = function (mph) {
     try { var g = getAvgFBVGrade(mph); } catch (e) { return { error: e.message }; }
-    return g.letterGrade ? { grade: g.letterGrade, score: g.gradeValue, pts: g.gradeValue * 10 } : { none: true, why: 'Avg FBV not entered' };
+    return fbvComp(g, 'Avg FBV not entered');
   };
   var maxFbvGrade = function (mph) {
     try { var g = getMaxFBVGrade(mph); } catch (e) { return { error: e.message }; }
-    return g.letterGrade ? { grade: g.letterGrade, score: g.gradeValue, pts: g.gradeValue * 10 } : { none: true, why: 'Max FBV not entered' };
+    return fbvComp(g, 'Max FBV not entered');
   };
-
   var frame = function (pos, ht, wt) {
     var tab = FRAME_TABLES[pos === 'P' ? 'Pitcher' : pos === 'C' ? 'Catcher' : pos], h = num(ht), w = num(wt);
     if (!tab) return { why: 'No Grade Table for position ' + pos };
@@ -59,13 +58,13 @@
     return { grade: 'F', score: FRAME_SCORE.F, pts: FRAME_SCORE.F * 10 };
   };
 
-  var posKey = function (p) { return p === 'LF' || p === 'CF' || p === 'RF' ? 'OF' : p; };
-  // Looks up a raw value in the shared v0.2 position benchmark table. Returns { pts, grade, letter, source } or { why } (Benchmark Missing / not entered); never zero.
+  var posKey = function (p) { return p; };
+  // Looks up a raw value in the shared v0.5 benchmark table. Returns { pts, grade, letter, source } or { why } (Benchmark Missing / not entered); never zero.
   var bm = function (key, pos, raw, unit) {
     if (raw == null) return { why: 'Not entered' };
     var g = BM.gradeMetric(key, posKey(pos), raw);
     if (!g) return { why: 'Benchmark Missing (' + pos + ' has no ' + BM.VERSION + ' table)' };
-    return { pts: g.value * 10, letter: g.letter, value: g.value, source: BM.VERSION + ' (' + BM.STATUS + '), ' + posKey(pos) + ', ' + g.letter + ' at ' + g.threshold + (unit || '') };
+    return { pts: g.value * 10, letter: g.letter, value: g.value, source: g.version + ' (' + BM.STATUS + '), ' + posKey(pos) + ', ' + g.letter + ' at ' + g.threshold + (unit || '') };
   };
 
   /* Required Confidence metrics per role (one shared config). Each set's weights sum to 100, so Pitcher-Only, Hitter and Two-Way players
@@ -125,7 +124,7 @@
     var used = out.comps.filter(function (c) { return c.pts != null; }), wsum = used.reduce(function (a, c) { return a + c.weight; }, 0);
     out.comps.forEach(function (c) { c.used = c.pts != null; c.scaled = c.used ? c.weight / wsum * 100 : null; c.contrib = c.used ? c.pts * c.weight / wsum : null; });
     if (core) { out.rs = used.reduce(function (a, c) { return a + c.contrib; }, 0); out.rsShown = round1(out.rs); }
-    else out.reason = primaryKind === 'pit' ? 'Needs Avg or Max Fastball Velocity.' : 'Needs Avg or Max Exit Velocity at a position with a v0.2 benchmark table (' + pos + ' has none).';
+    else out.reason = primaryKind === 'pit' ? 'Needs Avg or Max Fastball Velocity.' : 'Needs Avg or Max Exit Velocity at a position with a v0.5 benchmark table (' + pos + ' has none).';
 
     /* Projection grades and Athletic Score on the 0-100 scale (provisional formulas, see ASSUMPTIONS; the workbook has not set final weights). */
     var hasHit = ROLE_SETS[role].indexOf('hit') >= 0, hasPit = ROLE_SETS[role].indexOf('pit') >= 0;
@@ -135,13 +134,13 @@
 
     out.breakdown = {}; out.gradeValue = {}; out.benchmarkVersion = BM.VERSION;
     var rawFor = { AVG_EV: avgEV, MAX_EV: maxEV, SIXTY_TIME: get('t60'), THROW_VELO: tvv };
-    // OPG/DPG use the shared v0.2 position benchmark tables (benchmarks-config.js), not the sample-player pool. Missing components are left out and the rest re-weighted; never F/zero.
+    // OPG/DPG use the shared v0.5 benchmark tables (benchmarks-config.js), not the sample-player pool. Missing components are left out and the rest re-weighted; never F/zero.
     var posGrade = function (fkey, at, outKey) {
       var f = BM.FORMULAS[fkey], core = fkey === 'OPG' ? ['AVG_EV', 'MAX_EV'] : ['THROW_VELO', 'SIXTY_TIME'], rows = [];
       f.parts.forEach(function (c) {
         var r = { key: c[0], label: c[1], weight: c[2], raw: null, letter: null, value: null, source: null };
         if (c[0] === 'FRAME') { var fm = frame(at, m.ht, m.wt); if (fm.grade) { r.raw = m.ht + ' in, ' + m.wt + ' lb'; r.letter = fm.grade; r.value = fm.score; r.source = 'Workbook Grade Table (Provisional)'; } }
-        else { var g = BM.gradeMetric(c[0], at, rawFor[c[0]]); if (g) { r.raw = rawFor[c[0]]; r.letter = g.letter; r.value = g.value; r.source = BM.VERSION + ', ' + at + ', ' + g.letter + ' at ' + g.threshold; } }
+        else { var g = BM.gradeMetric(c[0], at, rawFor[c[0]]); if (g) { r.raw = rawFor[c[0]]; r.letter = g.letter; r.value = g.value; r.source = g.version + ', ' + at + ', ' + g.letter + ' at ' + g.threshold; } }
         rows.push(r);
       });
       out.breakdown[outKey] = rows;
@@ -152,7 +151,7 @@
     };
     var offense = function (at, k) { posGrade('OPG', at, k); };
     var defense = function (at, k) { posGrade('DPG', at, k); };
-    var needOff = 'Needs Avg or Max Exit Velocity (and a baseball position with v0.2 benchmarks)', needDef = 'Needs Throwing Velocity or 60 Time (and a baseball position with v0.2 benchmarks)';
+    var needOff = 'Needs Avg or Max Exit Velocity (and a baseball position with v0.5 benchmarks)', needDef = 'Needs Throwing Velocity or 60 Time (and a baseball position with v0.5 benchmarks)';
     // Role decides which grades apply. Pitcher-only: PPG only. Two-way: OPG/DPG at the hitting position (primary if not P, else the non-P secondary) plus PPG from pitching metrics; SOPG/SDPG Not Applicable. Hitter: OPG/DPG plus SOPG/SDPG for a non-pitcher secondary.
     var NA = function (k, why) { out.grades[k] = null; out.gradeWhy[k] = why; };
     var NA_TW = 'Not Applicable (two-way players are graded at one hitting position)';
@@ -174,7 +173,7 @@
     var t60v = get('t60'), tPct = t60v == null || isP ? { pts: null } : bm('SIXTY_TIME', pos, t60v), tvP = isP ? { pts: null } : bm('THROW_VELO', pos, tvv);
     var hasAthInput = tPct.pts != null || tvP.pts != null;
     var athV = hasAthInput ? reweight([{ pts: tPct.pts, w: 40 }, { pts: tvP.pts, w: 30 }, { pts: fr(pos).pts, w: 30 }]) : null;
-    out.grades.ath = athV; if (athV == null) out.gradeWhy.ath = 'Needs 60 Time or Throwing Velocity at a position with a v0.2 benchmark table';
+    out.grades.ath = athV; if (athV == null) out.gradeWhy.ath = 'Needs 60 Time or Throwing Velocity at a position with a v0.5 benchmark table';
     return out;
   };
 
@@ -183,7 +182,7 @@
   var panel = function (r, TRC) {
     var h = '<h3>Inputs Used</h3><div class="table-wrap"><table><thead><tr><th scope="col">Metric</th><th scope="col">Value</th><th scope="col">Status</th></tr></thead><tbody>' +
       r.inputs.map(function (i) { return '<tr><th scope="row">' + esc(i.label) + '</th><td>' + (i.value == null ? 'Not Provided' : esc(i.value)) + '</td><td>' + esc(i.status) + (i.simulated ? ' <span class="pill green">Verified - Demo</span> <span class="muted">simulated, by ' + esc(i.simulated) + '</span>' : '') + '</td></tr>'; }).join('') + '</tbody></table></div>';
-    h += '<h3>Component Scores And Weights</h3><div class="table-wrap"><table><thead><tr><th scope="col">Component</th><th scope="col">Workbook Weight</th><th scope="col">Benchmark Grade</th><th scope="col">Component Score (0-100)</th><th scope="col">Weight Used</th><th scope="col">Points</th></tr></thead><tbody>' +
+    h += '<p class="coach-note"><strong>'+BM.PROVISIONAL_LABEL+'</strong> ('+esc(BM.GROUP)+'). '+esc(BM.PROVISIONAL_TEXT)+'</p>' + '<h3>Component Scores And Weights</h3><div class="table-wrap"><table><thead><tr><th scope="col">Component</th><th scope="col">Workbook Weight</th><th scope="col">Benchmark Grade</th><th scope="col">Component Score (0-100)</th><th scope="col">Weight Used</th><th scope="col">Points</th></tr></thead><tbody>' +
       r.comps.map(function (c) { return '<tr><th scope="row">' + esc(c.label) + '<br /><span class="muted">' + esc(c.detail) + '</span></th><td>' + c.weight + '%</td><td>' + (c.letter ? esc(c.letter) : '&ndash;') + '</td><td>' + (c.used ? round1(c.pts) : 'Not Available') + '</td><td>' + (c.used ? round1(c.scaled) + '%' : '&ndash;') + '</td><td>' + (c.used ? round1(c.contrib) : '&ndash;') + '</td></tr>'; }).join('') + '</tbody></table></div>';
     if (r.rs == null) {
       h += '<p><strong>Result: Not Rated.</strong> ' + esc(r.reason) + ' Nothing is estimated or set to zero.</p>';
@@ -193,7 +192,7 @@
     h += r.conf == null ? '<p><strong>Confidence: Unknown.</strong> No metrics entered.</p>' : '<p><strong>Confidence = ' + TRC.formatConfidencePercentage(r.conf) + '</strong> ' + TRC.renderConfidenceBadge(r.conf) + ' (weighted by each input share of the score; verified = full weight, self-reported = 25% of its weight, missing = 0).</p>';
     h += '<h3>Projection Grades And Athletic Score</h3><ul>' + ['opg', 'sopg', 'dpg', 'sdpg', 'ppg', 'ath'].filter(function (k) { return k in r.grades; }).map(function (k) { var v = r.grades[k], nm = { opg: 'OPG', sopg: 'SOPG', dpg: 'DPG', sdpg: 'SDPG', ppg: 'PPG', ath: 'Athletic Score' }[k]; return '<li><strong>' + nm + '</strong>: ' + (v == null ? (/^Not (Applicable|Rated)/.test(r.gradeWhy[k] || '') ? esc(r.gradeWhy[k]) : 'Not Rated (' + esc(r.gradeWhy[k]) + ')') : k === 'ath' ? round1(v).toFixed(1) : TRC.renderGrade(v)) + '</li>'; }).join('') + '</ul><p class="muted">Role: ' + esc(r.roleLabel) + '. Confidence counts only the metrics required for this role.</p>';
     var up = r.inputs.filter(function (i) { return i.gain > 0; }).sort(function (a, b) { return b.gain - a.gain; });
-    h += '<h3>What Would Raise My Confidence</h3>' + (up.length ? '<ul>' + up.map(function (i) { return '<li><strong>' + esc(i.label) + '</strong>: ' + (i.status === 'Missing' ? 'enter it' : i.blocked ? 'entered, but it cannot be scored yet (a position with a v0.2 benchmark table or matching Grade Table is needed)' : 'have a verifier confirm it') + ' (up to +' + i.gain + ' points)</li>'; }).join('') + '</ul>' : '<p>Every input is verified.</p>');
+    h += '<h3>What Would Raise My Confidence</h3>' + (up.length ? '<ul>' + up.map(function (i) { return '<li><strong>' + esc(i.label) + '</strong>: ' + (i.status === 'Missing' ? 'enter it' : i.blocked ? 'entered, but it cannot be scored yet (a position with a v0.5 benchmark table or matching Grade Table is needed)' : 'have a verifier confirm it') + ' (up to +' + i.gain + ' points)</li>'; }).join('') + '</ul>' : '<p>Every input is verified.</p>');
     h += '<details><summary>Assumptions And Open Questions</summary><ul>' + r.assumptions.map(function (a) { return '<li>' + esc(a) + '</li>'; }).join('') + '</ul></details>';
     return h;
   };

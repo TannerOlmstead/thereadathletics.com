@@ -107,6 +107,16 @@ No score in the coach workspace is random. Team Need Score, Coach Fit Score, Adj
 
 Open `index.html` in a browser, or run a simple static server from this folder, for example `python -m http.server 8000` and visit http://localhost:8000.
 
+### Preview in GitHub Codespaces
+
+Use this to see your changes while editing without installing anything. The site is static, so there is no build or install step.
+
+1. On the repository page on GitHub, select **Code**, then **Codespaces**, then **Create codespace on main** (or on your branch).
+2. In the Codespaces window, open **Terminal** and run: `python3 -m http.server 8000`
+3. Open the **Ports** tab, find port **8000**, and open its forwarded address (the globe icon or the link) to view the site in a browser tab.
+4. Leave the terminal command running. After you edit a file, refresh the preview page to see the change.
+
+Press Ctrl+C in the terminal to stop the server. Forwarded ports are private to your GitHub account by default; keep it that way, because the site is private.
 - **Add To Board control:** a green circle with a white + adds a prospect to your Recruiting Board; it turns into a green circle with a white checkmark (On Board). Clicking the checkmark removes the prospect and shows an Undo toast. It is a real button with aria-pressed and an aria-label, a 32px target and a visible focus ring.
 
 - **Recruiting Board automation (demo):** no row checkboxes anywhere; the green +/check button is the only add control. Priority Tier is computed from Coach Fit and Team Need (average; 85+ = Priority 1, 75-84.9 = Priority 2, below 75 = Priority 3; blank data shows "Not Enough Data") and explained in a "How This Is Calculated" panel. Stage is derived from the per-prospect activity log (Added, Message Sent, Grade, Visit Scheduled/Completed, Offer, Committed, Declined) stamped with the signed-in coach; the furthest action wins and Declined only applies when it is the latest. The timeline shows on the board row and the Player Card.

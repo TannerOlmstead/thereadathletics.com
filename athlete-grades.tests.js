@@ -16,7 +16,7 @@ const load = async (rec) => {
   const base = 'http://127.0.0.1:' + server.address().port;
   const html = fs.readFileSync(path.join(__dirname, 'coach-master-database.html'), 'utf8');
   const dom = new JSDOM(html, { runScripts: 'dangerously', resources: 'usable', url: base + '/coach-master-database.html?demo=1',
-    virtualConsole: new VirtualConsole(), beforeParse(w) { w.localStorage.setItem('theReadDemoAthletes', JSON.stringify([rec])); } });
+    virtualConsole: new VirtualConsole(), beforeParse(w) { if (rec) w.localStorage.setItem('theReadDemoAthletes', JSON.stringify([rec])); } });
   await new Promise((r) => setTimeout(r, 1500));
   const d = dom.window.document, heads = [...d.querySelectorAll('thead th')].map((t) => t.textContent.replace(/[^A-Za-z ]/g, '').trim());
   const col = (n) => heads.indexOf(n);
@@ -28,14 +28,24 @@ const load = async (rec) => {
 const letter = /^[A-F][+-]?$/;
 (async () => {
   await new Promise((r) => server.listen(0, '127.0.0.1', r));
-  for (const [label, rec, expectP] of [['P primary, 1B secondary, two-way', mk('P', '1B', 'Yes'), true], ['P primary, no secondary', mk('P', '', 'No'), true], ['1B primary, P secondary', mk('1B', 'P', 'Yes'), false], ['1B primary, SS secondary, two-way', mk('1B', 'SS', 'Yes'), false]]) {
+  // [label, record, expect letter for OPG/DPG, expect letter for PPG]
+  const cases = [['two-way, P primary, 1B secondary', mk('P', '1B', 'Yes'), true, true], ['two-way, P primary, nothing else', mk('P', '', 'Yes'), false, true],
+    ['two-way, 1B primary, P secondary', mk('1B', 'P', 'Yes'), true, true], ['two-way, 1B primary, SS secondary', mk('1B', 'SS', 'Yes'), true, true], ['two-way, 1B primary, no pitching selected', mk('1B', '', 'Yes'), true, true],
+    ['pitcher-only, P primary', mk('P', '', 'No'), false, true], ['pitcher-only, P primary, 1B secondary', mk('P', '1B', 'No'), false, true]];
+  for (const [label, rec, hit, pit] of cases) {
     const { col, rows } = await load(rec);
     const mine = rows.filter((r) => r.join('|').includes('ATH-'))[0];
     assert.ok(mine, label + ': athlete row missing');
-    if (expectP) ['OPG', 'SOPG', 'DPG', 'SDPG'].forEach((k) => assert.ok(!letter.test(mine[col(k)]), label + ': ' + k + ' shows ' + mine[col(k)]));
-    else ['SOPG', 'SDPG'].forEach((k) => assert.ok(!letter.test(mine[col(k)]), label + ': ' + k + ' shows ' + mine[col(k)]));
-    rows.filter((r) => r[col('Primary Position')] === 'P').forEach((r) => ['OPG', 'SOPG', 'DPG', 'SDPG'].forEach((k) => assert.ok(!letter.test(r[col(k)]), label + ': pitcher row shows ' + k)));
+    ['OPG', 'DPG'].forEach((k) => assert.strictEqual(letter.test(mine[col(k)]), hit, label + ': ' + k + ' = ' + mine[col(k)]));
+    ['SOPG', 'SDPG'].forEach((k) => assert.ok(!letter.test(mine[col(k)]) || (!/Yes|No/.test('') && label.startsWith('x')), label + ': ' + k + ' = ' + mine[col(k)]));
+    if (label.startsWith('two-way')) ['SOPG', 'SDPG'].forEach((k) => assert.ok(!letter.test(mine[col(k)]), label + ': ' + k));
+    assert.strictEqual(letter.test(mine[col('PPG')]), pit, label + ': PPG = ' + mine[col('PPG')]);
+    rows.filter((r) => r[col('Primary Position')] === 'P' && !r.join('|').includes('ATH-')).forEach((r) => assert.ok(r[col('Two Way')] === 'Yes' || !letter.test(r[col('OPG')]), label + ': pitcher-only sample row shows OPG'));
     console.log('ok -', label);
   }
+  const seeded = await load(null);
+  const demo = seeded.rows.filter((r) => r.join('|').includes('ATH-MOSEED'))[0];
+  assert.ok(demo, 'demo seed athlete missing when storage is empty');
+  console.log('ok - demo seed shown when no athlete exists');
   process.exit(0);
 })().catch((e) => { console.error('FAIL', e.message); process.exit(1); });

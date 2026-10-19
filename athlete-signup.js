@@ -133,9 +133,11 @@
         SP.list.map(function (x) { return '<label class="check"><input type="checkbox" id="f-sp.' + x.id + '.on" data-k="sp.' + x.id + '.on"' + (sel(x.id) ? ' checked' : '') + ' /> ' + esc(x.name) + '</label>'; }).join('') + '</div></fieldset>';
       var cur = selected();
       cur.forEach(function (x) {
-        h += '<fieldset class="full"><legend>' + esc(x.name) + ' Positions</legend><div class="form-grid">' +
-          fld('sp.' + x.id + '.pos', 'Primary Position', { req: 1, type: 'select', opts: x.positions }) +
-          fld('sp.' + x.id + '.sec', 'Secondary Position', { type: 'select', opts: x.positions, blank: 'None' }) + '</div>' +
+        // Two-way implies pitching, so baseball positions for two-way players exclude P (pitching is added automatically).
+        var tw = x.id === 'baseball' && !!d.rp && d.rp.twoWay === 'Yes', ps = tw ? x.positions.filter(function (p) { return p !== 'P'; }) : x.positions;
+        h += '<fieldset class="full"><legend>' + esc(x.name) + ' Positions</legend>' + (tw ? '<p class="hint">You chose two-way, so pitching is added automatically. Choose the non-pitcher position you hit and play.</p>' : '') + '<div class="form-grid">' +
+          fld('sp.' + x.id + '.pos', tw ? 'Primary (Hitting) Position' : 'Primary Position', { req: 1, type: 'select', opts: ps }) +
+          fld('sp.' + x.id + '.sec', 'Secondary Position', { type: 'select', opts: ps, blank: 'None' }) + '</div>' +
           (x.scoring ? '' : '<p class="hint">Scoring Not Yet Available for ' + esc(x.name) + '. Recruit Score shows Not Rated and Confidence Unknown until its tables exist (Coming Soon).</p>') + '</fieldset>';
       });
       return h;
@@ -237,7 +239,8 @@
       profile: function () {
         var cs = selected();
         if (!cs.length) bad('sp.' + SP.list[0].id + '.on', 'Choose at least one sport.');
-        cs.forEach(function (x) { if (!d.sp[x.id].pos) bad('sp.' + x.id + '.pos', 'Choose a primary ' + x.name + ' position.'); else if (d.sp[x.id].sec && d.sp[x.id].sec === d.sp[x.id].pos) bad('sp.' + x.id + '.sec', 'Secondary position must differ from primary.'); });
+        cs.forEach(function (x) { if (!d.sp[x.id].pos) bad('sp.' + x.id + '.pos', 'Choose a primary ' + x.name + ' position.'); else if (d.sp[x.id].sec && d.sp[x.id].sec === d.sp[x.id].pos) bad('sp.' + x.id + '.sec', 'Secondary position must differ from primary.');
+          if (x.id === 'baseball' && d.rp && d.rp.twoWay === 'Yes') { if (d.sp[x.id].pos === 'P') bad('sp.' + x.id + '.pos', 'Two-way players need a non-pitcher hitting position as primary. Pitching is added automatically.'); if (d.sp[x.id].sec === 'P') bad('sp.' + x.id + '.sec', 'Do not choose pitching as a secondary position for a two-way player. It is added automatically.'); } });
         if (!d.grad) bad('grad', 'Choose a graduation year.');
         if (sel('baseball')) {
           var rp = d.rp || {};

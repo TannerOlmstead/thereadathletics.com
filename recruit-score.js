@@ -138,17 +138,21 @@
     var offense = function (at) { var a = P('avgEV', avgEV, false, at), x = P('maxEV', maxEV, false, at); return [{ pts: a.pts, w: 45 }, { pts: x.pts, w: 30 }]; };
     var defense = function (at) { var f = fr(at), t = P('tv', tvv, false, at); return [{ pts: f.pts, w: 50 }, { pts: t.pts, w: 50 }]; };
     var needOff = 'Needs Avg or Max Exit Velocity and enough benchmark players', needDef = 'Needs Height and Weight (Grade Table) or Throwing Velocity';
-    // Role + primary position decide which grades apply. Pitcher-primary: PPG only. Two-way: OPG/DPG at the primary position plus PPG (SOPG/SDPG Not Applicable). Hitter: OPG/DPG plus SOPG/SDPG for a non-pitcher secondary.
-    var NA_P = 'Not Applicable (pitcher-primary player)', NA_TW = 'Not Applicable (two-way players are graded at their primary position only)';
-    var secOk = !!rec.sec && rec.sec !== 'P' && !isP && role === 'Hitter';
-    if (isP) { ['opg', 'sopg', 'dpg', 'sdpg'].forEach(function (k) { out.grades[k] = null; out.gradeWhy[k] = NA_P; }); }
-    else {
-      if (hasHit) grade('opg', offense(pos), needOff);
-      if (hasHit) grade('dpg', defense(pos), needDef);
-      if (secOk) { grade('sopg', offense(rec.sec), needOff); grade('sdpg', defense(rec.sec), needDef); }
-      else { ['sopg', 'sdpg'].forEach(function (k) { out.grades[k] = null; out.gradeWhy[k] = role === 'TwoWay' ? NA_TW : 'Not Applicable (no non-pitcher secondary position)'; }); }
-    }
-    if (hasPit) {
+    // Role decides which grades apply. Pitcher-only: PPG only. Two-way: OPG/DPG at the hitting position (primary if not P, else the non-P secondary) plus PPG from pitching metrics; SOPG/SDPG Not Applicable. Hitter: OPG/DPG plus SOPG/SDPG for a non-pitcher secondary.
+    var NA = function (k, why) { out.grades[k] = null; out.gradeWhy[k] = why; };
+    var NA_TW = 'Not Applicable (two-way players are graded at one hitting position)';
+    if (role === 'PO') { ['opg', 'sopg', 'dpg', 'sdpg'].forEach(function (k) { NA(k, 'Not Applicable (pitcher-only player)'); }); }
+    else if (role === 'TwoWay') {
+      var hp = pos !== 'P' ? pos : (rec.sec && rec.sec !== 'P' ? rec.sec : null);
+      if (hp) { grade('opg', offense(hp), needOff); grade('dpg', defense(hp), needDef); }
+      else { NA('opg', 'Not Rated (two-way player needs a non-pitcher position to grade hitting)'); NA('dpg', 'Not Rated (two-way player needs a non-pitcher position to grade hitting)'); }
+      NA('sopg', NA_TW); NA('sdpg', NA_TW);
+      out.hitPos = hp;
+    } else {
+      grade('opg', offense(pos), needOff); grade('dpg', defense(pos), needDef);
+      if (rec.sec && rec.sec !== 'P') { grade('sopg', offense(rec.sec), needOff); grade('sdpg', defense(rec.sec), needDef); }
+      else { NA('sopg', 'Not Applicable (no non-pitcher secondary position)'); NA('sdpg', 'Not Applicable (no non-pitcher secondary position)'); }
+    }    if (hasPit) {
       var ag2 = avgFbvGrade(avgFB), mg2 = maxFbvGrade(maxFB), f2 = frame('P', m.ht, m.wt);
       grade('ppg', [{ pts: ag2.grade ? ag2.pts : null, w: 40 }, { pts: mg2.grade ? mg2.pts : null, w: 30 }, { pts: f2.pts == null ? null : f2.pts, w: 30 }], 'Needs Avg or Max Fastball Velocity');
     }
@@ -172,7 +176,7 @@
       h += '<p><strong>Recruit Score = sum of points = ' + r.rsShown.toFixed(1) + '</strong> (unrounded ' + r.rs.toFixed(4) + '). Tier is chosen from the unrounded value: ' + TRC.renderTierBadge(r.rs) + '</p>';
     }
     h += r.conf == null ? '<p><strong>Confidence: Unknown.</strong> No metrics entered.</p>' : '<p><strong>Confidence = ' + TRC.formatConfidencePercentage(r.conf) + '</strong> ' + TRC.renderConfidenceBadge(r.conf) + ' (weighted by each input share of the score; verified = full weight, self-reported = 25% of its weight, missing = 0).</p>';
-    h += '<h3>Projection Grades And Athletic Score</h3><ul>' + ['opg', 'sopg', 'dpg', 'sdpg', 'ppg', 'ath'].filter(function (k) { return k in r.grades; }).map(function (k) { var v = r.grades[k], nm = { opg: 'OPG', sopg: 'SOPG', dpg: 'DPG', sdpg: 'SDPG', ppg: 'PPG', ath: 'Athletic Score' }[k]; return '<li><strong>' + nm + '</strong>: ' + (v == null ? (/^Not Applicable/.test(r.gradeWhy[k] || '') ? esc(r.gradeWhy[k]) : 'Not Rated (' + esc(r.gradeWhy[k]) + ')') : k === 'ath' ? round1(v).toFixed(1) : TRC.renderGrade(v)) + '</li>'; }).join('') + '</ul><p class="muted">Role: ' + esc(r.roleLabel) + '. Confidence counts only the metrics required for this role.</p>';
+    h += '<h3>Projection Grades And Athletic Score</h3><ul>' + ['opg', 'sopg', 'dpg', 'sdpg', 'ppg', 'ath'].filter(function (k) { return k in r.grades; }).map(function (k) { var v = r.grades[k], nm = { opg: 'OPG', sopg: 'SOPG', dpg: 'DPG', sdpg: 'SDPG', ppg: 'PPG', ath: 'Athletic Score' }[k]; return '<li><strong>' + nm + '</strong>: ' + (v == null ? (/^Not (Applicable|Rated)/.test(r.gradeWhy[k] || '') ? esc(r.gradeWhy[k]) : 'Not Rated (' + esc(r.gradeWhy[k]) + ')') : k === 'ath' ? round1(v).toFixed(1) : TRC.renderGrade(v)) + '</li>'; }).join('') + '</ul><p class="muted">Role: ' + esc(r.roleLabel) + '. Confidence counts only the metrics required for this role.</p>';
     var up = r.inputs.filter(function (i) { return i.gain > 0; }).sort(function (a, b) { return b.gain - a.gain; });
     h += '<h3>What Would Raise My Confidence</h3>' + (up.length ? '<ul>' + up.map(function (i) { return '<li><strong>' + esc(i.label) + '</strong>: ' + (i.status === 'Missing' ? 'enter it' : i.blocked ? 'entered, but it cannot be scored yet (enough same-position benchmark players or a matching Grade Table is needed)' : 'have a verifier confirm it') + ' (up to +' + i.gain + ' points)</li>'; }).join('') + '</ul>' : '<p>Every input is verified.</p>');
     h += '<details><summary>Assumptions And Open Questions</summary><ul>' + r.assumptions.map(function (a) { return '<li>' + esc(a) + '</li>'; }).join('') + '</ul></details>';

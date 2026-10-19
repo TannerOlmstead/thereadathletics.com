@@ -22,8 +22,8 @@
   const confBadge = (p, o) => TRC.renderConfidenceBadge(p.conf, o);
   const GK = ['opg', 'sopg', 'dpg', 'sdpg', 'ppg'];
   const gl = (v) => TRC.renderGrade(v);
-  // Role + primary position decide which grades apply: pitcher-primary = PPG only; two-way = primary-position OPG/DPG + PPG (no SOPG/SDPG).
-  const gradeNA = (p, k) => (p.pos === 'P' ? /^(opg|dpg|sopg|sdpg)$/.test(k) : (p.twoWay === true && /^(sopg|sdpg)$/.test(k)));
+  // Role decides which grades apply: pitcher-only = PPG only; two-way = OPG/DPG (hitting position) + PPG, no SOPG/SDPG.
+  const gradeNA = (p, k) => (p.twoWay === true ? /^(sopg|sdpg)$/.test(k) : (p.pos === 'P' && /^(opg|dpg|sopg|sdpg)$/.test(k)));
   const glk = (p, k) => (gradeNA(p, k) ? '<span class="muted">Not Applicable</span>' : gl(p[k]));
   const rk = (v) => (v == null ? '&mdash;' : '#' + v);
   const letter = (s) => { let best = 'F', bd = Infinity; GRADES.forEach((g) => { const d = Math.abs(GRADE_TABLE[g] - s); if (d < bd) { bd = d; best = g; } }); return best; };
@@ -191,6 +191,10 @@
   (() => {
     let recs = [];
     try { recs = JSON.parse(localStorage.getItem('theReadDemoAthletes') || '[]'); } catch (e) { recs = []; }
+    // Demo seed: shown only when this browser has no athlete records (never written to storage, so it cannot overwrite real records).
+    if (Array.isArray(recs) && !recs.length) recs = [{ id: 'ath-demoseed', submitted: true, name: 'Sample Two-Way Player (Demo Seed)', email: '', dob: '2000-01-01', age: 25, path: 'adult', sport: 'Baseball', pos: '1B', sec: '',
+      sports: [{ id: 'baseball', name: 'Baseball', pos: '1B', sec: '' }], grad: 2027, level: 'High School', school: 'Demo High School', state: 'NE', rolePref: { twoWay: 'Yes', emphasis: '', role: '', pos: '' },
+      metrics: { ht: 76, wt: 215, t60: 6.9, tv: 94, avgEV: 94, maxEV: 102, avgFBV: 86, maxFBV: 90 }, guardian: null, verifiers: [], verified: {}, privacy: { list: true, contact: true, photo: true, metrics: true }, terms: true }];
     if (!Array.isArray(recs) || !window.TheReadAthlete) return;
     const ents = [];
     recs.forEach((r0) => {
@@ -1587,6 +1591,7 @@
       rec.bats = v('bats'); rec.throws = v('throws'); rec.twoWay = f.elements.twoWay.checked;
       rec.hs = v('hs'); rec.state = v('state').toUpperCase(); rec.evalTs = new Date().toISOString(); rec.method = v('method') || 'Coach Entry (Unverified)'; rec.notes = v('notes');
       if (rec.sec && rec.sec === rec.pos) errs.push('Secondary Position must differ from Primary Position.');
+      if (rec.twoWay && rec.sport === 'Baseball') { if (rec.pos === 'P') errs.push('Two-way players need a non-pitcher hitting position as Primary. Pitching is added automatically.'); if (rec.sec === 'P') errs.push('Do not pick Pitcher as Secondary for a two-way player. It is added automatically.'); }
       if (rec.state && !/^[A-Z]{2}$/.test(rec.state)) errs.push('State must be two letters.');
       NUMS.forEach((n) => {
         const raw = v(n[0]);

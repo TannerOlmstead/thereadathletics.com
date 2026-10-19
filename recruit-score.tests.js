@@ -10,11 +10,6 @@ const metrics = { ht: 75, wt: 200, avgFBV: 84, maxFBV: 88, avgEV: 70, maxEV: 78,
 let n = 0;
 const t = (name, fn) => { fn(); n++; console.log('ok -', name); };
 
-t('pitcher-primary two-way: no OPG/DPG/SOPG/SDPG, PPG present', () => {
-  const r = S.compute({ pos: 'P', sec: 'SS', twoWay: true, metrics }, bench);
-  ['opg', 'dpg', 'sopg', 'sdpg'].forEach((k) => { assert.strictEqual(r.grades[k], null, k); assert.ok(/^Not Applicable/.test(r.gradeWhy[k]), k); });
-  assert.ok(r.grades.ppg != null);
-});
 t('pitcher-only with a secondary position still gets no hitter grades', () => {
   const r = S.compute({ pos: 'P', sec: '2B', metrics }, bench);
   assert.strictEqual(r.grades.opg, null);
@@ -43,4 +38,31 @@ t('two-way via rolePref Yes behaves as two-way', () => {
   assert.strictEqual(r.grades.sopg, null);
   assert.ok(r.grades.ppg != null);
 });
+t('two-way, pitcher primary, non-P secondary: OPG/DPG from the secondary, PPG, no SOPG/SDPG', () => {
+  const r = S.compute({ pos: 'P', sec: '1B', twoWay: true, metrics }, bench);
+  assert.ok(r.grades.opg != null && r.grades.dpg != null && r.grades.ppg != null);
+  assert.strictEqual(r.hitPos, '1B');
+  ['sopg', 'sdpg'].forEach((k) => assert.strictEqual(r.grades[k], null));
+});
+t('two-way, pitcher primary, no non-P position: OPG/DPG Not Rated, PPG present', () => {
+  const r = S.compute({ pos: 'P', sec: '', twoWay: true, metrics }, bench);
+  ['opg', 'dpg'].forEach((k) => { assert.strictEqual(r.grades[k], null); assert.ok(/^Not Rated/.test(r.gradeWhy[k])); });
+  assert.ok(r.grades.ppg != null);
+});
+t('two-way, 1B primary, pitching selected as secondary: OPG/DPG/PPG', () => {
+  const r = S.compute({ pos: '1B', sec: 'P', twoWay: true, metrics }, bench);
+  assert.ok(r.grades.opg != null && r.grades.dpg != null && r.grades.ppg != null);
+});
+t('two-way, 1B primary, pitching not selected anywhere: OPG/DPG/PPG', () => {
+  const r = S.compute({ pos: '1B', sec: '', rolePref: { twoWay: 'Yes' }, metrics }, bench);
+  assert.ok(r.grades.opg != null && r.grades.dpg != null && r.grades.ppg != null);
+});
 console.log(n + ' tests passed');
+
+const fs = require('fs');
+const su = fs.readFileSync(__dirname + '/athlete-signup.js', 'utf8'), co = fs.readFileSync(__dirname + '/coach.js', 'utf8');
+assert.ok(/twoWay === 'Yes'[\s\S]{0,200}filter\(function \(p\) \{ return p !== 'P'/.test(su), 'signup hides P for two-way');
+assert.ok(/pos === 'P'\) bad\('sp\.' \+ x\.id \+ '\.pos', 'Two-way players need a non-pitcher/.test(su), 'signup rejects P primary for two-way');
+assert.ok(/sec === 'P'\) bad\(/.test(su), 'signup rejects P secondary for two-way');
+assert.ok(/rec\.twoWay && rec\.sport === 'Baseball'[\s\S]{0,120}rec\.pos === 'P'/.test(co), 'coach entry rejects P primary for two-way');
+console.log('ok - two-way entry validation present');

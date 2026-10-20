@@ -221,3 +221,7 @@ Department Finances (`department-finances.html`, built in `dept.js`) now labels 
 - **Handedness is per sport** and lives in `sports-config.js` (`handedness` on each sport; helpers `handednessOptions`, `validateHandedness`, `formatHandedness`). Only Baseball is approved (Bats R / L / S, Throws R / L, unchanged). Every other sport is a stub marked Requires Founder Decision and accepts no handedness value until its choices are approved. Missing values read Not Listed and are never defaulted.
 - **Claim and duplicate review** (`claim-merge.js`, preview page `claim-review.html`) is a front-end interface with fictional data. Nothing is saved or sent; the server-side requirements are in `docs/CLAIM_MERGE_BACKEND_REQUIREMENTS.md`. Statuses are Pending, Approved, Rejected and Review Required. A claim never changes athlete data, conflicting claims always need review, merges are never automatic, verified values are never overwritten, and every action is written to an append-only audit log.
 - Tests: `claim-merge.tests.js` (logic and the preview page) and the handedness section of `tests-sports.html`.
+
+## Softball Preview (Provisional)
+
+softball-preview.html is a visual and functional preview only. It shows seven fictional players in a Master Database style table from fixture data in softball-preview.js (no softball benchmark tables, weights or composite formulas exist). Positions are displayed exactly as supplied (including LF and SS/CF); the baseball position rules and validation are unchanged. Run softball-preview.tests.js for its checks.

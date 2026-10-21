@@ -202,7 +202,9 @@
     if (cur !== '' || row.length) { row.push(cur); rows.push(row); }
     return rows.filter(function (r) { return r.some(function (x) { return String(x).trim() !== ''; }); });
   }
-  var HDR = { name: ['name', 'player', 'player name'], pos: ['position', 'pos', 'primary position'], grad: ['grad year', 'grad', 'class', 'graduation year'], sec: ['secondary position', 'secondary', 'sec'], twoWay: ['two-way', 'two way', 'twoway'] };
+  var HDR = { name: ['name', 'player', 'player name'], pos: ['position', 'pos', 'primary position'], grad: ['grad year', 'grad', 'class', 'graduation year'], sec: ['secondary position', 'secondary', 'sec'], twoWay: ['two-way', 'two way', 'twoway'], jersey: ['jersey #', 'jersey', 'jersey number', 'number', '#', 'no', 'no.'] };
+  var JERSEY_RE = /^\d{1,2}$/;
+  function jerseyNorm(v) { var s = String(v == null ? '' : v).trim().replace(/^#/, ''); return JERSEY_RE.test(s) ? String(Number(s)) : ''; }
   function norm(s) { return String(s || '').trim().toLowerCase().replace(/\s+/g, ' '); }
   function posCheck(raw, label) {
     var v = String(raw || '').trim().toUpperCase();
@@ -216,15 +218,16 @@
     if (!data.length) { out.fileErrors.push('The file is empty.'); return out; }
     var heads = data[0].map(norm), idx = {};
     Object.keys(HDR).forEach(function (k) { idx[k] = -1; HDR[k].forEach(function (a) { if (idx[k] < 0) idx[k] = heads.indexOf(a); }); });
-    ['name', 'pos', 'grad'].forEach(function (k) { if (idx[k] < 0) out.fileErrors.push('Missing required column: ' + { name: 'Name', pos: 'Position', grad: 'Grad Year' }[k] + '.'); });
+    ['name', 'pos', 'grad', 'jersey'].forEach(function (k) { if (idx[k] < 0) out.fileErrors.push('Missing required column: ' + { name: 'Name', pos: 'Position', grad: 'Grad Year', jersey: 'Jersey #' }[k] + '.'); });
     if (out.fileErrors.length) return out;
     if (data.length === 1) { out.fileErrors.push('The file has a header row but no players.'); return out; }
     if (data.length > 201) { out.fileErrors.push('Preview limit: 200 players per file.'); return out; }
-    var have = {}; (existing || []).forEach(function (p) { have[norm(p.name) + '|' + p.grad] = 1; });
+    var have = {}, haveJ = {}; (existing || []).forEach(function (p) { have[norm(p.name) + '|' + p.grad] = 1; if (p.jersey) haveJ[jerseyNorm(p.jersey)] = 1; });
+    var seenJ = {};
     var seen = {};
     data.slice(1).forEach(function (r, n) {
       var g = function (k) { return idx[k] >= 0 ? String(r[idx[k]] == null ? '' : r[idx[k]]).trim() : ''; };
-      var row = { line: n + 2, name: g('name'), pos: '', sec: '', grad: Number(g('grad')), twoWay: /^(y|yes|true|1)$/i.test(g('twoWay')), status: 'ok', issues: [], suggestion: '', rawPos: g('pos') };
+      var row = { line: n + 2, name: g('name'), pos: '', sec: '', grad: Number(g('grad')), twoWay: /^(y|yes|true|1)$/i.test(g('twoWay')), status: 'ok', issues: [], suggestion: '', rawPos: g('pos'), jersey: jerseyNorm(g('jersey')), rawJersey: g('jersey') };
       var bad = [];
       if (!row.name) bad.push('Name is missing.');
       if (!/^\d{4}$/.test(g('grad')) || row.grad < 2000 || row.grad > 2045) bad.push('Grad Year must be a four-digit year (2000-2045).');
@@ -235,6 +238,9 @@
       if (pc.review) { row.status = 'review'; row.issues.push(pc.review); row.suggestion = pc.suggestion || ''; }
       if (sc.review) { row.status = 'review'; row.issues.push(sc.review); row.secSuggestion = sc.suggestion || ''; }
       if (row.pos && row.sec && row.pos === row.sec) { row.status = 'review'; row.issues.push('Secondary position matches the primary position.'); }
+      if (!row.jersey) { row.status = 'review'; row.issues.push('Jersey # is missing or invalid (use 0-99). Enter a jersey number in the Decision column to add this player.'); }
+      else if (haveJ[row.jersey]) { row.status = 'review'; row.jerseyDupe = 'roster'; row.issues.push('Jersey #' + row.jersey + ' is already on the roster. Enter a different number to add this player; existing players are never changed.'); }
+      else if (seenJ[row.jersey]) { row.status = 'review'; row.jerseyDupe = 'file'; row.issues.push('Jersey #' + row.jersey + ' is repeated in this file (first on line ' + seenJ[row.jersey] + ').'); } else seenJ[row.jersey] = row.line;
       var key = norm(row.name) + '|' + row.grad;
       if (seen[key]) { row.status = 'review'; row.dupe = 'file'; row.issues.push('Duplicate of line ' + seen[key] + ' in this file. Skipped unless you choose to add it.'); } else seen[key] = row.line;
       if (have[key]) { row.status = 'review'; row.dupe = 'roster'; row.issues.push('Possible match with an existing player (same name and grad year). Existing data is never overwritten.'); }
@@ -244,20 +250,23 @@
   }
   /* decisions[line] = { action: 'add'|'skip', pos?, sec? }. Rows needing review are added only with an explicit decision AND a valid stored position.
      `reviewed` must be true. Error rows are never added. Existing players are never modified. */
-  function commitImport(preview, decisions, reviewed, existingIds) {
+  function commitImport(preview, decisions, reviewed, existingIds, existingJerseys) {
     if (reviewed !== true) throw new Error('Review the rows before adding them.');
     decisions = decisions || {};
     var added = [], skipped = [], n = 0, ids = {}; (existingIds || []).forEach(function (i) { ids[i] = 1; });
+    var usedJ = {}; (existingJerseys || []).forEach(function (x) { var v = jerseyNorm(x); if (v) usedJ[v] = 1; });
     preview.rows.forEach(function (r) {
-      var d = decisions[r.line], add = false, pos = r.pos, sec = r.sec;
+      var d = decisions[r.line], add = false, pos = r.pos, sec = r.sec, jn = r.jersey;
       if (r.status === 'ok') add = !d || d.action !== 'skip';
-      else if (r.status === 'review') { add = !!d && d.action === 'add'; if (d && d.pos != null) pos = String(d.pos).toUpperCase(); if (d && d.sec != null) sec = String(d.sec).toUpperCase(); }
+      else if (r.status === 'review') { add = !!d && d.action === 'add'; if (d && d.pos != null) pos = String(d.pos).toUpperCase(); if (d && d.sec != null) sec = String(d.sec).toUpperCase(); if (d && d.jersey != null && String(d.jersey).trim() !== '') jn = jerseyNorm(d.jersey); }
       if (add && STORED_POSITIONS.indexOf(pos) < 0) add = false;
       if (add && sec && STORED_POSITIONS.indexOf(sec) < 0) add = false;
+      if (add && (!jn || usedJ[jn])) add = false;
       if (!add) { skipped.push(r.line); return; }
+      usedJ[jn] = 1;
       do { n++; } while (ids['IMP-' + String(n).padStart(3, '0')]);
       var id = 'IMP-' + String(n).padStart(3, '0'); ids[id] = 1;
-      added.push({ id: id, name: r.name, pos: pos, sec: sec === pos ? '' : sec, grad: r.grad, twoWay: !!r.twoWay, sport: 'Baseball', imported: true });
+      added.push({ id: id, name: r.name, pos: pos, sec: sec === pos ? '' : sec, grad: r.grad, jersey: jn, twoWay: !!r.twoWay, sport: 'Baseball', imported: true });
     });
     return { added: added, skipped: skipped };
   }
@@ -286,7 +295,7 @@
     key: key, depthDrop: depthDrop, depthRemove: depthRemove, depthReorder: depthReorder, depthOrder: depthOrder, depthLabel: depthLabel, depthPos: depthPos, groupTags: groupTags, openSpots: openSpots, totalOpen: totalOpen, nearestGroup: nearestGroup, defaultSpot: defaultSpot, STORED_POSITIONS: STORED_POSITIONS, OF_SLOTS: OF_SLOTS, SLOTS: SLOTS, CONFIG: CONFIG, slotStored: slotStored, slotFit: slotFit,
         newLineup: newLineup, newLineupState: newLineupState, addLineup: addLineup, duplicateLineup: duplicateLineup, removeLineup: removeLineup, clearLineup: clearLineup,
     clampYears: clampYears, firstSeason: firstSeason, newDepthState: newDepthState, depthYears: depthYears, setYears: setYears, yearNote: yearNote,
-    sanitizeLineups: sanitizeLineups, sanitizeDepth: sanitizeDepth, parseCsv: parseCsv, importPreview: importPreview, commitImport: commitImport };
+    sanitizeLineups: sanitizeLineups, sanitizeDepth: sanitizeDepth, parseCsv: parseCsv, importPreview: importPreview, jerseyNorm: jerseyNorm, commitImport: commitImport };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   root.TheReadLineup = api;
 })(typeof window !== 'undefined' ? window : this);

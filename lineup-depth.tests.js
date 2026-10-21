@@ -75,30 +75,54 @@ ok('depth chart: 2-4 year range, defaults and season start', () => {
   assert.ok(L.yearNote({ grad: 2027 }, 2029) && !L.yearNote({ grad: 2030 }, 2029));
   assert.deepStrictEqual(d.boards[2027].tags, []);
 });
-const csv = 'Name,Position,Grad Year\nAl One,SS,2028\nBo Two,CF,2029\nCy Three,DH,2027\nDi Four,UT,2027\n,P,2027\nEd Five,OF,abc\nAl One,SS,2028\nFy Six,C,2028\n';
+const csv = 'Name,Position,Grad Year,Jersey #\nAl One,SS,2028,10\nBo Two,CF,2029,11\nCy Three,DH,2027,12\nDi Four,UT,2027,13\n,P,2027,14\nEd Five,OF,abc,15\nAl One,SS,2028,16\nFy Six,C,2028,17\nGus Seven,P,2028,10\nHal Eight,P,2028,\nIan Nine,1B,2028,99\nJay Ten,2B,2028,44\n';
 ok('CSV: valid rows ok; LF/CF/RF review with OF suggestion; DH/UT flagged without suggestion; errors; duplicates', () => {
-  const pv = L.importPreview(csv, [P('E1', 'C', { name: 'Fy Six', grad: 2028 })]), by = {}; pv.rows.forEach((r) => { by[r.line] = r; });
+  const pv = L.importPreview(csv, [P('E1', 'C', { name: 'Fy Six', grad: 2028, jersey: '44' })]), by = {}; pv.rows.forEach((r) => { by[r.line] = r; });
   assert.strictEqual(by[2].status, 'ok'); assert.strictEqual(by[3].status, 'review'); assert.strictEqual(by[3].suggestion, 'OF');
   assert.strictEqual(by[4].status, 'review'); assert.strictEqual(by[4].suggestion, ''); assert.strictEqual(by[5].status, 'review'); assert.strictEqual(by[5].suggestion, '');
   assert.strictEqual(by[6].status, 'error'); assert.strictEqual(by[7].status, 'error');
   assert.strictEqual(by[8].dupe, 'file'); assert.strictEqual(by[9].dupe, 'roster');
 });
-ok('CSV: missing columns, empty file, header only, row limit, quotes and BOM', () => {
-  assert.ok(L.importPreview('Name,Grad Year\nA,2028', []).fileErrors.length);
-  assert.ok(L.importPreview('', []).fileErrors.length); assert.ok(L.importPreview('Name,Position,Grad Year', []).fileErrors.length);
-  assert.ok(L.importPreview('Name,Position,Grad Year\n' + new Array(202).join('A,P,2028\n'), []).fileErrors.length);
-  const q = L.importPreview('\uFEFFName,Position,Grad Year\r\n"Doe, Jo",P,2028\r\n', []); assert.strictEqual(q.rows[0].name, 'Doe, Jo'); assert.strictEqual(q.rows[0].status, 'ok');
+ok('CSV Jersey #: required column; missing, invalid and duplicate numbers need review; unique numbers enforced on commit', () => {
+  assert.ok(L.importPreview('Name,Position,Grad Year\nA,P,2028', []).fileErrors.some((x) => /Jersey/.test(x)));
+  const pv = L.importPreview(csv, [P('E1', 'C', { name: 'Fy Six', grad: 2028, jersey: '44' })]), by = {}; pv.rows.forEach((r) => { by[r.line] = r; });
+  assert.strictEqual(by[10].jerseyDupe, 'file'); assert.strictEqual(by[10].status, 'review');
+  assert.strictEqual(by[11].status, 'review'); assert.ok(/Jersey/.test(by[11].issues.join(' ')));
+  assert.strictEqual(by[13].jerseyDupe, 'roster'); assert.strictEqual(by[12].status, 'ok');
+  assert.strictEqual(L.jerseyNorm('#07'), '7'); assert.strictEqual(L.jerseyNorm('123'), ''); assert.strictEqual(L.jerseyNorm('x'), '');
+  const r = L.commitImport(pv, { 10: { action: 'add', jersey: '10' }, 11: { action: 'add' }, 13: { action: 'add', jersey: '44' } }, true, [], ['44']);
+  assert.ok(!r.added.some((p) => p.name === 'Gus Seven' || p.name === 'Hal Eight' || p.name === 'Jay Ten'), 'duplicate or missing jersey is never added');
+  const r2 = L.commitImport(pv, { 10: { action: 'add', jersey: '55' }, 11: { action: 'add', jersey: '55' }, 13: { action: 'add', jersey: '56' } }, true, [], ['44']);
+  const js = r2.added.map((p) => p.jersey); assert.strictEqual(new Set(js).size, js.length, 'jerseys unique'); assert.ok(js.indexOf('56') >= 0 && js.filter((x) => x === '55').length === 1);
+});
+ok('roster fixture: fictional, 28 players, unique jerseys, valid positions, no recruit data', () => {
+  const R = require('./roster-fixture.js').players(); assert.ok(R.length >= 25 && R.length <= 30);
+  assert.strictEqual(new Set(R.map((p) => p.jersey)).size, R.length); assert.strictEqual(new Set(R.map((p) => p.id)).size, R.length);
+  R.forEach((p) => { assert.ok(L.STORED_POSITIONS.indexOf(p.pos) >= 0 && /^\d{1,2}$/.test(p.jersey) && p.grad >= 2026, p.name); assert.ok(!('committed' in p) && !('score' in p)); });
+  assert.ok(/ictional/.test(read('roster-fixture.js')));
+});
+ok('stale recruit ids from old drafts are sanitized away', () => {
+  const roster = require('./roster-fixture.js').players().map((p) => p.id);
+  const lu = { active: 0, lineups: [{ id: 'a', label: 'L', free: { 'REC-9': { x: 0.5, y: 0.5 }, 'R-01': { x: 0.5, y: 0.5 } }, order: ['REC-3', 'R-02'] }] };
+  const s = L.sanitizeLineups(JSON.parse(JSON.stringify(lu)), roster); assert.ok(!s.lineups[0].free['REC-9'] && s.lineups[0].order.indexOf('REC-3') < 0 && s.lineups[0].free['R-01'] && s.lineups[0].order.indexOf('R-02') >= 0);
+  const dp = L.sanitizeDepth(null, roster), y = L.depthYears(dp)[0]; dp.boards[y].tags = [{ pid: 'REC-1', g: 'SS', x: 0, y: 0 }, { pid: 'R-14', g: 'SS', x: 0, y: 0 }];
+  assert.deepStrictEqual(L.sanitizeDepth(JSON.parse(JSON.stringify(dp)), roster).boards[y].tags.map((t) => t.pid), ['R-14']);
+});ok('CSV: missing columns, empty file, header only, row limit, quotes and BOM', () => {
+  assert.ok(L.importPreview('Name,Grad Year,Jersey #\nA,2028,1', []).fileErrors.length);
+  assert.ok(L.importPreview('', []).fileErrors.length); assert.ok(L.importPreview('Name,Position,Grad Year,Jersey #', []).fileErrors.length);
+  assert.ok(L.importPreview('Name,Position,Grad Year,Jersey #\n' + new Array(202).join('A,P,2028,1\n'), []).fileErrors.length);
+  const q = L.importPreview('\uFEFFName,Position,Grad Year,Jersey #\r\n"Doe, Jo",P,2028,3\r\n', []); assert.strictEqual(q.rows[0].name, 'Doe, Jo'); assert.strictEqual(q.rows[0].status, 'ok');
 });
 ok('commitImport requires review, never adds errors, never converts silently, never modifies existing', () => {
-  const pv = L.importPreview(csv, [P('E1', 'C', { name: 'Fy Six', grad: 2028 })]);
+  const pv = L.importPreview(csv, [P('E1', 'C', { name: 'Fy Six', grad: 2028, jersey: '44' })]);
   assert.throws(() => L.commitImport(pv, {}, false, []));
   assert.throws(() => L.commitImport(pv, {}, undefined, []));
-  let r = L.commitImport(pv, {}, true, ['IMP-001']);
-  assert.deepStrictEqual(r.added.map((p) => p.name), ['Al One']); assert.strictEqual(r.added[0].id, 'IMP-002');
-  r = L.commitImport(pv, { 3: { action: 'add', pos: 'OF' }, 4: { action: 'add', pos: 'DH' }, 5: { action: 'add' }, 6: { action: 'add', pos: 'P' } }, true, []);
+  let r = L.commitImport(pv, {}, true, ['IMP-001'], ['44']);
+  assert.ok(r.added.some((p) => p.name === 'Al One') && r.added.find((p) => p.name === 'Al One').id === 'IMP-002');
+  r = L.commitImport(pv, { 3: { action: 'add', pos: 'OF' }, 4: { action: 'add', pos: 'DH' }, 5: { action: 'add' }, 6: { action: 'add', pos: 'P' } }, true, [], ['44']);
   const names = r.added.map((p) => p.name + ':' + p.pos);
   assert.ok(names.indexOf('Bo Two:OF') >= 0); assert.ok(!names.some((x) => /Cy|Di|Ed/.test(x)), 'DH/UT/error rows never added');
-  r.added.forEach((p) => assert.ok(L.STORED_POSITIONS.indexOf(p.pos) >= 0));
+  r.added.forEach((p) => assert.ok(L.STORED_POSITIONS.indexOf(p.pos) >= 0 && p.jersey));
 });
 ok('lineup-depth.js has no storage, network or global side effects', () => {
   const s = read('lineup-depth.js'); assert.ok(!/localStorage|sessionStorage|XMLHttpRequest|fetch\(|WebSocket|sendBeacon/.test(s));
@@ -134,7 +158,7 @@ ok('exception and docs stay out of the handoff and bridge files; no pricing or A
     assert.ok(q('.coach-subnav a[href="coach-lineup.html"][aria-current="page"]').length && q('.coach-subnav a[href="coach-depth-chart.html"]').length, 'nav links');
     assert.strictEqual(q('.ld-tab').length, 1); assert.ok(q('#ld-canvas').length === 1 && q('.ld-lane-row').length === 9, 'white canvas with 9-row lane');
     assert.strictEqual(q('select.ld-sel, .ld-slot').length, 0, 'no select or slot placement controls');
-    assert.strictEqual(q('#ld-canvas select').length, 0); assert.ok(q('#ld-tray-list .ld-tag').length > 20, 'tray tags come from sample players');
+    assert.strictEqual(q('#ld-canvas select').length, 0); assert.ok(q('#ld-tray-list .ld-tag').length === 28, 'tray holds exactly the 28 fictional roster players'); assert.ok(/^#\d+/.test(q('#ld-tray-list .ld-tag')[0].textContent.trim()), 'jersey number shown first'); assert.ok(!/ecruit|prospect|Target/.test(Array.from(q('.ld-tag')).map((e) => e.textContent).join(' ')) && !q('[data-pool]').length, 'no recruits in pool'); assert.ok(Array.from(q('#ld-tray-list .ld-tag')).every((e) => /^R-\d+$/.test(e.dataset.pid)), 'roster ids only');
     const tray = q('#ld-tray-list .ld-tag')[0]; assert.ok(tray.getAttribute('tabindex') === '0');
     const pid = tray.dataset.pid; tray.dispatchEvent(new w.KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
     let tag = w.document.querySelector('#ld-canvas .ld-tag[data-pid="' + pid + '"]'); assert.ok(tag, 'Enter sends tray tag to canvas'); assert.ok(/set as batting order 1/.test(w.document.getElementById('ld-live').textContent) || /placed on the canvas/.test(w.document.getElementById('ld-live').textContent), 'aria-live');
@@ -149,7 +173,7 @@ ok('exception and docs stay out of the handoff and bridge files; no pricing or A
     assert.strictEqual(q2('#ld-canvas select, select.ld-sel').length, 0);
     ['P', 'C', '1B', '2B', '3B', 'SS', 'LF', 'CF', 'RF'].forEach((s) => assert.ok(/\bopen\b/.test(Array.from(q2('.ld-glabel')).filter((e) => e.textContent.indexOf(s + ' ') === 0).map((e) => e.textContent).join(' ')), s));
     const t2 = q2('#ld-tray-list .ld-tag')[0]; t2.dispatchEvent(new w2.KeyboardEvent('keydown', { key: 'Enter', bubbles: true })); assert.ok(q2('#ld-canvas .ld-tag').length === 1, 'depth tray Enter places tag');
-    w2.document.querySelector('[data-yrs="2"]').click(); assert.strictEqual(q2('.ld-tab[data-tab]').length, 2); assert.ok(w2.document.querySelector('[data-pool="targets"]'));
+    w2.document.querySelector('[data-yrs="2"]').click(); assert.strictEqual(q2('.ld-tab[data-tab]').length, 2);  assert.ok(!w2.document.querySelector('[data-pool]') && !/Recruiting Targets/.test(w2.document.body.textContent), 'no recruiting targets pool');
     const md = await open('/coach-master-database.html?demo=1'); assert.ok(md.window.document.querySelector('.coach-subnav a[href="coach-lineup.html"]'), 'subnav on other coach pages');
     assert.ok(!/\b(LF|CF|RF)\b/.test(Array.from(md.window.document.querySelectorAll('select option')).map((o) => o.textContent).join(' ')), 'master database positions unchanged');
     const sp = await JSDOM.fromURL(base + '/coach-depth-chart.html?demo=1', { runScripts: 'dangerously', resources: 'usable', pretendToBeVisual: true, virtualConsole: new VirtualConsole(), beforeParse: (win) => { win.sessionStorage.setItem('theReadActiveSport', 'Women\u2019s Soccer'); } }); await new Promise((r) => setTimeout(r, 1200));

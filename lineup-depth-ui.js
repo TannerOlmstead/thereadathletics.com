@@ -87,7 +87,7 @@
       });
       b.tags.forEach(function (t) {
         var p = B[t.pid]; if (!p) return; var pos = L.depthPos(b, t), k = L.key(t.pid, t.g), extra = '', badge = '', label = 'free on canvas';
-        if (t.g) { var i = L.groupTags(b, t.g).indexOf(t); var pg = L.PITCH_SLOTS.indexOf(t.g) >= 0; badge = pg ? t.g + (i + 1) : i === 0 ? 'S' : 'B' + i; label = t.g + ' ' + L.depthLabel(i, t.g); var fit = L.slotFit(t.g, p); if (!fit.ok && !pg) extra += ' <span class="ld-mark warn" title="Off-position hint only. The stored position is not changed.">!</span>'; }
+        if (t.g) { var i = t.s || 0; var pg = L.PITCH_SLOTS.indexOf(t.g) >= 0; badge = pg ? t.g + (i + 1) : i === 0 ? 'S' : 'B' + i; label = t.g + ' ' + L.depthLabel(i, t.g); var fit = L.slotFit(t.g, p); if (!fit.ok && !pg) extra += ' <span class="ld-mark warn" title="Off-position hint only. The stored position is not changed.">!</span>'; }
         var al = t.g ? L.alsoAt(b, t) : []; if (al.length) extra += ' <span class="ld-mark" title="Also at ' + esc(al.join(', ')) + '. Duplicates are allowed on the depth chart only.">+' + al.length + '</span>';
         var gn = L.yearNote(p, year); if (gn) extra += ' <span class="ld-mark warn" title="' + esc(gn) + '">Grad</span>';
         

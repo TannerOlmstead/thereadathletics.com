@@ -186,6 +186,23 @@ ok('depth grid: every cell is the same size, inside its area, and no two cells o
   L.SLOTS.forEach((g) => { for (let i = 0; i < L.CONFIG.depthSlots[g]; i++) { const p = L.groupSlotPos(g, i); const d = L.depthDrop({ tags: [] }, 'x', p.x, p.y); assert.strictEqual(d.group, g, 'a drop on cell ' + g + i + ' snaps to ' + g); } });
   assert.ok(L.groupSlotPos('LF', 1).y - L.groupSlotPos('LF', 0).y > 0.036, 'rows are at least one tag tall apart');
 });
+ok('depth slots: any slot can be filled (gaps allowed), stored per tag, kept on reload; old drafts without slots load in order', () => {
+  const b2 = L.groupSlotPos('2B', 2); let b = L.depthDrop({ tags: [] }, 'a', b2.x, b2.y); assert.ok(b.ok && b.index === 2, 'dropped straight into B2 with Starter and B1 empty');
+  b = b.board; assert.strictEqual(L.groupTags(b, '2B')[0].s, 2); assert.deepStrictEqual(L.depthPos(b, L.groupTags(b, '2B')[0]), b2, 'tag sits in the B2 cell, nothing shifts up');
+  const b4 = L.groupSlotPos('2B', 4), d2 = L.depthDrop(b, 'b', b4.x, b4.y); assert.ok(d2.ok && d2.index === 4); b = d2.board;
+  const same = L.depthDrop(b, 'c', b2.x, b2.y); assert.ok(same.ok && same.index !== 2 && [0, 1, 3].indexOf(same.index) >= 0, 'an occupied cell sends the tag to the nearest free cell, never shifting others');
+  const mv = L.depthReorder(b, L.key('a', '2B'), -1); assert.strictEqual(L.groupTags(mv.board, '2B')[0].s, 1, 'keyboard move into an empty slot keeps the gap'); const sw = L.depthReorder(b, L.key('a', '2B'), 2); assert.strictEqual(L.groupTags(sw.board, '2B').map((t) => t.pid + t.s).join(), 'b2,a4', 'moving onto a filled slot swaps');
+  const ids = ['a', 'b', 'c'], rt = L.sanitizeDepth(JSON.parse(JSON.stringify({ first: 2027, count: 2, active: 0, boards: { 2027: b } })), ids, new Date(2026, 8, 1));
+  assert.deepStrictEqual(L.groupTags(rt.boards[2027], '2B').map((t) => t.pid + t.s), ['a2', 'b4'], 'gaps survive save and reload');
+  const old = L.sanitizeDepth({ first: 2027, count: 2, active: 0, boards: { 2027: { tags: [{ pid: 'a', g: '2B' }, { pid: 'b', g: '2B' }, { pid: 'c', g: '2B', s: 1 }, { pid: 'a', g: 'SS', s: 9 }] } } }, ids, new Date(2026, 8, 1));
+  assert.deepStrictEqual(L.groupTags(old.boards[2027], '2B').map((t) => t.pid + t.s), ['a0', 'c1', 'b2'], 'old tags without a slot take the lowest free slot'); assert.ok(L.groupTags(old.boards[2027], 'SS')[0].s === 0, 'invalid slot replaced');
+  const seeded = L.seedDepthBoard(require('./roster-fixture.js').players()); ['C', '1B', 'SP', 'RP'].forEach((g) => assert.deepStrictEqual(L.groupTags(seeded, g).map((t) => t.s), L.groupTags(seeded, g).map((_, i) => i), 'seed fills from Starter: ' + g));
+});
+ok('tags are compact from first paint (CSS has one compact base size, no oversized rack/board/drag tags)', () => {
+  const css = require('fs').readFileSync(require('path').join(__dirname, 'styles.css'), 'utf8');
+  const base = css.match(/\.ld-tag\{[^}]*\}/g).pop(), em = (s) => parseFloat((s.match(/font-size:([\d.]+)rem/) || [0, 99])[1]);
+  assert.ok(em(base) <= 0.75 && /max-width:150px/.test(base), 'base tag font and width capped'); assert.ok(/\.ld-tag\.in-tray\{[^}]*height:26px/.test(css) && /\.ld-tag\.ld-floating\{[^}]*height:24px/.test(css), 'rack tags and drag ghost have fixed compact heights'); assert.ok(!/\.ld-tag[^{]*\{[^}]*min-(width|height):[1-9]/.test(css.replace(/\.ld-num[^}]*\}/g, '')), 'no min size on tags');
+});
 ok('pitching panel: right of the field, 5 rotation + 20 bullpen slots, drop snapping, once per group, old P drafts migrate', () => {
   assert.ok(L.PANEL.x0 >= L.FIELD_W && Object.keys(L.ANCHORS).every((g) => L.ANCHORS[g].x < L.FIELD_W), 'field anchors left of the panel');
   const pos = []; for (let i = 0; i < 5; i++) pos.push(L.groupSlotPos('SP', i)); for (let i = 0; i < 20; i++) pos.push(L.groupSlotPos('RP', i));

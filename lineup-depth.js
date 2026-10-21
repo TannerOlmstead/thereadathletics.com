@@ -107,13 +107,15 @@
   }
   function key(pid, g) { return pid + '|' + (g || 'free'); }
   function newDepthBoard() { return { tags: [] }; }
-  function cloneDepth(b) { return { tags: b.tags.map(function (t) { return { pid: t.pid, g: t.g, x: t.x, y: t.y }; }) }; }
-  function groupTags(b, g) { return b.tags.filter(function (t) { return t.g === g; }); }
+  function cloneDepth(b) { return { tags: b.tags.map(function (t) { var c = { pid: t.pid, g: t.g, x: t.x, y: t.y }; if (t.s != null) c.s = t.s; return c; }) }; }
+  function groupTags(b, g) { var l = b.tags.filter(function (t) { return t.g === g; }); return g ? l.sort(function (p, q) { return (p.s || 0) - (q.s || 0); }) : l; }
+  // Slots are stored per tag (t.s, 0-based) and gaps are allowed: a bench slot can be filled while the Starter slot is empty; nothing shifts up.
+  function freeSlot(b, g, near) { var used = {}; groupTags(b, g).forEach(function (t) { used[t.s] = 1; }); var best = -1, bd = Infinity; for (var i = 0; i < CONFIG.depthSlots[g]; i++) { if (used[i]) continue; var d = Math.abs(i - near); if (d < bd) { bd = d; best = i; } } return best; }
   function depthOrder(b, g) { return groupTags(b, g).map(function (t) { return t.pid; }); }
   // Other position groups where the same player is also listed (duplicates are allowed across positions on the depth chart only).
   function alsoAt(b, t) { return b.tags.filter(function (x) { return x.pid === t.pid && x.g && x.g !== t.g; }).map(function (x) { return x.g; }); }
   function depthLabel(i, g) { if (PITCH_SLOTS.indexOf(g) >= 0) return g + (i + 1); return CONFIG.depthLabels[i] || 'Depth ' + (i + 1); }
-  function depthPos(b, t) { if (!t.g) return { x: t.x, y: t.y }; var i = groupTags(b, t.g).indexOf(t); return groupSlotPos(t.g, i); }
+  function depthPos(b, t) { if (!t.g) return { x: t.x, y: t.y }; return groupSlotPos(t.g, t.s || 0); }
   // A drop snaps to a position when it lands inside that position's column of cells (plus a small margin).
   function nearestGroup(x, y, b) {
     var pg = panelGroupAt(x, y); if (pg) return pg;
@@ -136,11 +138,8 @@
     if (g) {
       if (groupTags(b, g).some(function (t) { return t.pid === pid; })) return { ok: false, reason: 'Already listed at ' + g + '. The same player can be listed at other positions.', board: board };
       if (openSpots(b, g) <= 0) return { ok: false, reason: g + ' depth is full (' + CONFIG.depthSlots[g] + ').', board: board };
-      var list = groupTags(b, g), at = 0;
-      at = Math.min(nearestSlotIndex(g, x, y), list.length);
-      var before = list.slice(0, at), idx = at === 0 ? b.tags.indexOf(list[0]) : b.tags.indexOf(before[before.length - 1]) + 1;
-      if (!list.length) idx = b.tags.length;
-      b.tags.splice(idx, 0, { pid: pid, g: g, x: 0, y: 0 });
+      var at = freeSlot(b, g, nearestSlotIndex(g, x, y));
+      b.tags.push({ pid: pid, g: g, s: at, x: 0, y: 0 });
       return { ok: true, board: b, group: g, index: at };
     }
     b.tags = b.tags.filter(function (t) { return !(t.pid === pid && !t.g); });
@@ -151,8 +150,8 @@
   function depthReorder(board, k, delta) {
     var b = cloneDepth(board), t = b.tags.filter(function (x) { return key(x.pid, x.g) === k; })[0];
     if (!t || !t.g) return { board: board, noop: true };
-    var list = groupTags(b, t.g), i = list.indexOf(t), j = i + delta; if (j < 0 || j >= list.length) return { board: board, noop: true };
-    var a = b.tags.indexOf(list[i]), c = b.tags.indexOf(list[j]), tmp = b.tags[a]; b.tags[a] = b.tags[c]; b.tags[c] = tmp;
+    var i = t.s || 0, j = i + delta; if (j < 0 || j >= CONFIG.depthSlots[t.g]) return { board: board, noop: true };
+    var o = groupTags(b, t.g).filter(function (x) { return x.s === j; })[0]; if (o) o.s = i; t.s = j;
     return { board: b, index: j };
   }
   function clampYears(n) { n = n == null || n === '' ? NaN : Math.round(Number(n)); if (!isFinite(n)) n = CONFIG.defaultYears; return Math.max(CONFIG.minYears, Math.min(CONFIG.maxYears, n)); }
@@ -191,7 +190,7 @@
     var b = newDepthBoard(), cnt = {}, of = ['LF', 'CF', 'RF'], n = 0;
     sortRoster(players).forEach(function (p) {
       var g = p.pos === 'OF' ? of[n++ % 3] : p.pos === 'P' ? ((cnt.SP || 0) < CONFIG.depthSlots.SP ? 'SP' : 'RP') : p.pos; if (SLOTS.indexOf(g) < 0 || (cnt[g] || 0) >= CONFIG.depthSlots[g]) return;
-      cnt[g] = (cnt[g] || 0) + 1; b.tags.push({ pid: p.id, g: g, x: 0, y: 0 });
+      b.tags.push({ pid: p.id, g: g, s: cnt[g] || 0, x: 0, y: 0 }); cnt[g] = (cnt[g] || 0) + 1;
     });
     return b;
   }
@@ -208,10 +207,12 @@
         if (!t || typeof t.pid !== 'string' || !ok[t.pid]) return;
         var g = t.g == null ? null : t.g; if (g === 'P') g = (cnt.SP || 0) < CONFIG.depthSlots.SP ? 'SP' : 'RP'; if (g !== null && SLOTS.indexOf(g) < 0) return;
         var k = key(t.pid, g); if (seen[k]) return;
-        if (g) { cnt[g] = (cnt[g] || 0) + 1; if (cnt[g] > CONFIG.depthSlots[g]) return; seen[k] = 1; st.boards[y].tags.push({ pid: t.pid, g: g, x: 0, y: 0 }); }
+        if (g) { cnt[g] = (cnt[g] || 0) + 1; if (cnt[g] > CONFIG.depthSlots[g]) return; seen[k] = 1; st.boards[y].tags.push({ pid: t.pid, g: g, s: (typeof t.s === 'number' && t.s % 1 === 0 && t.s >= 0 && t.s < CONFIG.depthSlots[g]) ? t.s : null, x: 0, y: 0 }); }
         else if (num(t.x) && num(t.y)) { seen[k] = 1; st.boards[y].tags.push({ pid: t.pid, g: null, x: round(cx(t.x)), y: round(cy(t.y)) }); }
       });
     });
+    // Stored slots are kept (gaps stay); tags without a usable or unique slot (older drafts) take the lowest free slot in their old order.
+    Object.keys(st.boards).forEach(function (y) { var b = st.boards[y], used = {}; b.tags.forEach(function (t) { if (!t.g) return; if (t.s != null && used[t.g + t.s]) t.s = null; else if (t.s != null) used[t.g + t.s] = 1; }); b.tags.forEach(function (t) { if (!t.g || t.s != null) return; for (var i = 0; i < CONFIG.depthSlots[t.g]; i++) if (!used[t.g + i]) { t.s = i; used[t.g + i] = 1; break; } }); });
     if (seedPlayers) Object.keys(st.boards).forEach(function (y) { if (!hasSaved[y]) st.boards[y] = seedDepthBoard(seedPlayers.filter(function (p) { return ok[p.id]; })); });
     st.active = Math.max(0, Math.min(st.count - 1, Number(raw && raw.active) || 0));
     return st;

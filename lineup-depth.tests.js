@@ -34,12 +34,12 @@ ok('depth canvas: snap within radius, stack order, once per group, caps, free ta
   let b = { tags: [] }; const a = L.ANCHORS.SS;
   let r = L.depthDrop(b, 'p1', a.x + 0.02, a.y); assert.ok(r.ok && r.group === 'SS' && r.index === 0); b = r.board;
   r = L.depthDrop(b, 'p2', a.x, a.y + 0.03); assert.strictEqual(r.index, 1); b = r.board;
-  assert.deepStrictEqual(L.groupTags(b, 'SS').map((t) => t.pid), ['p1', 'p2']); assert.strictEqual(L.depthLabel(0), 'Starter');
+  assert.deepStrictEqual(L.groupTags(b, 'SS').map((t) => t.pid), ['p1', 'p2']); assert.strictEqual(L.depthLabel(0), 'Starter'); assert.strictEqual(L.depthLabel(0, 'SP'), 'SP1'); assert.strictEqual(L.depthLabel(19, 'RP'), 'RP20');
   r = L.depthDrop(b, 'p1', a.x, a.y, L.key('p1', 'SS')); assert.strictEqual(L.groupTags(r.board, 'SS').length, 2, 'moving within a group never duplicates');
   r = L.depthDrop(b, 'p3', 0.5, 0.97); assert.strictEqual(r.group, null); assert.ok(r.board.tags.some((t) => t.pid === 'p3' && !t.g && t.y <= L.BOUNDS.y1), 'free tag clamped');
   r = L.depthDrop(b, 'p3', 0.5, 0.97, null, true); assert.strictEqual(r.group, null);
   const near = L.depthDrop({ tags: [] }, 'q', a.x + 0.02, a.y, null, true); assert.strictEqual(near.group, null, 'noSnap');
-  assert.ok(Object.keys(L.CONFIG.depthSlots).length === 9 && Object.keys(L.CONFIG.depthSlots).every((g) => L.CONFIG.depthSlots[g] === 5), 'five slots per position');
+  assert.ok(Object.keys(L.CONFIG.depthSlots).length === 10 && Object.keys(L.CONFIG.depthSlots).every((g) => L.CONFIG.depthSlots[g] === (g === 'RP' ? 20 : 5)), 'five slots per field position, 5 rotation (SP) and 20 bullpen (RP) slots'); assert.ok(!('P' in L.CONFIG.depthSlots) && !('P' in L.ANCHORS), 'no single P group on the field');
   let full = { tags: [] }; for (let i = 0; i < L.CONFIG.depthSlots.C; i++) full = L.depthDrop(full, 'c' + i, L.ANCHORS.C.x, L.ANCHORS.C.y).board;
   assert.ok(!L.depthDrop(full, 'extra', L.ANCHORS.C.x, L.ANCHORS.C.y).ok, 'per-group cap'); assert.strictEqual(L.openSpots(full, 'C'), 0);
   assert.strictEqual(L.totalOpen(b), Object.keys(L.CONFIG.depthSlots).reduce((s, g) => s + L.CONFIG.depthSlots[g], 0) - 2);
@@ -161,6 +161,41 @@ ok('roster order: position order P,C,1B,2B,3B,SS,OF, numeric jersey (0 first), n
   const fx = L.sortRoster(require('./roster-fixture.js').players()); const rank = (p) => L.STORED_POSITIONS.indexOf(p.pos);
   for (let i = 1; i < fx.length; i++) assert.ok(rank(fx[i - 1]) < rank(fx[i]) || (rank(fx[i - 1]) === rank(fx[i]) && Number(fx[i - 1].jersey) <= Number(fx[i].jersey)));
 });
+ok('depth chart seed: primary positions, sortRoster order, 5 per group, overflow unplaced, removals stay removed, reset re-seeds', () => {
+  const players = require('./roster-fixture.js').players(), ids = players.map((p) => p.id);
+  const b = L.seedDepthBoard(players), by = {}; players.forEach((p) => { by[p.id] = p; });
+  L.SLOTS.forEach((g) => assert.ok(L.groupTags(b, g).length <= L.CONFIG.depthSlots[g], g + ' capped'));
+  const pit = L.sortRoster(players.filter((p) => p.pos === 'P')).map((p) => p.id); assert.deepStrictEqual(L.groupTags(b, 'SP').map((x) => x.pid), pit.slice(0, 5), 'first 5 pitchers by jersey in the rotation'); assert.deepStrictEqual(L.groupTags(b, 'RP').map((x) => x.pid), pit.slice(5, 25), 'next pitchers in the bullpen'); assert.ok(L.groupTags(b, 'SP').concat(L.groupTags(b, 'RP')).every((x) => by[x.pid].pos === 'P'));
+  L.SLOTS.filter((g) => ['LF', 'CF', 'RF', 'SP', 'RP'].indexOf(g) < 0).forEach((g) => { const t = L.groupTags(b, g).map((x) => by[x.pid]); assert.ok(t.every((p) => p.pos === g), g + ' only primary-position players'); assert.deepStrictEqual(t.map((p) => p.id), L.sortRoster(players.filter((p) => p.pos === g)).slice(0, 5).map((p) => p.id), g + ' in jersey order'); });
+  ['LF', 'CF', 'RF'].forEach((g) => assert.ok(L.groupTags(b, g).every((x) => by[x.pid].pos === 'OF'), g + ' holds OF players only (stored position stays OF)'));
+  assert.ok(b.tags.every((t) => t.g), 'all seeded tags are in position groups');
+  assert.strictEqual(new Set(b.tags.map((t) => t.pid + '|' + t.g)).size, b.tags.length);
+  const st = L.sanitizeDepth(null, ids, undefined, players); L.depthYears(st).forEach((y) => assert.strictEqual(st.boards[y].tags.length, b.tags.length, 'each season seeded'));
+  const y0 = L.depthYears(st)[0], edited = JSON.parse(JSON.stringify(st)); edited.boards[y0] = L.depthRemove(edited.boards[y0], b.tags[0].pid + '|' + b.tags[0].g);
+  const re = L.sanitizeDepth(JSON.parse(JSON.stringify(edited)), ids, undefined, players); assert.strictEqual(re.boards[y0].tags.length, b.tags.length - 1, 'removed player stays removed');
+  assert.strictEqual(re.boards[L.depthYears(re)[1]].tags.length, b.tags.length, 'other unsaved season still seeds');
+  const empty = JSON.parse(JSON.stringify(st)); empty.boards[y0].tags = []; assert.strictEqual(L.sanitizeDepth(empty, ids, undefined, players).boards[y0].tags.length, 0, 'an emptied board is not re-seeded');
+  assert.strictEqual(L.sanitizeDepth(null, ids).boards[y0].tags.length, 0, 'without seed players boards stay empty');
+  assert.strictEqual(L.sanitizeDepth(null, ids, undefined, players).boards[y0].tags.length, b.tags.length, 'reset (no draft) restores the seed');
+});
+ok('pitching panel: right of the field, 5 rotation + 20 bullpen slots, drop snapping, once per group, old P drafts migrate', () => {
+  assert.ok(L.PANEL.x0 >= L.FIELD_W && Object.keys(L.ANCHORS).every((g) => L.ANCHORS[g].x < L.FIELD_W), 'field anchors left of the panel');
+  const pos = []; for (let i = 0; i < 5; i++) pos.push(L.groupSlotPos('SP', i)); for (let i = 0; i < 20; i++) pos.push(L.groupSlotPos('RP', i));
+  assert.strictEqual(new Set(pos.map((p) => p.x + ',' + p.y)).size, 25, '25 distinct slot positions'); assert.ok(pos.every((p) => p.x >= L.PANEL.x0 && p.x <= 1 && p.y > 0 && p.y < 1), 'all inside the panel to the right of the field');
+  assert.strictEqual(L.panelGroupAt(L.groupSlotPos('SP', 2).x, L.groupSlotPos('SP', 2).y), 'SP'); assert.strictEqual(L.panelGroupAt(L.groupSlotPos('RP', 19).x, L.groupSlotPos('RP', 19).y), 'RP'); assert.strictEqual(L.panelGroupAt(0.3, 0.5), null);
+  let b = { tags: [] }; for (let i = 0; i < 5; i++) { const s = L.groupSlotPos('SP', i), r = L.depthDrop(b, 's' + i, s.x, s.y); assert.ok(r.ok && r.group === 'SP' && r.index === i); b = r.board; }
+  assert.ok(!L.depthDrop(b, 's9', L.PANEL.spX, L.PANEL.spY).ok, 'rotation full at 5'); assert.ok(!L.depthDrop(b, 's0', L.PANEL.spX, L.PANEL.spY).ok, 'once per group');
+  for (let i = 0; i < 20; i++) { const s = L.groupSlotPos('RP', i), r = L.depthDrop(b, 'r' + i, s.x, s.y); assert.ok(r.ok && r.group === 'RP' && r.index === i, 'RP' + (i + 1)); b = r.board; }
+  const s20 = L.groupSlotPos('RP', 19); assert.ok(!L.depthDrop(b, 'r99', s20.x, s20.y).ok, 'bullpen full at 20'); assert.strictEqual(L.openSpots(b, 'RP'), 0);
+  const both = L.depthDrop(b, 's0', L.groupSlotPos('RP', 3).x, L.groupSlotPos('RP', 3).y); assert.ok(!both.ok, 'bullpen full so no copy; rotation player may be copied once into an open bullpen');
+  const b2 = L.depthRemove(b, 'r5|RP'), dup = L.depthDrop(b2, 's0', s20.x, s20.y); assert.ok(dup.ok && L.alsoAt(dup.board, { pid: 's0', g: 'SP' }).join() === 'RP', 'deliberate duplicate across rotation and bullpen');
+  assert.strictEqual(L.depthPos(b, L.groupTags(b, 'RP')[10]).x, L.PANEL.cols[1], 'second bullpen column starts at RP11');
+  const old = { first: L.depthYears(L.newDepthState())[0], count: 4, active: 0, boards: {} }; old.boards[old.first] = { tags: [0, 1, 2, 3, 4, 5, 6].map((i) => ({ pid: 'p' + i, g: 'P', x: 0, y: 0 })).concat([{ pid: 'p0', g: 'SS', x: 0, y: 0 }]) };
+  const mig = L.sanitizeDepth(JSON.parse(JSON.stringify(old)), ['p0', 'p1', 'p2', 'p3', 'p4', 'p5', 'p6']).boards[old.first];
+  assert.deepStrictEqual(L.groupTags(mig, 'SP').map((t) => t.pid), ['p0', 'p1', 'p2', 'p3', 'p4']); assert.deepStrictEqual(L.groupTags(mig, 'RP').map((t) => t.pid), ['p5', 'p6']); assert.ok(!mig.tags.some((t) => t.g === 'P') && L.groupTags(mig, 'SS').length === 1, 'old P group mapped, other groups kept');
+  assert.strictEqual(L.slotStored('SP'), 'P'); assert.strictEqual(L.slotStored('RP'), 'P'); assert.ok(L.slotFit('RP', { pos: 'P' }).ok && !L.slotFit('SP', { pos: 'SS' }).ok);
+  assert.ok(L.STORED_POSITIONS.indexOf('SP') < 0 && L.STORED_POSITIONS.indexOf('RP') < 0, 'SP and RP are display groups only');
+});
 ok('lineup-depth.js has no storage, network or global side effects', () => {
   const s = read('lineup-depth.js'); assert.ok(!/localStorage|sessionStorage|XMLHttpRequest|fetch\(|WebSocket|sendBeacon/.test(s));
 });
@@ -214,8 +249,14 @@ ok('exception and docs stay out of the handoff and bridge files; no pricing or A
     const d2 = await open('/coach-depth-chart.html?demo=1'), w2 = d2.window, q2 = (s) => w2.document.querySelectorAll(s);
     assert.strictEqual(q2('.ld-tab[data-tab]').length, 4); assert.ok(q2('svg.ld-outline').length === 1 && q2('svg.ld-outline path, svg.ld-outline rect').length > 3, 'baseball field outline');
     assert.strictEqual(q2('#ld-canvas select, select.ld-sel').length, 0);
-    ['P', 'C', '1B', '2B', '3B', 'SS', 'LF', 'CF', 'RF'].forEach((s) => assert.ok(/\bopen\b/.test(Array.from(q2('.ld-glabel')).filter((e) => e.textContent.indexOf(s + ' ') === 0).map((e) => e.textContent).join(' ')), s));
-    const t2 = q2('#ld-tray-list .ld-tag')[0]; t2.dispatchEvent(new w2.KeyboardEvent('keydown', { key: 'Enter', bubbles: true })); assert.ok(q2('#ld-canvas .ld-tag[data-where="canvas"]').length === 1 && q2('#ld-tray-list .ld-tag').length === 28, 'depth tray Enter copies the tag; roster stays full');
+    const seeded = q2('#ld-canvas .ld-tag[data-where="canvas"]').length; assert.ok(seeded > 20 && seeded <= 45, 'depth chart loads pre-populated with the roster at primary positions: ' + seeded);
+    const nP = require('./roster-fixture.js').players().filter((p) => p.pos === 'P').length, ks = Array.from(q2('#ld-canvas .ld-tag[data-where="canvas"]')).map((e) => e.dataset.key); assert.strictEqual(ks.filter((k) => /\|(SP|RP)$/.test(k)).length, nP, 'every pitcher seeded in the rotation or bullpen'); assert.ok(ks.filter((k) => /\|SP$/.test(k)).length <= 5 && !ks.some((k) => /\|P$/.test(k)), 'no old P group'); assert.strictEqual(q2('.ld-pslot').length, 25 - nP, 'empty rotation and bullpen slots drawn'); assert.ok(/Starting Rotation \(5\)/.test(q2('.ld-panel-title')[0].textContent) && /Bullpen \(20\)/.test(q2('.ld-panel-title')[1].textContent), 'panel headings'); assert.ok(parseFloat(q2('#ld-canvas .ld-tag[data-key$="|SP"]')[0].style.left) > 66, 'pitchers sit to the right of the field');
+    const rm = q2('#ld-canvas .ld-tag[data-where="canvas"]')[0], rpid = rm.dataset.pid; rm.dispatchEvent(new w2.KeyboardEvent('keydown', { key: 'Delete', bubbles: true })); assert.strictEqual(q2('#ld-canvas .ld-tag[data-where="canvas"]').length, seeded - 1, 'a seeded copy can be removed');
+    q2('#ld-tray-list .ld-tag[data-pid="' + rpid + '"]')[0].dispatchEvent(new w2.KeyboardEvent('keydown', { key: 'Enter', bubbles: true })); assert.ok(q2('#ld-canvas .ld-tag[data-where="canvas"]').length === seeded && q2('#ld-tray-list .ld-tag').length === 28, 'depth tray Enter adds a copy; roster stays full');
+    const md2 = new w2.MouseEvent('mousedown', { bubbles: true, cancelable: true }); q2('#ld-tray-list .ld-tag')[0].dispatchEvent(md2); assert.ok(md2.defaultPrevented, 'mousedown on a tag is prevented (no selection highlight)');
+    const md3 = new w2.MouseEvent('mousedown', { bubbles: true, cancelable: true }); w2.document.getElementById('ld-q').dispatchEvent(md3); assert.ok(!md3.defaultPrevented, 'search input stays usable');
+    const css = read('styles.css'); assert.ok(/\.ld-tag[^{]*\{[^}]*user-select:none/.test(css) && /-webkit-touch-callout:none/.test(css) && /-webkit-tap-highlight-color:transparent/.test(css) && /\.ld-tag\{touch-action:none/.test(css) && /\.ld-roster-panel input[^{]*\{[^}]*user-select:text/.test(css), 'selection/tap-highlight suppressed on tags, search input selectable');
+    const lw = (await open('/coach-lineup.html?demo=1')).window, lm = new lw.MouseEvent('mousedown', { bubbles: true, cancelable: true }); lw.document.querySelector('#ld-tray-list .ld-tag').dispatchEvent(lm); assert.ok(lm.defaultPrevented, 'lineup page prevents selection too');
     w2.document.querySelector('[data-yrs="2"]').click(); assert.strictEqual(q2('.ld-tab[data-tab]').length, 2);  assert.ok(!w2.document.querySelector('[data-pool]') && !/Recruiting Targets/.test(w2.document.body.textContent), 'no recruiting targets pool');
     const md = await open('/coach-master-database.html?demo=1'); assert.ok(md.window.document.querySelector('.coach-subnav a[href="coach-lineup.html"]'), 'subnav on other coach pages');
     assert.ok(!/\b(LF|CF|RF)\b/.test(Array.from(md.window.document.querySelectorAll('select option')).map((o) => o.textContent).join(' ')), 'master database positions unchanged');

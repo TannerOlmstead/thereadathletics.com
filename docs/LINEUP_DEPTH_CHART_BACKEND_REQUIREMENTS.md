@@ -36,9 +36,12 @@ LF, CF and RF are selectable **display slots on the Depth Chart only** (the Line
 - Grades on tags (the user asked for none).
 - Whether recruits return to these pages later (removed for now).
 - How a batting order is communicated on the Lineup board now that the lane is gone (preview: free arrangement only; optional batting numbers, a DH marker or a printable order could be added later).
+- Depth Chart starting point (preview): a season with no saved draft is pre-populated with each roster player at their stored primary position (roster-rack order, 5 per group; extra players stay in the rack; OF players are spread across LF, CF, RF in turn, a Requires Founder Decision). Once the coach edits a season it is saved and never re-seeded; Reset All Drafts restores the seed. Production needs the saved-versus-seeded distinction stored per season.
 - Depth slots per position (preview: 5 each) and the duplicate policy (preview: allowed across positions on the depth chart only, never on the lineup).
 - Who can edit and share lineups and depth charts.
 - Class-year labeling and how recruits are timed against graduation (preview: the first season is next season, graduated players are flagged not blocked).
 - Batting-order lane rule versus free tags, snap radius and stack order.
 - Positions, slots and lineup rules for non-baseball sports.
 - Saved-draft retention, XLSX support and roster-system integrations.
+
+- Depth Chart pitching (preview): pitchers are NOT a field group. A Pitching panel sits to the right of the field with a Starting Rotation (SP1-SP5, 5 slots) and a Bullpen (RP1-RP20, 20 slots, two columns); the other eight groups keep 5 slots. A season with no saved draft is pre-seeded by stored primary position in roster order (first 5 pitchers to SP, next up to 20 to RP, others 5 per group, extras stay in the rack; OF players are spread across LF/CF/RF in turn: Requires Founder Decision). Saved boards are never re-seeded; Reset restores the seed. Old single P-group drafts migrate: first 5 to SP, rest to RP. A pitcher may be in both SP and RP only by deliberate copy (once per group). Drags do not select page text.

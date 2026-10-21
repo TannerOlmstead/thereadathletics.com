@@ -6,16 +6,17 @@
   'use strict';
   var STORED_POSITIONS = ['P', 'C', '1B', '2B', '3B', 'SS', 'OF'];
   var OF_SLOTS = ['LF', 'CF', 'RF'];
-  var SLOTS = ['P', 'C', '1B', '2B', '3B', 'SS', 'LF', 'CF', 'RF'];
+  var PITCH_SLOTS = ['SP', 'RP'];
+  var SLOTS = ['SP', 'RP', 'C', '1B', '2B', '3B', 'SS', 'LF', 'CF', 'RF'];
   var CONFIG = {
     maxLineups: 4,
     battingSlots: 9,
     minYears: 2, maxYears: 4, defaultYears: 4,
-    depthSlots: { P: 5, C: 5, '1B': 5, '2B': 5, '3B': 5, SS: 5, LF: 5, CF: 5, RF: 5 },
+    depthSlots: { SP: 5, RP: 20, C: 5, '1B': 5, '2B': 5, '3B': 5, SS: 5, LF: 5, CF: 5, RF: 5 },
     depthLabels: ['Starter', 'Backup 1', 'Backup 2', 'Backup 3', 'Backup 4']
   };
 
-  function slotStored(slot) { return OF_SLOTS.indexOf(slot) >= 0 ? 'OF' : slot; }
+  function slotStored(slot) { return OF_SLOTS.indexOf(slot) >= 0 ? 'OF' : PITCH_SLOTS.indexOf(slot) >= 0 ? 'P' : slot; }
   // Non-blocking hint only: coaches may place anyone anywhere; the stored position never changes.
   function slotFit(slot, p) {
     if (!p || slot === 'DH') return { ok: true };
@@ -58,8 +59,9 @@
       }
       return { x: 0.65, y: 0.5 };
     }
-    var g = p && p.pos === 'OF' ? 'CF' : p && SLOTS.indexOf(p.pos) >= 0 ? p.pos : null;
-    return g ? { x: ANCHORS[g].x, y: ANCHORS[g].y } : { x: 0.5, y: 0.36 };
+    if (p && p.pos === 'P') return groupSlotPos('SP', 0);
+    var g = p && p.pos === 'OF' ? 'CF' : p && ANCHORS[p.pos] ? p.pos : null;
+    return g ? { x: ANCHORS[g].x, y: ANCHORS[g].y } : { x: 0.35, y: 0.36 };
   }
   function newLineupState() { return { lineups: [newLineup(1)], active: 0 }; }
   function nextId(st) { var used = st.lineups.map(function (l) { return l.id; }), n = 1; while (used.indexOf('L' + n) >= 0) n++; return n; }
@@ -81,8 +83,26 @@
 
   // ---------- Depth chart canvas: baseball field with position areas ----------
   // Snapped tags stack under the position anchor, top = Starter, then Backup 1... ; free tags keep their own coordinates.
-  var ANCHORS = { P: { x: 0.5, y: 0.52 }, C: { x: 0.5, y: 0.80 }, '1B': { x: 0.76, y: 0.62 }, '2B': { x: 0.70, y: 0.44 }, '3B': { x: 0.24, y: 0.62 }, SS: { x: 0.30, y: 0.44 }, LF: { x: 0.16, y: 0.20 }, CF: { x: 0.5, y: 0.08 }, RF: { x: 0.84, y: 0.20 } };
-  var STACK_STEP = 0.045, SNAP_RADIUS = 0.15;
+  // The field fills the left FIELD_W of the canvas; the pitching panel (Starting Rotation SP1-SP5, Bullpen RP1-RP20 in 2 columns) sits to its right.
+  var FIELD_W = 0.66;
+  var ANCHORS = { C: { x: 0.33, y: 0.74 }, '1B': { x: 0.50, y: 0.60 }, '2B': { x: 0.45, y: 0.42 }, '3B': { x: 0.16, y: 0.60 }, SS: { x: 0.21, y: 0.42 }, LF: { x: 0.11, y: 0.17 }, CF: { x: 0.33, y: 0.08 }, RF: { x: 0.55, y: 0.17 } };
+  var STACK_STEP = 0.042, SNAP_RADIUS = 0.1;
+  var PANEL = { x0: 0.68, x1: 0.99, spY: 0.1, rpY: 0.42, step: 0.042, cols: [0.775, 0.915], spX: 0.845, spBox: { y0: 0.03, y1: 0.33 }, rpBox: { y0: 0.34, y1: 0.9 } };
+  // Center of slot i (0-based) in a pitching group.
+  function groupSlotPos(g, i) {
+    if (g === 'SP') return { x: PANEL.spX, y: round(PANEL.spY + i * PANEL.step) };
+    return { x: PANEL.cols[Math.floor(i / 10) % 2], y: round(PANEL.rpY + (i % 10) * PANEL.step) };
+  }
+  function panelGroupAt(x, y) {
+    if (x < PANEL.x0 || x > 1) return null;
+    if (y >= PANEL.spBox.y0 && y <= PANEL.spBox.y1) return 'SP';
+    if (y >= PANEL.rpBox.y0 && y <= PANEL.rpBox.y1) return 'RP';
+    return null;
+  }
+  function nearestSlotIndex(g, x, y) {
+    var best = 0, bd = Infinity; for (var i = 0; i < CONFIG.depthSlots[g]; i++) { var s = groupSlotPos(g, i), d = Math.pow(x - s.x, 2) + Math.pow(y - s.y, 2); if (d < bd) { bd = d; best = i; } }
+    return best;
+  }
   function key(pid, g) { return pid + '|' + (g || 'free'); }
   function newDepthBoard() { return { tags: [] }; }
   function cloneDepth(b) { return { tags: b.tags.map(function (t) { return { pid: t.pid, g: t.g, x: t.x, y: t.y }; }) }; }
@@ -90,11 +110,12 @@
   function depthOrder(b, g) { return groupTags(b, g).map(function (t) { return t.pid; }); }
   // Other position groups where the same player is also listed (duplicates are allowed across positions on the depth chart only).
   function alsoAt(b, t) { return b.tags.filter(function (x) { return x.pid === t.pid && x.g && x.g !== t.g; }).map(function (x) { return x.g; }); }
-  function depthLabel(i) { return CONFIG.depthLabels[i] || 'Depth ' + (i + 1); }
-  function depthPos(b, t) { if (!t.g) return { x: t.x, y: t.y }; var i = groupTags(b, t.g).indexOf(t), a = ANCHORS[t.g]; return { x: a.x, y: round(cy(a.y + i * STACK_STEP)) }; }
+  function depthLabel(i, g) { if (PITCH_SLOTS.indexOf(g) >= 0) return g + (i + 1); return CONFIG.depthLabels[i] || 'Depth ' + (i + 1); }
+  function depthPos(b, t) { if (!t.g) return { x: t.x, y: t.y }; var i = groupTags(b, t.g).indexOf(t); if (PITCH_SLOTS.indexOf(t.g) >= 0) return groupSlotPos(t.g, i); var a = ANCHORS[t.g]; return { x: a.x, y: round(cy(a.y + i * STACK_STEP)) }; }
   function nearestGroup(x, y, b) {
+    var pg = panelGroupAt(x, y); if (pg) return pg;
     var best = null, bd = SNAP_RADIUS;
-    SLOTS.forEach(function (g) { var n = Math.max(1, b ? groupTags(b, g).length : 1), a = ANCHORS[g], d = Math.sqrt(Math.pow(x - a.x, 2) + Math.pow(y - (a.y + STACK_STEP * (n - 1) / 2), 2)); if (d <= bd) { bd = d; best = g; } });
+    SLOTS.forEach(function (g) { if (!ANCHORS[g]) return; var n = Math.max(1, b ? groupTags(b, g).length : 1), a = ANCHORS[g], d = Math.sqrt(Math.pow(x - a.x, 2) + Math.pow(y - (a.y + STACK_STEP * (n - 1) / 2), 2)); if (d <= bd) { bd = d; best = g; } });
     return best;
   }
   function openSpots(b, g) { return Math.max(0, CONFIG.depthSlots[g] - groupTags(b, g).length); }
@@ -109,7 +130,8 @@
       if (groupTags(b, g).some(function (t) { return t.pid === pid; })) return { ok: false, reason: 'Already listed at ' + g + '. The same player can be listed at other positions.', board: board };
       if (openSpots(b, g) <= 0) return { ok: false, reason: g + ' depth is full (' + CONFIG.depthSlots[g] + ').', board: board };
       var list = groupTags(b, g), at = 0;
-      for (var i = 0; i < list.length; i++) { if (ANCHORS[g].y + i * STACK_STEP < y) at = i + 1; }
+      if (PITCH_SLOTS.indexOf(g) >= 0) at = Math.min(nearestSlotIndex(g, x, y), list.length);
+      else for (var i = 0; i < list.length; i++) { if (ANCHORS[g].y + i * STACK_STEP < y) at = i + 1; }
       var before = list.slice(0, at), idx = at === 0 ? b.tags.indexOf(list[0]) : b.tags.indexOf(before[before.length - 1]) + 1;
       if (!list.length) idx = b.tags.length;
       b.tags.splice(idx, 0, { pid: pid, g: g, x: 0, y: 0 });
@@ -158,20 +180,33 @@
     st.active = Math.max(0, Math.min(st.lineups.length - 1, Number(raw.active) || 0));
     return st;
   }
-  function sanitizeDepth(raw, validIds, now) {
+  // Primary-position seed for a season board: each player goes to the group matching their stored position (sortRoster order, 5 per group, overflow stays in the rack). OF players fill CF, LF, RF in turn (the split is a decision).
+  function seedDepthBoard(players) {
+    var b = newDepthBoard(), cnt = {}, of = ['LF', 'CF', 'RF'], n = 0;
+    sortRoster(players).forEach(function (p) {
+      var g = p.pos === 'OF' ? of[n++ % 3] : p.pos === 'P' ? ((cnt.SP || 0) < CONFIG.depthSlots.SP ? 'SP' : 'RP') : p.pos; if (SLOTS.indexOf(g) < 0 || (cnt[g] || 0) >= CONFIG.depthSlots[g]) return;
+      cnt[g] = (cnt[g] || 0) + 1; b.tags.push({ pid: p.id, g: g, x: 0, y: 0 });
+    });
+    return b;
+  }
+  // seedPlayers (optional): seasons with no saved board start from the primary-position seed; saved boards, even empty ones, are never re-seeded.
+  function sanitizeDepth(raw, validIds, now, seedPlayers) {
     var ok = {}; (validIds || []).forEach(function (i) { ok[i] = 1; });
     var st = newDepthState(now, raw && raw.count);
+    var hasSaved = {};
     if (raw && raw.first === st.first && raw.boards && typeof raw.boards === 'object') Object.keys(st.boards).forEach(function (y) {
       var r = raw.boards[y], seen = {}, cnt = {};
       if (!r || !Array.isArray(r.tags)) return;
+      hasSaved[y] = 1;
       r.tags.slice(0, 200).forEach(function (t) {
         if (!t || typeof t.pid !== 'string' || !ok[t.pid]) return;
-        var g = t.g == null ? null : t.g; if (g !== null && SLOTS.indexOf(g) < 0) return;
+        var g = t.g == null ? null : t.g; if (g === 'P') g = (cnt.SP || 0) < CONFIG.depthSlots.SP ? 'SP' : 'RP'; if (g !== null && SLOTS.indexOf(g) < 0) return;
         var k = key(t.pid, g); if (seen[k]) return;
         if (g) { cnt[g] = (cnt[g] || 0) + 1; if (cnt[g] > CONFIG.depthSlots[g]) return; seen[k] = 1; st.boards[y].tags.push({ pid: t.pid, g: g, x: 0, y: 0 }); }
         else if (num(t.x) && num(t.y)) { seen[k] = 1; st.boards[y].tags.push({ pid: t.pid, g: null, x: round(cx(t.x)), y: round(cy(t.y)) }); }
       });
     });
+    if (seedPlayers) Object.keys(st.boards).forEach(function (y) { if (!hasSaved[y]) st.boards[y] = seedDepthBoard(seedPlayers.filter(function (p) { return ok[p.id]; })); });
     st.active = Math.max(0, Math.min(st.count - 1, Number(raw && raw.active) || 0));
     return st;
   }
@@ -284,12 +319,12 @@
     return o ? { id: id, label: o.label, svg: o.svg, plain: false } : { id: null, label: 'Plain canvas', svg: '', plain: true };
   }
   function registerOutline(id, label, svg, aliases) { OUTLINES[id] = { label: label, svg: svg }; SPORT_OUTLINE[id] = id; (aliases || []).forEach(function (a) { SPORT_OUTLINE[sportKey(a)] = id; }); }
-  var api = { LB: LB, ROSTER_W: ROSTER_W, lineupTags: lineupTags, lkey: lkey, alsoAt: alsoAt, ANCHORS: ANCHORS, BOUNDS: BOUNDS, OUTLINES: OUTLINES, resolveOutline: resolveOutline, registerOutline: registerOutline, sportKey: sportKey,
+  var api = { LB: LB, ROSTER_W: ROSTER_W, lineupTags: lineupTags, lkey: lkey, alsoAt: alsoAt, ANCHORS: ANCHORS, PANEL: PANEL, FIELD_W: FIELD_W, PITCH_SLOTS: PITCH_SLOTS, groupSlotPos: groupSlotPos, panelGroupAt: panelGroupAt, BOUNDS: BOUNDS, OUTLINES: OUTLINES, resolveOutline: resolveOutline, registerOutline: registerOutline, sportKey: sportKey,
     clamp: clamp, lineupDrop: lineupDrop, lineupRemove: lineupRemove, lineupPids: lineupPids,
     key: key, depthDrop: depthDrop, depthRemove: depthRemove, depthReorder: depthReorder, depthOrder: depthOrder, depthLabel: depthLabel, depthPos: depthPos, groupTags: groupTags, openSpots: openSpots, totalOpen: totalOpen, nearestGroup: nearestGroup, defaultSpot: defaultSpot, STORED_POSITIONS: STORED_POSITIONS, OF_SLOTS: OF_SLOTS, SLOTS: SLOTS, CONFIG: CONFIG, slotStored: slotStored, slotFit: slotFit,
         newLineup: newLineup, newLineupState: newLineupState, addLineup: addLineup, duplicateLineup: duplicateLineup, removeLineup: removeLineup, clearLineup: clearLineup,
     clampYears: clampYears, firstSeason: firstSeason, newDepthState: newDepthState, depthYears: depthYears, setYears: setYears, yearNote: yearNote,
-    sanitizeLineups: sanitizeLineups, sanitizeDepth: sanitizeDepth, parseCsv: parseCsv, importPreview: importPreview, jerseyNorm: jerseyNorm, sortRoster: sortRoster, commitImport: commitImport };
+    sanitizeLineups: sanitizeLineups, sanitizeDepth: sanitizeDepth, parseCsv: parseCsv, importPreview: importPreview, jerseyNorm: jerseyNorm, sortRoster: sortRoster, seedDepthBoard: seedDepthBoard, commitImport: commitImport };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   root.TheReadLineup = api;
 })(typeof window !== 'undefined' ? window : this);

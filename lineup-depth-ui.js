@@ -16,7 +16,7 @@
     var roster = function () { return L.sortRoster(ctx.players.concat(imported)); };
     var byId = function () { var m = {}; roster().forEach(function (p) { m[p.id] = p; }); return m; };
     var ids = function () { return roster().map(function (p) { return p.id; }); };
-    var lu = L.sanitizeLineups(rd(K_LU), ids()), dp = L.sanitizeDepth(rd(K_DP), ids());
+    var lu = L.sanitizeLineups(rd(K_LU), ids()), dp = L.sanitizeDepth(rd(K_DP), ids(), undefined, roster());
     var ui = { q: '', status: '', saveFail: false, focus: '' };
     var outline = L.resolveOutline(sport), isLineup = page === 'lineup';
     var saved = function () { ui.saveFail = !(wr(K_LU, lu) && wr(K_DP, dp)); };
@@ -31,7 +31,7 @@
       return '<div class="ld-tag ' + (o.where === 'tray' ? 'in-tray' : 'on-canvas') + (o.placed ? ' placed' : '') + '" tabindex="0" role="button" data-pid="' + esc(p.id) + '" data-key="' + esc(o.key || p.id) + '" data-where="' + o.where + '"' + pos +
         ' aria-label="' + 'jersey ' + esc(p.jersey) + ', ' + esc(p.name) + ', ' + esc(p.pos) + (p.twoWay ? ', two-way' : '') + ', class of ' + esc(p.grad) + (o.label ? ', ' + esc(o.label) : '') + '. ' + hint + '">' +
         (o.badge ? '<span class="ld-num" title="' + esc(o.label || '') + '">' + esc(o.badge) + '</span>' : '') +
-        '<span class="ld-jersey">#' + esc(p.jersey) + '</span> <strong class="ld-name">' + esc(shortName(p.name)) + '</strong> <span class="pill gray">' + esc(p.pos) + '</span>' + (p.twoWay ? ' <span class="pill navy">Two-Way</span>' : '') + (p.imported ? ' <span class="pill amber">Imported</span>' : '') + (o.extra || '') +
+        '<span class="ld-jersey">#' + esc(p.jersey) + '</span> <strong class="ld-name">' + esc(shortName(p.name)) + '</strong>' + (o.hidePos ? '' : ' <span class="pill gray">' + esc(p.pos) + '</span>') + (p.twoWay ? ' <span class="pill navy">Two-Way</span>' : '') + (p.imported ? ' <span class="pill amber">Imported</span>' : '') + (o.extra || '') +
         '<span class="ld-meta">Class of ' + esc(p.grad) + '</span></div>';
     }
     function trayHtml(list, title, hint, inCanvas) {
@@ -64,22 +64,34 @@
       L.lineupTags(c).forEach(function (t) { var p = B[t.pid]; if (p) out += tagHtml(p, { where: 'canvas', key: t.key, pos: { x: t.x, y: t.y }, label: 'on the board' }); });
       return '<div class="ld-canvas ld-lineup ld-slide" id="ld-canvas" role="group" aria-label="Lineup whiteboard with the roster rack">' + out + '</div>';
     }
+    // Pitching panel to the right of the field: 5 rotation slots and 20 bullpen slots (empty slots drawn as dashed placeholders).
+    function pitchPanel(b) {
+      var P = L.PANEL, h = pct(P.x1 - P.x0), o = '<div class="ld-panel" aria-hidden="true" style="left:' + pct(P.x0) + ';top:' + pct(P.spBox.y0) + ';width:' + h + ';height:' + pct(P.rpBox.y1 - P.spBox.y0) + '"></div>';
+      [['SP', 'Starting Rotation (' + L.CONFIG.depthSlots.SP + ')', P.spBox.y0], ['RP', 'Bullpen (' + L.CONFIG.depthSlots.RP + ')', P.rpBox.y0]].forEach(function (g) {
+        var n = L.groupTags(b, g[0]).length;
+        o += '<div class="ld-panel-title" aria-hidden="true" style="left:' + pct(P.x0 + 0.01) + ';top:' + pct(g[2] + 0.005) + '">' + g[1] + ' <small>' + (L.CONFIG.depthSlots[g[0]] - n) + ' open</small></div>';
+        for (var i = n; i < L.CONFIG.depthSlots[g[0]]; i++) { var s = L.groupSlotPos(g[0], i); o += '<div class="ld-pslot" aria-hidden="true" style="left:' + pct(s.x) + ';top:' + pct(s.y) + '">' + g[0] + (i + 1) + '</div>'; }
+      });
+      return o;
+    }
     function depthCanvas() {
       var year = curYear(), b = dp.boards[year], B = byId(), out = '';
       out += '<svg class="ld-outline" viewBox="0 0 1000 800" preserveAspectRatio="none" aria-hidden="true" focusable="false">' + outline.svg + '</svg>';
       if (outline.plain) out += '<div class="ld-plain-note" aria-hidden="true">No outline for this sport yet</div>';
+      if (bb) out += pitchPanel(b);
       if (bb) L.SLOTS.forEach(function (g) {
-        var a = L.ANCHORS[g], open = L.openSpots(b, g), n = L.groupTags(b, g).length;
+        var a = L.ANCHORS[g]; if (!a) return;
+        var open = L.openSpots(b, g), n = L.groupTags(b, g).length;
         out += '<div class="ld-glabel" aria-hidden="true" style="left:' + pct(a.x) + ';top:' + pct(a.y - 0.05) + '">' + g + ' <small>' + open + ' open</small></div>';
         if (!n) out += '<div class="ld-ghost-slot" aria-hidden="true" style="left:' + pct(a.x) + ';top:' + pct(a.y) + '">Open ' + L.depthLabel(0) + '</div>';
       });
       b.tags.forEach(function (t) {
         var p = B[t.pid]; if (!p) return; var pos = L.depthPos(b, t), k = L.key(t.pid, t.g), extra = '', badge = '', label = 'free on canvas';
-        if (t.g) { var i = L.groupTags(b, t.g).indexOf(t); badge = i === 0 ? 'S' : 'B' + i; label = t.g + ' ' + L.depthLabel(i); var fit = L.slotFit(t.g, p); if (!fit.ok) extra += ' <span class="pill amber" title="Hint only. The stored position is not changed.">Off-position</span>'; }
+        if (t.g) { var i = L.groupTags(b, t.g).indexOf(t); var pg = L.PITCH_SLOTS.indexOf(t.g) >= 0; badge = pg ? t.g + (i + 1) : i === 0 ? 'S' : 'B' + i; label = t.g + ' ' + L.depthLabel(i, t.g); var fit = L.slotFit(t.g, p); if (!fit.ok && !pg) extra += ' <span class="pill amber" title="Hint only. The stored position is not changed.">Off-position</span>'; }
         var al = t.g ? L.alsoAt(b, t) : []; if (al.length) extra += ' <span class="pill gray" title="Duplicates are allowed on the depth chart only.">also at ' + esc(al.join(', ')) + '</span>';
         var gn = L.yearNote(p, year); if (gn) extra += ' <span class="pill amber" title="' + esc(gn) + '">Graduated</span>';
         
-        out += tagHtml(p, { where: 'canvas', key: k, pos: pos, badge: badge, label: label, extra: extra });
+        out += tagHtml(p, { where: 'canvas', key: k, pos: pos, badge: badge, label: label, extra: extra, hidePos: !!(t.g && L.PITCH_SLOTS.indexOf(t.g) >= 0) });
       });
       return '<div class="ld-canvas ld-depthc' + (outline.plain ? ' plain' : '') + '" id="ld-canvas" role="group" aria-label="Depth chart canvas, ' + esc(outline.label) + '">' + out + '</div>';
     }
@@ -103,7 +115,7 @@
         html += '<div class="ld-fields">' + seg('Years to plan', 'yrs', [[2, '2 Years'], [3, '3 Years'], [4, '4 Years']], dp.count) + '</div>' +
           '<div class="ld-tabs" role="group" aria-label="Seasons">' + yrs.map(function (y, i) { return '<button type="button" class="ld-tab' + (i === dp.active ? ' on' : '') + '" aria-pressed="' + (i === dp.active) + '" data-tab="' + i + '">' + y + ' Season</button>'; }).join('') + '</div>' +
           (bb ? '<p class="kpi-row"><span class="pill amber">Empty depth slots in ' + yrs[dp.active] + ': ' + L.totalOpen(b) + '</span></p>' : '') +
-          '<p class="coach-note">' + (bb ? 'Drag tags from the roster onto the field (the roster keeps every player, so a drop adds a copy). Tags dropped near a position stack there in depth order: S = Starter, then B1, B2 and so on (five slots per position; the same player can be listed at several positions, once per position). Tags dropped elsewhere stay where you put them. LF, CF and RF are display areas only; stored positions stay OF. Players whose class has graduated by that season are flagged, not blocked.' : 'Drag tags anywhere on the ' + esc(outline.label.toLowerCase()) + '. Positions and depth slots for ' + esc(sport) + ' are not decided yet.') + '</p>' +
+          '<p class="coach-note">' + (bb ? 'Drag tags from the roster onto the field (the roster keeps every player, so a drop adds a copy). Tags dropped near a position stack there in depth order: S = Starter, then B1, B2 and so on (five slots per position; the same player can be listed at several positions, once per position). Pitchers live in the panel to the right of the field: a Starting Rotation of five slots (SP1 to SP5) and a Bullpen of twenty (RP1 to RP20). Tags dropped elsewhere stay where you put them. LF, CF and RF are display areas only; stored positions stay OF. Players whose class has graduated by that season are flagged, not blocked.' : 'Drag tags anywhere on the ' + esc(outline.label.toLowerCase()) + '. Positions and depth slots for ' + esc(sport) + ' are not decided yet.') + '</p>' +
           '<div class="ld-layout">' + depthCanvas() + trayHtml(trayList(), 'Current Roster', 'Fictional current roster (sample data) plus any rows you imported. No recruits or prospects are used.') + '</div>' + importHtml();
       }
       host.innerHTML = html;
@@ -120,7 +132,7 @@
         var y0 = curYear(), d = L.depthDrop(dp.boards[y0], pid, x, y, fromKey, !bb);
         if (!d.ok) { ui.status = d.reason; draw(); return; }
         dp.boards[y0] = d.board; ui.focus = L.key(pid, d.group);
-        ui.status = nameOf(pid) + (d.group ? ' listed at ' + d.group + ' as ' + L.depthLabel(d.index) : ' placed on the canvas');
+        ui.status = nameOf(pid) + (d.group ? ' listed at ' + d.group + ' as ' + L.depthLabel(d.index, d.group) : ' placed on the canvas');
       }
       saved(); draw();
     }
@@ -138,7 +150,14 @@
     host.addEventListener('pointerdown', function (e) {
       if (e.button > 0) return; var t = e.target.closest && e.target.closest('.ld-tag'); if (!t) return;
       drag = { el: t, pid: t.dataset.pid, key: t.dataset.key, where: t.dataset.where, sx: e.clientX, sy: e.clientY, ghost: null };
+      if (e.cancelable) e.preventDefault();
+      clearSel();
     });
+    function clearSel() { try { var s = root.getSelection && root.getSelection(); if (s && s.removeAllRanges) s.removeAllRanges(); } catch (x) { /* ignore */ } }
+    // Stop the browser's text/element selection highlight and native drag image while dragging tags (the search box stays selectable).
+    host.addEventListener('mousedown', function (e) { var t = e.target.closest && e.target.closest('.ld-tag'); if (t) { e.preventDefault(); clearSel(); try { t.focus({ preventScroll: true }); } catch (x) { /* ignore */ } } });
+    host.addEventListener('selectstart', function (e) { var el = e.target && (e.target.nodeType === 1 ? e.target : e.target.parentElement); if (drag || (el && el.closest && el.closest('.ld-tag, .ld-canvas, .ld-roster-panel .ld-tray-list') && !(el.closest('input, textarea')))) e.preventDefault(); });
+    host.addEventListener('dragstart', function (e) { e.preventDefault(); });
     doc.addEventListener('pointermove', function (e) {
       if (!drag) return;
       if (!drag.ghost && Math.abs(e.clientX - drag.sx) + Math.abs(e.clientY - drag.sy) > 5) { var g = drag.el.cloneNode(true); g.classList.add('ld-floating'); g.removeAttribute('tabindex'); g.style.left = ''; g.style.top = ''; doc.body.appendChild(g); drag.ghost = g; drag.el.classList.add('dragging'); }
@@ -166,7 +185,7 @@
       e.preventDefault(); var pos = posOf(pid, k); if (!pos) return;
       var snapped = isLineup ? false : !!pos.g;
       if (snapped && dir[1]) {
-        { var q = L.depthReorder(dp.boards[curYear()], k, dir[1]); if (!q.noop) { dp.boards[curYear()] = q.board; ui.focus = k; ui.status = nameOf(pid) + ' moved to ' + L.depthLabel(q.index) + ' at ' + pos.g; saved(); draw(); } }
+        { var q = L.depthReorder(dp.boards[curYear()], k, dir[1]); if (!q.noop) { dp.boards[curYear()] = q.board; ui.focus = k; ui.status = nameOf(pid) + ' moved to ' + L.depthLabel(q.index, pos.g) + ' at ' + pos.g; saved(); draw(); } }
         return;
       }
       var st = snapped ? 0.12 : (e.shiftKey ? 0.08 : 0.02);
@@ -186,7 +205,7 @@
       else if (t.id === 'lu-dup') { r = L.duplicateLineup(lu, lu.active); ui.status = r.ok ? 'Lineup duplicated.' : r.reason; lu = r.state; saved(); draw(); }
       else if (t.id === 'lu-del') { if (root.confirm && !root.confirm('Delete this lineup page?')) return; r = L.removeLineup(lu, lu.active); ui.status = r.ok ? 'Lineup deleted.' : r.reason; lu = r.state; saved(); draw(); }
       else if (t.id === 'lu-clr') { lu.lineups[lu.active] = L.clearLineup(curLU()); ui.status = 'Lineup cleared.'; saved(); draw(); }
-      else if (t.id === 'ld-reset') { if (root.confirm && !root.confirm('Reset all lineup and depth chart drafts and imported roster rows in this browser?')) return; [K_LU, K_DP, K_RO].forEach(function (k) { try { root.localStorage.removeItem(k); } catch (x) { /* ignore */ } }); imported = []; lu = L.newLineupState(); dp = L.newDepthState(); ui.status = 'Drafts reset.'; draw(); }
+      else if (t.id === 'ld-reset') { if (root.confirm && !root.confirm('Reset all lineup and depth chart drafts and imported roster rows in this browser?')) return; [K_LU, K_DP, K_RO].forEach(function (k) { try { root.localStorage.removeItem(k); } catch (x) { /* ignore */ } }); imported = []; lu = L.newLineupState(); dp = L.sanitizeDepth(null, ids(), undefined, roster()); ui.status = 'Drafts reset.'; draw(); }
       else if (t.id === 'ld-prev') preview();
       else if (t.id === 'ld-commit') commit();
     });

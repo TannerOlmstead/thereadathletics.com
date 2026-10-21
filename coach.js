@@ -1169,9 +1169,9 @@
 
   // Lineup and Depth Chart previews (baseball only). Grades come from the existing role-aware renderer; nothing is recomputed.
   const ldMount = (kind) => (root) => {
-    const bbAll = players.filter((p) => p.sport === 'Baseball');
+    const bbAll = players.filter((p) => p.sport === ACTIVE_SPORT);
     const targetIds = {}; Board.list().forEach((p) => { targetIds[p.id] = true; }); bbAll.forEach((p) => { if (!p.committed) targetIds[p.id] = true; });
-    const gradeSummary = (p) => (p.pos === 'P' && !p.twoWay ? 'PPG ' + glk(p, 'ppg') : 'OPG ' + glk(p, 'opg') + ' DPG ' + glk(p, 'dpg') + (p.twoWay ? ' PPG ' + glk(p, 'ppg') : ''));
+    const gradeSummary = (p) => (ACTIVE_SPORT !== 'Baseball' ? '' : p.pos === 'P' && !p.twoWay ? 'PPG ' + glk(p, 'ppg') : 'OPG ' + glk(p, 'opg') + ' DPG ' + glk(p, 'dpg') + (p.twoWay ? ' PPG ' + glk(p, 'ppg') : ''));
     window.TheReadLineupUI.mount(root, kind, { sport: ACTIVE_SPORT, players: bbAll, esc: esc, gradeSummary: gradeSummary, targets: () => targetIds });
   };
   pages.lineup = ldMount('lineup');

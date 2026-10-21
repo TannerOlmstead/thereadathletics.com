@@ -224,7 +224,7 @@ Department Finances (`department-finances.html`, built in `dept.js`) now labels 
 
 ## Baseball Lineup And Depth Chart Preview
 
-- **Pages:** `coach-lineup.html` (up to 4 lineups, batting order, defensive slots, bench) and `coach-depth-chart.html` (2 to 4 season tabs, Starter and Backup slots, recruiting-targets pool). Baseball only; they appear in the Coach Workspace nav.
-- **Use:** drag player tags, or use the select on each slot (keyboard). Drafts stay in this browser only (demo). CSV roster import is read locally, previewed, and needs review before anything is added; Excel files are not supported.
+- **Pages:** `coach-lineup.html` (up to 4 lineups; a big white canvas with a numbered Batting Order lane) and `coach-depth-chart.html` (2 to 4 season tabs; a canvas with the sport's field outline, Starter and Backup stacks, recruiting-targets pool). Baseball positions only; other sports get an outline (soccer, basketball, softball, football, volleyball; unknown sports plain white) and a provisional notice. They appear in the Coach Workspace nav.
+- **Use:** drag player name tags freely on the canvas (no drop-downs). Keyboard: focus a tag, Enter places or returns it, arrow keys move it (Shift = larger), Up/Down reorder. Drafts stay in this browser only (demo). CSV roster import is read locally, previewed, and needs review before anything is added; Excel files are not supported.
 - **User-approved scoped exception:** LF, CF and RF are display slots on these two pages only. Stored positions stay P, C, 1B, 2B, 3B, SS, OF everywhere else, and DH and UT are not accepted. Imported LF, CF or RF rows are flagged for review with an OF suggestion.
 - **Files:** `lineup-depth.js` (logic), `lineup-depth-ui.js` (interface), `lineup-depth.tests.js`; backend needs and founder decisions are in `docs/LINEUP_DEPTH_CHART_BACKEND_REQUIREMENTS.md`.

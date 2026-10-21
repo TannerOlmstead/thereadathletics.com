@@ -14,35 +14,57 @@ ok('stored positions stay P,C,1B,2B,3B,SS,OF; LF/CF/RF are display slots only', 
   assert.ok(!L.slotFit('CF', P('a', 'SS')).ok);
   assert.ok(L.slotFit('P', P('a', '1B', { twoWay: true })).ok);
 });
-ok('place, swap and displace', () => {
-  let b = L.makeBoard({ A: 2, B: 1 }, true);
-  let r = L.place(b, 'x', 'A', 0); assert.ok(r.ok); b = r.board; assert.strictEqual(b.groups.A[0], 'x');
-  r = L.place(b, 'y', 'A', 1); b = r.board;
-  r = L.place(b, 'x', 'A', 1, { group: 'A', idx: 0 }); assert.ok(r.swapped); assert.deepStrictEqual(r.board.groups.A, ['y', 'x']);
-  r = L.place(b, 'z', 'A', 0); assert.strictEqual(r.board.groups.A[0], 'z'); assert.ok(!L.placed(r.board).x || L.placed(r.board).x);
-  assert.strictEqual(b.groups.A[0], 'x', 'input board is not mutated');
-  assert.ok(!L.place(b, 'x', 'Q', 0).ok);
-  assert.strictEqual(L.removeAt(b, 'A', 0).groups.A[0], null);
+ok('lineup canvas: lane drop sets batting order, swaps, displaces; free drops are clamped', () => {
+  let lu = L.newLineup('x'), r = L.lineupDrop(lu, 'a', L.laneX(), L.laneRowY(0)); assert.strictEqual(r.row, 0); lu = r.lineup;
+  r = L.lineupDrop(lu, 'b', L.laneX(), L.laneRowY(1)); lu = r.lineup; assert.deepStrictEqual(L.battingOrder(lu).slice(0, 2), ['a', 'b']);
+  r = L.lineupDrop(lu, 'a', L.laneX(), L.laneRowY(1)); assert.ok(r.swapped); assert.deepStrictEqual(L.battingOrder(r.lineup).slice(0, 2), ['b', 'a']);
+  r = L.lineupDrop(lu, 'c', L.laneX(), L.laneRowY(0)); assert.ok(r.displaced && r.lineup.free.a, 'occupant moved to free space'); assert.strictEqual(r.lineup.order[0], 'c');
+  assert.strictEqual(lu.order[0], 'a', 'input not mutated');
+  r = L.lineupDrop(lu, 'a', 5, -3); assert.strictEqual(r.lineup.order[0], null); assert.ok(r.lineup.free.a.x <= L.BOUNDS.x1 && r.lineup.free.a.y >= L.BOUNDS.y0, 'clamped inside canvas');
+  r = L.lineupDrop(lu, 'z', L.laneX(), L.laneRowY(4), true); assert.ok(r.lineup.free.z && r.lineup.order[4] === null, 'noLane keeps tags free');
+  const m = L.lineupReorder(lu, 'a', 1); assert.deepStrictEqual(L.battingOrder(m.lineup).slice(0, 2), ['b', 'a']);
+  assert.ok(!L.lineupPids(L.lineupRemove(lu, 'a')).a, 'tray return');
 });
-ok('exclusive boards keep a player in one slot; depth boards allow one slot per group (a re-place moves)', () => {
-  let b = L.makeBoard({ A: 1, B: 1 }, true), r = L.place(b, 'x', 'A', 0); r = L.place(r.board, 'x', 'B', 0);
-  assert.strictEqual(r.board.groups.A[0], null); assert.strictEqual(r.board.groups.B[0], 'x');
-  let d = L.makeBoard({ A: 2, B: 1 }, false); d = L.place(d, 'x', 'A', 0).board; d = L.place(d, 'x', 'B', 0).board;
-  assert.strictEqual(d.groups.A[0], 'x'); assert.strictEqual(d.groups.B[0], 'x');
-  const mv = L.place(d, 'x', 'A', 1); assert.ok(mv.ok && mv.board.groups.A[0] === null && mv.board.groups.A[1] === 'x', 'same-group placement moves, never duplicates');
-  assert.strictEqual(Object.keys(L.placed(mv.board)).length, 1);
+ok('depth canvas: snap within radius, stack order, once per group, caps, free tags, noSnap, remove, reorder', () => {
+  let b = { tags: [] }; const a = L.ANCHORS.SS;
+  let r = L.depthDrop(b, 'p1', a.x + 0.02, a.y); assert.ok(r.ok && r.group === 'SS' && r.index === 0); b = r.board;
+  r = L.depthDrop(b, 'p2', a.x, a.y + 0.03); assert.strictEqual(r.index, 1); b = r.board;
+  assert.deepStrictEqual(L.groupTags(b, 'SS').map((t) => t.pid), ['p1', 'p2']); assert.strictEqual(L.depthLabel(0), 'Starter');
+  r = L.depthDrop(b, 'p1', a.x, a.y, L.key('p1', 'SS')); assert.strictEqual(L.groupTags(r.board, 'SS').length, 2, 'moving within a group never duplicates');
+  r = L.depthDrop(b, 'p3', 0.5, 0.97); assert.strictEqual(r.group, null); assert.ok(r.board.tags.some((t) => t.pid === 'p3' && !t.g && t.y <= L.BOUNDS.y1), 'free tag clamped');
+  r = L.depthDrop(b, 'p3', 0.5, 0.97, null, true); assert.strictEqual(r.group, null);
+  const near = L.depthDrop({ tags: [] }, 'q', a.x + 0.02, a.y, null, true); assert.strictEqual(near.group, null, 'noSnap');
+  let full = { tags: [] }; for (let i = 0; i < L.CONFIG.depthSlots.C; i++) full = L.depthDrop(full, 'c' + i, L.ANCHORS.C.x, L.ANCHORS.C.y).board;
+  assert.ok(!L.depthDrop(full, 'extra', L.ANCHORS.C.x, L.ANCHORS.C.y).ok, 'per-group cap'); assert.strictEqual(L.openSpots(full, 'C'), 0);
+  assert.strictEqual(L.totalOpen(b), Object.keys(L.CONFIG.depthSlots).reduce((s, g) => s + L.CONFIG.depthSlots[g], 0) - 2);
+  const q = L.depthReorder(b, L.key('p1', 'SS'), 1); assert.deepStrictEqual(L.groupTags(q.board, 'SS').map((t) => t.pid), ['p2', 'p1']);
+  assert.ok(!L.depthRemove(b, L.key('p1', 'SS')).tags.some((t) => t.pid === 'p1'));
+  ['LF', 'CF', 'RF'].forEach((g) => assert.strictEqual(L.slotStored(g), 'OF'));
+});
+ok('sport outlines: every registered sport resolves, unknown/null fall back to plain white, registry extensible', () => {
+  ['baseball', 'softball', 'soccer', 'basketball', 'football', 'volleyball'].forEach((s) => { const o = L.resolveOutline(s); assert.ok(!o.plain && /<(path|rect|circle|line|ellipse|polygon)/.test(o.svg) && o.id === s, s); });
+  ["Men's Soccer", "Women's Soccer", "Women's Basketball", "Women's Volleyball", 'Football', 'Softball', 'Baseball'].forEach((s) => assert.ok(!L.resolveOutline(s).plain, s));
+  assert.strictEqual(L.resolveOutline('Softball').id, 'softball'); assert.ok(!/mound/i.test(L.resolveOutline('Softball').svg), 'softball has no mound');
+  ['Curling', '', null, undefined].forEach((s) => { const o = L.resolveOutline(s); assert.ok(o.plain && o.svg === ''); });
+  L.registerOutline('lacrosse', 'Lacrosse field', '<rect x="1" y="1" width="9" height="9"/>', ['mens-lacrosse']); assert.ok(!L.resolveOutline('Lacrosse').plain && !L.resolveOutline("Men's Lacrosse").plain);
 });
 ok('lineups: 4-page cap, duplicate, delete keeps one, clear', () => {
   let st = L.newLineupState(); assert.strictEqual(st.lineups.length, 1);
   for (let i = 0; i < 3; i++) { const r = L.addLineup(st); assert.ok(r.ok); st = r.state; }
-  assert.strictEqual(st.lineups.length, 4);
-  assert.ok(!L.addLineup(st).ok); assert.ok(!L.duplicateLineup(st, 0).ok);
-  assert.strictEqual(L.CONFIG.maxLineups, 4);
-  const one = L.newLineupState(); assert.ok(!L.removeLineup(one, 0).ok);
-  const d = L.removeLineup(st, 1); assert.ok(d.ok); assert.strictEqual(d.state.lineups.length, 3);
-  const dd = L.duplicateLineup(L.newLineupState(), 0); assert.ok(dd.ok); assert.strictEqual(dd.state.lineups.length, 2);
-  const cl = L.clearLineup(L.newLineup ? st.lineups[0] : st.lineups[0]); assert.strictEqual(Object.keys(L.placed(cl.bat)).length, 0);
-  assert.strictEqual(L.newLineupState().lineups[0].bat.groups.BAT.length, 9);
+  assert.strictEqual(st.lineups.length, 4); assert.ok(!L.addLineup(st).ok); assert.ok(!L.duplicateLineup(st, 0).ok); assert.strictEqual(L.CONFIG.maxLineups, 4);
+  assert.ok(!L.removeLineup(L.newLineupState(), 0).ok); assert.strictEqual(L.removeLineup(st, 1).state.lineups.length, 3);
+  assert.strictEqual(L.duplicateLineup(L.newLineupState(), 0).state.lineups.length, 2);
+  const filled = L.lineupDrop(st.lineups[0], 'a', L.laneX(), L.laneRowY(0)).lineup; assert.strictEqual(L.lineupPids(L.clearLineup(filled)).a, undefined);
+  assert.strictEqual(L.newLineupState().lineups[0].order.length, 9);
+});
+ok('sanitize clamps coordinates, drops unknown ids, caps lineups and depth groups', () => {
+  assert.strictEqual(L.sanitizeLineups('junk', []).lineups.length, 1);
+  const raw = { active: 0, lineups: [1, 2, 3, 4, 5, 6].map((i) => ({ id: 'l' + i, label: 'L', free: { keep: { x: 9, y: -9 }, gone: { x: 0.5, y: 0.5 } }, order: ['keep', 'gone'] })) };
+  const s = L.sanitizeLineups(JSON.parse(JSON.stringify(raw)), ['keep']); assert.strictEqual(s.lineups.length, 4);
+  assert.ok(!s.lineups[0].free.gone && s.lineups[0].order.indexOf('gone') < 0); assert.ok(!(s.lineups[0].free.keep && s.lineups[0].order.indexOf('keep') >= 0), 'one place per player');
+  const dp = L.sanitizeDepth(null, []); assert.strictEqual(dp.count, 4);
+  const y = L.depthYears(dp)[0], bad = JSON.parse(JSON.stringify(dp)); bad.boards[y].tags = [{ pid: 'a', g: 'C', x: 0, y: 0 }, { pid: 'a', g: 'C', x: 0, y: 0 }, { pid: 'z', g: 'C' }, { pid: 'a', g: null, x: 5, y: 5 }, { pid: 'a', g: 'QQ', x: 0.5, y: 0.5 }];
+  const sd = L.sanitizeDepth(bad, ['a']); const tags = sd.boards[y].tags; assert.strictEqual(tags.filter((t) => t.g === 'C').length, 1); assert.ok(tags.every((t) => t.x <= 1 && t.y <= 1 && t.pid === 'a'));
 });
 ok('depth chart: 2-4 year range, defaults and season start', () => {
   assert.strictEqual(L.clampYears(1), 2); assert.strictEqual(L.clampYears(9), 4); assert.strictEqual(L.clampYears(3), 3); assert.strictEqual(L.clampYears(undefined), 4);
@@ -51,13 +73,7 @@ ok('depth chart: 2-4 year range, defaults and season start', () => {
   d = L.setYears(d, 2); assert.deepStrictEqual(L.depthYears(d), [2027, 2028]);
   assert.strictEqual(L.depthYears(L.setYears(d, 3)).length, 3);
   assert.ok(L.yearNote({ grad: 2027 }, 2029) && !L.yearNote({ grad: 2030 }, 2029));
-  assert.strictEqual(d.boards[2027].groups.P.length, L.CONFIG.depthSlots.P);
-});
-ok('sanitize drops unknown ids and garbage', () => {
-  assert.strictEqual(L.sanitizeLineups('junk', []).lineups.length, 1);
-  const st = L.newLineupState(); st.lineups[0].bat.groups.BAT[0] = 'gone'; st.lineups[0].bat.groups.BAT[1] = 'keep';
-  const s = L.sanitizeLineups(JSON.parse(JSON.stringify(st)), ['keep']); assert.strictEqual(s.lineups[0].bat.groups.BAT[0], null); assert.strictEqual(s.lineups[0].bat.groups.BAT[1], 'keep');
-  assert.strictEqual(L.sanitizeDepth(null, []).count, 4);
+  assert.deepStrictEqual(d.boards[2027].tags, []);
 });
 const csv = 'Name,Position,Grad Year\nAl One,SS,2028\nBo Two,CF,2029\nCy Three,DH,2027\nDi Four,UT,2027\n,P,2027\nEd Five,OF,abc\nAl One,SS,2028\nFy Six,C,2028\n';
 ok('CSV: valid rows ok; LF/CF/RF review with OF suggestion; DH/UT flagged without suggestion; errors; duplicates', () => {
@@ -116,23 +132,28 @@ ok('exception and docs stay out of the handoff and bridge files; no pricing or A
   try {
     const d = await open('/coach-lineup.html?demo=1'), w = d.window, q = (s) => w.document.querySelectorAll(s);
     assert.ok(q('.coach-subnav a[href="coach-lineup.html"][aria-current="page"]').length && q('.coach-subnav a[href="coach-depth-chart.html"]').length, 'nav links');
-    assert.strictEqual(q('.ld-tab').length, 1); assert.strictEqual(q('.ld-slot[data-kind="bat"]').length, 9); assert.strictEqual(q('.ld-slot[data-kind="field"]').length, 9);
-    ['LF', 'CF', 'RF'].forEach((s) => assert.ok(q('.ld-slot[data-kind="field"][data-g="' + s + '"]').length === 1, s));
-    assert.ok(q('.ld-sel option').length > 20, 'roster options come from sample players');
-    const sel = q('select.ld-sel[data-kind="field"][data-g="CF"]')[0], opt = Array.from(sel.options).find((o) => o.value && /\(OF,/.test(o.textContent));
-    assert.ok(opt, 'an OF sample player exists'); sel.value = opt.value; sel.dispatchEvent(new w.Event('change', { bubbles: true }));
-    const tag = w.document.querySelector('.ld-slot[data-g="CF"] .ld-tag'); assert.ok(tag, 'placed via keyboard select'); assert.strictEqual(tag.querySelector('.pill').textContent, 'OF'); assert.ok(!/\bCF\b/.test(tag.textContent), 'tag keeps stored position OF');
-    assert.ok(/placed in CF/.test(w.document.getElementById('ld-live').textContent), 'aria-live announcement');
+    assert.strictEqual(q('.ld-tab').length, 1); assert.ok(q('#ld-canvas').length === 1 && q('.ld-lane-row').length === 9, 'white canvas with 9-row lane');
+    assert.strictEqual(q('select.ld-sel, .ld-slot').length, 0, 'no select or slot placement controls');
+    assert.strictEqual(q('#ld-canvas select').length, 0); assert.ok(q('#ld-tray-list .ld-tag').length > 20, 'tray tags come from sample players');
+    const tray = q('#ld-tray-list .ld-tag')[0]; assert.ok(tray.getAttribute('tabindex') === '0');
+    const pid = tray.dataset.pid; tray.dispatchEvent(new w.KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+    let tag = w.document.querySelector('#ld-canvas .ld-tag[data-pid="' + pid + '"]'); assert.ok(tag, 'Enter sends tray tag to canvas'); assert.ok(/set as batting order 1/.test(w.document.getElementById('ld-live').textContent) || /placed on the canvas/.test(w.document.getElementById('ld-live').textContent), 'aria-live');
+    assert.ok(tag.querySelector('.pill'), 'stored position pill'); assert.ok(!/\b(LF|CF|RF)\b/.test(tag.querySelector('.pill').textContent));
+    const before = tag.style.left + tag.style.top; tag.dispatchEvent(new w.KeyboardEvent('keydown', { key: 'ArrowRight', shiftKey: true, bubbles: true }));
+    tag = w.document.querySelector('#ld-canvas .ld-tag[data-pid="' + pid + '"]'); assert.ok(tag, 'tag still on canvas after arrow move');
+    tag.dispatchEvent(new w.KeyboardEvent('keydown', { key: 'Delete', bubbles: true })); assert.ok(!w.document.querySelector('#ld-canvas .ld-tag[data-pid="' + pid + '"]'), 'Delete returns tag to tray');
     w.document.getElementById('lu-add').click(); assert.strictEqual(q('.ld-tab').length, 2);
     w.document.getElementById('lu-add').click(); w.document.getElementById('lu-add').click(); assert.strictEqual(q('.ld-tab').length, 4); assert.ok(w.document.getElementById('lu-add').disabled, 'cap at 4');
-    const d2 = await open('/coach-depth-chart.html?demo=1'), w2 = d2.window;
-    assert.strictEqual(w2.document.querySelectorAll('.ld-tab').length, 4); w2.document.getElementById('dp-years').value = '2'; w2.document.getElementById('dp-years').dispatchEvent(new w2.Event('change', { bubbles: true }));
-    assert.strictEqual(w2.document.querySelectorAll('.ld-tab').length, 2);
-    assert.ok(w2.document.querySelector('.ld-open'), 'open spots shown'); assert.ok(w2.document.querySelector('[data-pool]'));
-    ['LF', 'CF', 'RF'].forEach((s) => assert.ok(w2.document.querySelector('.ld-slot[data-g="' + s + '"]'), s));
+    const d2 = await open('/coach-depth-chart.html?demo=1'), w2 = d2.window, q2 = (s) => w2.document.querySelectorAll(s);
+    assert.strictEqual(q2('.ld-tab[data-tab]').length, 4); assert.ok(q2('svg.ld-outline').length === 1 && q2('svg.ld-outline path, svg.ld-outline rect').length > 3, 'baseball field outline');
+    assert.strictEqual(q2('#ld-canvas select, select.ld-sel').length, 0);
+    ['P', 'C', '1B', '2B', '3B', 'SS', 'LF', 'CF', 'RF'].forEach((s) => assert.ok(/\bopen\b/.test(Array.from(q2('.ld-glabel')).filter((e) => e.textContent.indexOf(s + ' ') === 0).map((e) => e.textContent).join(' ')), s));
+    const t2 = q2('#ld-tray-list .ld-tag')[0]; t2.dispatchEvent(new w2.KeyboardEvent('keydown', { key: 'Enter', bubbles: true })); assert.ok(q2('#ld-canvas .ld-tag').length === 1, 'depth tray Enter places tag');
+    w2.document.querySelector('[data-yrs="2"]').click(); assert.strictEqual(q2('.ld-tab[data-tab]').length, 2); assert.ok(w2.document.querySelector('[data-pool="targets"]'));
     const md = await open('/coach-master-database.html?demo=1'); assert.ok(md.window.document.querySelector('.coach-subnav a[href="coach-lineup.html"]'), 'subnav on other coach pages');
     assert.ok(!/\b(LF|CF|RF)\b/.test(Array.from(md.window.document.querySelectorAll('select option')).map((o) => o.textContent).join(' ')), 'master database positions unchanged');
-    n++; console.log('ok - pages render, keyboard placement, 4-lineup cap, year selector, nav, master database unchanged');
+    const sp = await JSDOM.fromURL(base + '/coach-depth-chart.html?demo=1', { runScripts: 'dangerously', resources: 'usable', pretendToBeVisual: true, virtualConsole: new VirtualConsole(), beforeParse: (win) => { win.sessionStorage.setItem('theReadActiveSport', 'Women\u2019s Soccer'); } }); await new Promise((r) => setTimeout(r, 1200));
+    const sdoc = sp.window.document; assert.ok(sdoc.querySelector('svg.ld-outline') && /Requires Founder Decision/.test(sdoc.body.textContent), 'non-baseball shows outline and provisional notice'); assert.strictEqual(sdoc.querySelectorAll('.ld-glabel, .ld-ghost-slot').length, 0, 'no invented non-baseball positions');    n++; console.log('ok - pages render, keyboard placement, 4-lineup cap, year selector, nav, master database unchanged');
   } finally { srv.close(); }
   done();
 })().catch((e) => { console.error(e); process.exit(1); });

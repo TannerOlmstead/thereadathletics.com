@@ -1,149 +1,205 @@
-/* Lineup and Depth Chart PAGES (baseball preview). Mounted by coach.js (pages.lineup / pages.depth) with fictional preview data.
-   Drag and drop plus a keyboard alternative (a select on every slot). Drafts live only in this browser (localStorage, demo);
-   nothing is uploaded or sent. Logic lives in lineup-depth.js. LF/CF/RF are display slots only (user-approved scoped exception). */
+/* Lineup and Depth Chart PAGES: a big white canvas with draggable player name tags (pointer events: mouse, touch, pen).
+   Coaches drag tags freely on the canvas and between the tray and the canvas. No select menus place players; keyboard: focus a tag,
+   arrow keys move it (Shift = bigger step), Enter/Space sends a tray tag to the canvas, Delete/Backspace/Enter/Space returns a canvas tag to the tray.
+   Drafts live only in this browser (localStorage, demo); nothing is uploaded or sent. Logic: lineup-depth.js. LF/CF/RF are display slots (scoped exception). */
 (function (root) {
   'use strict';
   var L = root.TheReadLineup;
-  var K_LU = 'theReadDemoLineups', K_DP = 'theReadDemoDepthChart', K_RO = 'theReadDemoLineupRoster';
   function rd(k) { try { return JSON.parse(root.localStorage.getItem(k) || 'null'); } catch (e) { return null; } }
   function wr(k, v) { try { root.localStorage.setItem(k, JSON.stringify(v)); return true; } catch (e) { return false; } }
+  var pct = function (v) { return (Math.round(v * 10000) / 100) + '%'; };
 
   function mount(host, page, ctx) {
-    var esc = ctx.esc, doc = root.document;
-    if (ctx.sport !== 'Baseball') { host.innerHTML = '<div class="notice navy" role="note"><strong>Baseball only.</strong> The Lineup and Depth Chart previews are available for Baseball. Switch the active sport to Baseball to use them.</div>'; return; }
-    var imported = (rd(K_RO) || []).filter(function (p) { return p && /^IMP-\d+$/.test(p.id) && L.STORED_POSITIONS.indexOf(p.pos) >= 0; });
+    var doc = root.document, esc = ctx.esc, sport = ctx.sport || 'Baseball', bb = sport === 'Baseball', sk = bb ? '' : '_' + L.sportKey(sport);
+    var K_LU = 'theReadDemoLineups' + sk, K_DP = 'theReadDemoDepthChart' + sk, K_RO = 'theReadDemoLineupRoster';
+    var imported = bb ? (rd(K_RO) || []).filter(function (p) { return p && /^IMP-\d+$/.test(p.id) && L.STORED_POSITIONS.indexOf(p.pos) >= 0; }) : [];
     var roster = function () { return ctx.players.concat(imported); };
     var byId = function () { var m = {}; roster().forEach(function (p) { m[p.id] = p; }); return m; };
     var ids = function () { return roster().map(function (p) { return p.id; }); };
-    var lu = L.sanitizeLineups(rd(K_LU), ids());
-    var dp = L.sanitizeDepth(rd(K_DP), ids());
-    var ui = { q: '', pool: 'roster', status: '', saveFail: false };
+    var lu = L.sanitizeLineups(rd(K_LU), ids()), dp = L.sanitizeDepth(rd(K_DP), ids());
+    var ui = { q: '', pool: 'roster', status: '', saveFail: false, focus: '' };
+    var outline = L.resolveOutline(sport), isLineup = page === 'lineup';
     var saved = function () { ui.saveFail = !(wr(K_LU, lu) && wr(K_DP, dp)); };
+    var curLU = function () { return lu.lineups[lu.active]; };
+    var curYear = function () { return L.depthYears(dp)[dp.active]; };
 
-    function tag(p, from, extra) {
-      var d = from ? ' data-fg="' + esc(from.group) + '" data-fi="' + from.idx + '"' : '';
-      return '<div class="ld-tag" draggable="true" data-pid="' + esc(p.id) + '"' + d + ' role="group" aria-label="' + esc(p.name) + ', ' + esc(p.pos) + (p.twoWay ? ', two-way' : '') + ', class of ' + esc(p.grad) + '">' +
-        '<strong class="ld-name">' + esc(p.name) + '</strong> <span class="pill gray">' + esc(p.pos) + '</span>' + (p.twoWay ? ' <span class="pill navy">Two-Way</span>' : '') + (p.imported ? ' <span class="pill amber">Imported</span>' : '') +
-        '<span class="ld-meta">Class of ' + esc(p.grad) + ' &middot; ' + ctx.gradeSummary(p) + '</span>' + (extra || '') + '</div>';
+    function tagHtml(p, o) {
+      o = o || {};
+      var pos = o.pos ? ' style="left:' + pct(o.pos.x) + ';top:' + pct(o.pos.y) + '"' : '';
+      var hint = o.where === 'tray' ? 'Press Enter to place on the canvas.' : 'Arrow keys move, Shift for larger steps, Delete returns to the tray.';
+      return '<div class="ld-tag ' + (o.where === 'tray' ? 'in-tray' : 'on-canvas') + (o.placed ? ' placed' : '') + '" tabindex="0" role="button" data-pid="' + esc(p.id) + '" data-key="' + esc(o.key || p.id) + '" data-where="' + o.where + '"' + pos +
+        ' aria-label="' + esc(p.name) + ', ' + esc(p.pos) + (p.twoWay ? ', two-way' : '') + ', class of ' + esc(p.grad) + (o.label ? ', ' + esc(o.label) : '') + '. ' + hint + '">' +
+        (o.badge ? '<span class="ld-num" title="' + esc(o.label || '') + '">' + esc(o.badge) + '</span>' : '') +
+        '<strong class="ld-name">' + esc(p.name) + '</strong> <span class="pill gray">' + esc(p.pos) + '</span>' + (p.twoWay ? ' <span class="pill navy">Two-Way</span>' : '') + (p.imported ? ' <span class="pill amber">Imported</span>' : '') + (o.extra || '') +
+        '<span class="ld-meta">' + ctx.gradeSummary(p) + '</span></div>';
     }
-    function options(sel, list) {
-      return '<option value="">Open spot</option>' + list.slice().sort(function (a, b) { return a.name < b.name ? -1 : 1; }).map(function (p) { return '<option value="' + esc(p.id) + '"' + (p.id === sel ? ' selected' : '') + '>' + esc(p.name) + ' (' + esc(p.pos) + ', ' + esc(p.grad) + ')</option>'; }).join('');
+    function trayHtml(list, title, hint) {
+      var q = ui.q.toLowerCase(), shown = list.filter(function (x) { return !q || (x.p.name + ' ' + x.p.pos).toLowerCase().indexOf(q) >= 0; });
+      return '<section class="ld-tray card coach-card" id="ld-tray" aria-label="' + esc(title) + '"><h3>' + esc(title) + ' (<span id="ld-count">' + shown.length + '</span>)</h3><p class="coach-note">' + hint + '</p>' +
+        '<label>Search<input type="search" id="ld-q" value="' + esc(ui.q) + '" placeholder="Name or position" /></label><div class="ld-tray-list" id="ld-tray-list">' + trayItems(shown) + '</div></section>';
     }
-    function slot(label, aria, group, idx, pid, list, kind, note) {
-      var p = pid ? byId()[pid] : null, fit = p && kind === 'field' ? L.slotFit(group, p) : { ok: true };
-      return '<div class="ld-slot' + (p ? '' : ' open') + '" data-g="' + esc(group) + '" data-i="' + idx + '" data-kind="' + kind + '"><span class="ld-slot-label">' + esc(label) + '</span>' +
-        '<div class="ld-slot-body">' + (p ? tag(p, { group: group, idx: idx }) + (fit.ok ? '' : ' <span class="pill amber" title="Hint only. The stored position is not changed.">' + esc(fit.note) + '</span>') + (note || '') : '<span class="pill amber ld-open">Open spot</span>') + '</div>' +
-        '<label class="visually-hidden" for="sel-' + kind + group + idx + '">' + esc(aria) + '</label><select id="sel-' + kind + group + idx + '" class="ld-sel" data-g="' + esc(group) + '" data-i="' + idx + '" data-kind="' + kind + '">' + options(pid, list) + '</select>' +
-        (p ? '<button type="button" class="ld-x" data-rm="1" data-g="' + esc(group) + '" data-i="' + idx + '" data-kind="' + kind + '" aria-label="Remove ' + esc(p.name) + ' from ' + esc(aria) + '">Remove</button>' : '') + '</div>';
+    function trayItems(shown) { return shown.length ? shown.map(function (x) { return tagHtml(x.p, { where: 'tray', placed: x.placed, extra: x.placed ? ' <span class="pill green">On canvas</span>' : '' }); }).join('') : '<p class="coach-note">No players to show.</p>'; }
+    function trayList() {
+      var all = roster();
+      if (isLineup) { var on = L.lineupPids(curLU()); return all.filter(function (p) { return !on[p.id]; }).map(function (p) { return { p: p, placed: false }; }); }
+      var inB = {}; dp.boards[curYear()].tags.forEach(function (t) { inB[t.pid] = 1; });
+      var t = ctx.targets(), src = ui.pool === 'targets' ? all.filter(function (p) { return t[p.id]; }) : all;
+      return src.map(function (p) { return { p: p, placed: !!inB[p.id] }; });
     }
-    function poolHtml(list, title, hint) {
-      var q = ui.q.toLowerCase(), shown = list.filter(function (p) { return !q || (p.name + ' ' + p.pos).toLowerCase().indexOf(q) >= 0; });
-      return '<section class="ld-pool card coach-card" data-pool="1" aria-label="' + esc(title) + '"><h3>' + esc(title) + ' (' + shown.length + ')</h3><p class="coach-note">' + hint + '</p>' +
-        '<label>Search<input type="search" id="ld-q" value="' + esc(ui.q) + '" placeholder="Name or position" /></label><div class="ld-pool-list">' + (shown.length ? shown.map(function (p) { return tag(p); }).join('') : '<p class="coach-note">No players to show.</p>') + '</div></section>';
+
+    function banner() {
+      return '<div class="notice navy" role="note"><strong>Preview only.</strong> Players are fictional sample data. Drafts are kept only in this browser (demo) and are never sent anywhere' + (ui.saveFail ? '; this browser blocked saving, so changes last until you leave the page' : '') + '. <button type="button" class="button button-secondary" id="ld-reset">Reset All Drafts</button></div>' +
+        (bb ? '' : '<div class="notice amber" role="note"><strong>Provisional.</strong> ' + esc(sport) + ' positions, slots, lineup rules and depth sizes are not decided yet (Requires Founder Decision). Tags can be placed anywhere on the canvas.</div>') +
+        '<p class="visually-hidden" id="ld-live" role="status" aria-live="polite">' + esc(ui.status) + '</p>';
     }
     function importHtml() {
+      if (!bb) return '';
       return '<details class="card coach-card ld-import"><summary><strong>Import Roster From CSV (Preview)</strong></summary>' +
         '<p class="coach-note">The file is read in this browser only and is never uploaded. Required columns: Name, Position, Grad Year. Optional: Secondary Position, Two-Way. Positions must be P, C, 1B, 2B, 3B, SS or OF. Rows with any other position (including LF, CF, RF, DH or UT) are flagged for your review; nothing is converted silently. Excel files are not supported in this preview: save as CSV.</p>' +
         '<label>CSV file<input type="file" id="ld-file" accept=".csv,text/csv" /></label> <label>Or paste CSV text<textarea id="ld-text" rows="4" placeholder="Name,Position,Grad Year"></textarea></label>' +
         '<div class="btn-row"><button type="button" class="button button-secondary" id="ld-prev">Preview Rows</button></div><div id="ld-prevout" aria-live="polite"></div></details>';
     }
-    function liveHtml() { return '<p class="visually-hidden" id="ld-live" role="status" aria-live="polite">' + esc(ui.status) + '</p>'; }
-    function banner() {
-      return '<div class="notice navy" role="note"><strong>Preview only.</strong> Players are fictional sample data. Drafts are kept only in this browser (demo) and are never sent anywhere' + (ui.saveFail ? '; this browser blocked saving, so changes last until you leave the page' : '') + '. <button type="button" class="button button-secondary" id="ld-reset">Reset All Drafts</button></div>' + liveHtml();
+
+    function lineupCanvas() {
+      var c = curLU(), B = byId(), out = '';
+      if (bb) {
+        var h = (L.LANE.y1 - L.LANE.y0) / 9;
+        out += '<div class="ld-lane" aria-hidden="true" style="left:' + pct(L.LANE.x0) + ';width:' + pct(L.LANE.x1 - L.LANE.x0) + ';top:' + pct(L.LANE.y0) + ';height:' + pct(L.LANE.y1 - L.LANE.y0) + '"></div>';
+        for (var i = 0; i < 9; i++) out += '<div class="ld-lane-row" aria-hidden="true" style="left:' + pct(L.LANE.x0) + ';width:' + pct(L.LANE.x1 - L.LANE.x0) + ';top:' + pct(L.LANE.y0 + h * i) + ';height:' + pct(h) + '"><span class="ld-lane-n">' + (i + 1) + '</span></div>';
+        out += '<div class="ld-lane-title" aria-hidden="true">Batting Order</div>';
+      }
+      c.order.forEach(function (pid, i) { if (pid && B[pid]) out += tagHtml(B[pid], { where: 'canvas', key: pid, pos: { x: L.laneX(), y: L.laneRowY(i) }, badge: String(i + 1), label: 'batting order ' + (i + 1) }); });
+      Object.keys(c.free).forEach(function (pid) { if (B[pid]) out += tagHtml(B[pid], { where: 'canvas', key: pid, pos: c.free[pid], label: 'free on canvas' }); });
+      return '<div class="ld-canvas ld-lineup" id="ld-canvas" role="group" aria-label="Lineup canvas">' + out + '</div>';
+    }
+    function depthCanvas() {
+      var year = curYear(), b = dp.boards[year], B = byId(), out = '';
+      out += '<svg class="ld-outline" viewBox="0 0 1000 800" preserveAspectRatio="none" aria-hidden="true" focusable="false">' + outline.svg + '</svg>';
+      if (outline.plain) out += '<div class="ld-plain-note" aria-hidden="true">No outline for this sport yet</div>';
+      if (bb) L.SLOTS.forEach(function (g) {
+        var a = L.ANCHORS[g], open = L.openSpots(b, g), n = L.groupTags(b, g).length;
+        out += '<div class="ld-glabel" aria-hidden="true" style="left:' + pct(a.x) + ';top:' + pct(a.y - 0.05) + '">' + g + ' <small>' + open + ' open</small></div>';
+        if (!n) out += '<div class="ld-ghost-slot" aria-hidden="true" style="left:' + pct(a.x) + ';top:' + pct(a.y) + '">Open ' + L.depthLabel(0) + '</div>';
+      });
+      b.tags.forEach(function (t) {
+        var p = B[t.pid]; if (!p) return; var pos = L.depthPos(b, t), k = L.key(t.pid, t.g), extra = '', badge = '', label = 'free on canvas';
+        if (t.g) { var i = L.groupTags(b, t.g).indexOf(t); badge = i === 0 ? 'S' : 'B' + i; label = t.g + ' ' + L.depthLabel(i); var fit = L.slotFit(t.g, p); if (!fit.ok) extra += ' <span class="pill amber" title="Hint only. The stored position is not changed.">Off-position</span>'; }
+        var gn = L.yearNote(p, year); if (gn) extra += ' <span class="pill amber" title="' + esc(gn) + '">Graduated</span>';
+        if (ctx.targets()[t.pid]) extra += ' <span class="pill red">Target</span>';
+        out += tagHtml(p, { where: 'canvas', key: k, pos: pos, badge: badge, label: label, extra: extra });
+      });
+      return '<div class="ld-canvas ld-depthc' + (outline.plain ? ' plain' : '') + '" id="ld-canvas" role="group" aria-label="Depth chart canvas, ' + esc(outline.label) + '">' + out + '</div>';
     }
 
-    function drawLineup() {
-      var cur = lu.lineups[lu.active], B = byId(), all = roster();
-      var inBat = L.placed(cur.bat), inField = L.placed(cur.field);
-      var bench = all.filter(function (p) { return !inBat[p.id] && !inField[p.id]; });
-      var tabs = lu.lineups.map(function (l, i) { return '<button type="button" role="tab" class="ld-tab' + (i === lu.active ? ' on' : '') + '" aria-selected="' + (i === lu.active) + '" data-tab="' + i + '">' + esc(l.label) + '</button>'; }).join('');
-      var batSlots = cur.bat.groups.BAT.map(function (pid, i) { return slot('Bat ' + (i + 1), 'Batting order ' + (i + 1), 'BAT', i, pid, all, 'bat'); }).join('');
-      var fieldSlots = L.SLOTS.map(function (s) { return slot(s, 'Defensive position ' + s, s, 0, cur.field.groups[s][0], all, 'field'); }).join('');
-      host.innerHTML = banner() +
-        '<div class="ld-tabs" role="tablist" aria-label="Lineup pages (up to ' + L.CONFIG.maxLineups + ')">' + tabs + '</div>' +
-        '<div class="btn-row"><button type="button" class="button button-secondary" id="lu-add"' + (lu.lineups.length >= L.CONFIG.maxLineups ? ' disabled' : '') + '>Add Lineup (' + lu.lineups.length + ' of ' + L.CONFIG.maxLineups + ')</button> ' +
-        '<button type="button" class="button button-secondary" id="lu-dup"' + (lu.lineups.length >= L.CONFIG.maxLineups ? ' disabled' : '') + '>Duplicate This Lineup</button> <button type="button" class="button button-secondary" id="lu-clr">Clear This Lineup</button> <button type="button" class="button button-secondary" id="lu-del"' + (lu.lineups.length <= 1 ? ' disabled' : '') + '>Delete This Lineup</button></div>' +
-        '<section class="card coach-card"><h2>Matchup</h2><div class="ld-fields"><label>Lineup Name<input id="lu-label" maxlength="40" value="' + esc(cur.label) + '" /></label><label>Opponent<input id="lu-opp" maxlength="60" value="' + esc(cur.opponent) + '" placeholder="Opponent or free text" /></label><label>Date<input id="lu-date" maxlength="30" value="' + esc(cur.date) + '" placeholder="Date or free text" /></label></div></section>' +
-        '<p class="coach-note">Drag a player tag onto a slot, or use the select on any slot. Dropping on an occupied slot swaps the two players. Slot labels LF, CF and RF are display slots for outfielders; every player keeps their stored position (OF).</p>' +
-        '<div class="ld-cols"><section class="card coach-card"><h2>Batting Order</h2>' + batSlots + '</section><section class="card coach-card"><h2>Defensive Positions</h2>' + fieldSlots + '</section>' +
-        poolHtml(bench, 'Bench / Available', 'Players not in this lineup. Drop a tag here to remove it from a slot.') + '</div>' + importHtml();
+    function seg(label, id, vals, cur) {
+      return '<div class="ld-seg" role="group" aria-label="' + esc(label) + '">' + vals.map(function (v) { return '<button type="button" class="ld-tab' + (String(v[0]) === String(cur) ? ' on' : '') + '" aria-pressed="' + (String(v[0]) === String(cur)) + '" data-' + id + '="' + v[0] + '">' + esc(v[1]) + '</button>'; }).join('') + '</div>';
+    }
+    function draw() {
+      var html = banner();
+      if (isLineup) {
+        var c = curLU(), capped = lu.lineups.length >= L.CONFIG.maxLineups;
+        html += '<div class="ld-tabs" role="group" aria-label="Lineup pages (up to ' + L.CONFIG.maxLineups + ')">' + lu.lineups.map(function (l, i) { return '<button type="button" class="ld-tab' + (i === lu.active ? ' on' : '') + '" aria-pressed="' + (i === lu.active) + '" data-tab="' + i + '">' + esc(l.label) + '</button>'; }).join('') + '</div>' +
+          '<div class="btn-row"><button type="button" class="button button-secondary" id="lu-add"' + (capped ? ' disabled' : '') + '>Add Lineup (' + lu.lineups.length + ' of ' + L.CONFIG.maxLineups + ')</button> <button type="button" class="button button-secondary" id="lu-dup"' + (capped ? ' disabled' : '') + '>Duplicate This Lineup</button> <button type="button" class="button button-secondary" id="lu-clr">Clear This Lineup</button> <button type="button" class="button button-secondary" id="lu-del"' + (lu.lineups.length <= 1 ? ' disabled' : '') + '>Delete This Lineup</button></div>' +
+          '<section class="card coach-card"><h2>Matchup</h2><div class="ld-fields"><label>Lineup Name<input id="lu-label" maxlength="40" value="' + esc(c.label) + '" /></label><label>Opponent<input id="lu-opp" maxlength="60" value="' + esc(c.opponent) + '" placeholder="Opponent or free text" /></label><label>Date<input id="lu-date" maxlength="30" value="' + esc(c.date) + '" placeholder="Date or free text" /></label></div></section>' +
+          '<p class="coach-note">' + (bb ? 'Drag a player tag from the tray anywhere on the white canvas. Tags dropped in the numbered Batting Order lane on the left set the batting order (1 at the top); tags anywhere else are free notes. Drop a tag back on the tray to remove it. Tags show the stored position (OF), never LF, CF or RF.' : 'Drag player tags anywhere on the canvas. Batting-order rules for ' + esc(sport) + ' are not decided yet.') + '</p>' +
+          '<div class="ld-layout">' + lineupCanvas() + trayHtml(trayList(), 'Player Tray', 'Players not on this lineup canvas.') + '</div>' + importHtml();
+      } else {
+        var yrs = L.depthYears(dp), b = dp.boards[yrs[dp.active]];
+        html += '<div class="ld-fields">' + seg('Years to plan', 'yrs', [[2, '2 Years'], [3, '3 Years'], [4, '4 Years']], dp.count) + seg('Player pool', 'pool', [['roster', 'Roster'], ['targets', 'Recruiting Targets']], ui.pool) + '</div>' +
+          '<div class="ld-tabs" role="group" aria-label="Recruiting years">' + yrs.map(function (y, i) { return '<button type="button" class="ld-tab' + (i === dp.active ? ' on' : '') + '" aria-pressed="' + (i === dp.active) + '" data-tab="' + i + '">' + y + ' Season</button>'; }).join('') + '</div>' +
+          (bb ? '<p class="kpi-row"><span class="pill amber">Open spots in ' + yrs[dp.active] + ': ' + L.totalOpen(b) + '</span></p>' : '') +
+          '<p class="coach-note">' + (bb ? 'Drag tags from the tray onto the field. Tags dropped near a position stack there in depth order: S = Starter, then B1, B2 and so on (a player is listed once per position). Tags dropped elsewhere stay where you put them. LF, CF and RF are display areas only; stored positions stay OF. Graduated players are flagged, not blocked.' : 'Drag tags anywhere on the ' + esc(outline.label.toLowerCase()) + '. Positions and depth slots for ' + esc(sport) + ' are not decided yet.') + '</p>' +
+          '<div class="ld-layout">' + depthCanvas() + trayHtml(trayList(), ui.pool === 'targets' ? 'Recruiting Targets' : 'Roster Tray', ui.pool === 'targets' ? 'Prospects from your Recruiting Board.' : 'Fictional sample players plus any rows you imported.') + '</div>' + importHtml();
+      }
+      host.innerHTML = html;
+      if (ui.focus) { var f = host.querySelector('[data-key="' + ui.focus.replace(/"/g, '') + '"]'); if (f) f.focus(); ui.focus = ''; }
     }
 
-    function poolList(year) {
-      var all = roster(), inYear = L.placed(dp.boards[year]);
-      if (ui.pool === 'targets') { var t = ctx.targets(); return all.filter(function (p) { return t[p.id]; }); }
-      return all.filter(function (p) { return !inYear[p.id] || true; });
-    }
-    function drawDepth() {
-      var yrs = L.depthYears(dp), year = yrs[dp.active], b = dp.boards[year], B = byId(), all = roster();
-      var open = 0, tabs = yrs.map(function (y, i) { return '<button type="button" role="tab" class="ld-tab' + (i === dp.active ? ' on' : '') + '" aria-selected="' + (i === dp.active) + '" data-tab="' + i + '">' + y + ' Season</button>'; }).join('');
-      var groups = L.SLOTS.map(function (g) {
-        var rows = b.groups[g].map(function (pid, i) {
-          if (!pid) open++;
-          var p = pid ? B[pid] : null, gn = p ? L.yearNote(p, year) : '';
-          var tg = ctx.targets()[pid];
-          return slot(L.CONFIG.depthLabels[i] || 'Depth ' + (i + 1), g + ' ' + (L.CONFIG.depthLabels[i] || 'depth ' + (i + 1)) + ' for ' + year, g, i, pid, all, 'depth',
-            (tg ? ' <span class="pill red">Recruiting Target</span>' : '') + (gn ? ' <span class="pill amber">' + esc(gn) + '</span>' : ''));
-        }).join('');
-        return '<section class="card coach-card ld-group"><h3>' + g + (g === 'LF' || g === 'CF' || g === 'RF' ? ' <small>(outfield slot)</small>' : '') + '</h3>' + rows + '</section>';
-      }).join('');
-      var cnt = '<label>Years To Plan<select id="dp-years">' + [2, 3, 4].map(function (n) { return '<option' + (n === dp.count ? ' selected' : '') + '>' + n + '</option>'; }).join('') + '</select></label>';
-      var list = poolList(year);
-      host.innerHTML = banner() + '<div class="ld-fields">' + cnt + '<label>Player Pool<select id="dp-pool"><option value="roster"' + (ui.pool === 'roster' ? ' selected' : '') + '>Roster (sample and imported)</option><option value="targets"' + (ui.pool === 'targets' ? ' selected' : '') + '>Recruiting Targets (Board)</option></select></label></div>' +
-        '<div class="ld-tabs" role="tablist" aria-label="Recruiting years">' + tabs + '</div><p class="kpi-row"><span class="pill amber">Open spots in ' + year + ': ' + open + '</span></p>' +
-        '<p class="coach-note">Drag tags into slots (a player may be listed at more than one position, but only once per position). Graduated players are flagged, not blocked. LF, CF and RF are display slots for outfielders; stored positions stay OF.</p>' +
-        '<div class="ld-cols ld-depth"><div class="ld-groups">' + groups + '</div>' + poolHtml(list, ui.pool === 'targets' ? 'Recruiting Targets' : 'Roster Pool', ui.pool === 'targets' ? 'Prospects on your Recruiting Board.' : 'Fictional sample players plus any rows you imported.') + '</div>' + importHtml();
-    }
-
-    var draw = page === 'lineup' ? drawLineup : drawDepth;
-    function curBoards(kind) {
-      if (page === 'lineup') { var c = lu.lineups[lu.active]; return kind === 'bat' ? { get: function () { return c.bat; }, set: function (v) { c.bat = v; } } : { get: function () { return c.field; }, set: function (v) { c.field = v; } }; }
-      var y = L.depthYears(dp)[dp.active]; return { get: function () { return dp.boards[y]; }, set: function (v) { dp.boards[y] = v; } };
-    }
-    function act(kind, pid, g, i, from) {
-      var bd = curBoards(kind), r = L.place(bd.get(), pid, g, i, from), nm = byId()[pid] ? byId()[pid].name : 'Player';
-      if (!r.ok) ui.status = r.reason; else if (!r.noop) { bd.set(r.board); ui.status = nm + (r.swapped ? ' swapped into ' : ' placed in ') + g + (kind === 'bat' ? ' ' + (i + 1) : ''); }
+    function nameOf(pid) { var p = byId()[pid]; return p ? p.name : 'Player'; }
+    function drop(pid, x, y, fromKey) {
+      if (isLineup) {
+        var r = L.lineupDrop(curLU(), pid, x, y, !bb); if (r.noop) { draw(); return; }
+        lu.lineups[lu.active] = r.lineup; ui.focus = pid;
+        ui.status = nameOf(pid) + (r.row >= 0 ? ' set as batting order ' + (r.row + 1) : ' placed on the canvas');
+      } else {
+        var y0 = curYear(), d = L.depthDrop(dp.boards[y0], pid, x, y, fromKey, !bb);
+        if (!d.ok) { ui.status = d.reason; draw(); return; }
+        dp.boards[y0] = d.board; ui.focus = L.key(pid, d.group);
+        ui.status = nameOf(pid) + (d.group ? ' listed at ' + d.group + ' as ' + L.depthLabel(d.index) : ' placed on the canvas');
+      }
       saved(); draw();
     }
-    function remove(kind, g, i) { var bd = curBoards(kind); bd.set(L.removeAt(bd.get(), g, i)); ui.status = 'Removed from ' + g; saved(); draw(); }
+    function toTray(pid, k) {
+      if (isLineup) lu.lineups[lu.active] = L.lineupRemove(curLU(), pid); else dp.boards[curYear()] = L.depthRemove(dp.boards[curYear()], k);
+      ui.status = nameOf(pid) + ' returned to the tray'; ui.focus = ''; saved(); draw();
+      var t = host.querySelector('.ld-tray-list [data-pid="' + pid + '"]'); if (t) t.focus();
+    }
+    function posOf(pid, k) {
+      if (isLineup) return L.lineupPos(curLU(), pid);
+      var b = dp.boards[curYear()], t = b.tags.filter(function (x) { return L.key(x.pid, x.g) === k; })[0]; if (!t) return null; var p = L.depthPos(b, t); p.g = t.g; return p;
+    }
 
-    // Drag and drop
     var drag = null;
-    host.addEventListener('dragstart', function (e) { var t = e.target.closest && e.target.closest('.ld-tag'); if (!t) return; drag = { pid: t.dataset.pid, fg: t.dataset.fg || null, fi: t.dataset.fi == null ? null : Number(t.dataset.fi) }; if (e.dataTransfer) { e.dataTransfer.effectAllowed = 'move'; try { e.dataTransfer.setData('text/plain', drag.pid); } catch (x) { /* ignore */ } } });
-    host.addEventListener('dragover', function (e) { if (drag && e.target.closest && (e.target.closest('.ld-slot') || e.target.closest('[data-pool]'))) e.preventDefault(); });
-    host.addEventListener('drop', function (e) {
-      if (!drag) return; var s = e.target.closest && e.target.closest('.ld-slot'), pool = e.target.closest && e.target.closest('[data-pool]'), d = drag; drag = null;
-      if (s) { e.preventDefault(); var kind = s.dataset.kind; if (d.fg && d.fg !== s.dataset.g && page === 'lineup' && false) return; act(kind, d.pid, s.dataset.g, Number(s.dataset.i), d.fg ? { group: d.fg, idx: d.fi } : null); }
-      else if (pool && d.fg) { e.preventDefault(); var k = page === 'lineup' ? (d.fg === 'BAT' ? 'bat' : 'field') : 'depth'; remove(k, d.fg, d.fi); }
+    host.addEventListener('pointerdown', function (e) {
+      if (e.button > 0) return; var t = e.target.closest && e.target.closest('.ld-tag'); if (!t) return;
+      drag = { el: t, pid: t.dataset.pid, key: t.dataset.key, where: t.dataset.where, sx: e.clientX, sy: e.clientY, ghost: null };
     });
-    host.addEventListener('dragend', function () { drag = null; });
+    doc.addEventListener('pointermove', function (e) {
+      if (!drag) return;
+      if (!drag.ghost && Math.abs(e.clientX - drag.sx) + Math.abs(e.clientY - drag.sy) > 5) { var g = drag.el.cloneNode(true); g.classList.add('ld-floating'); g.removeAttribute('tabindex'); g.style.left = ''; g.style.top = ''; doc.body.appendChild(g); drag.ghost = g; drag.el.classList.add('dragging'); }
+      if (drag.ghost) { drag.ghost.style.left = e.clientX + 'px'; drag.ghost.style.top = e.clientY + 'px'; e.preventDefault(); }
+    });
+    function endDrag(e, cancel) {
+      if (!drag) return; var d = drag; drag = null; d.el.classList.remove('dragging');
+      if (!d.ghost) return; d.ghost.parentNode.removeChild(d.ghost); if (cancel) return;
+      var cv = doc.getElementById('ld-canvas'); if (!cv) return; var r = cv.getBoundingClientRect();
+      var inside = e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom;
+      if (inside) drop(d.pid, (e.clientX - r.left) / r.width, (e.clientY - r.top) / r.height, d.where === 'canvas' ? d.key : null);
+      else if (d.where === 'canvas') toTray(d.pid, d.key);
+    }
+    doc.addEventListener('pointerup', function (e) { endDrag(e, false); });
+    doc.addEventListener('pointercancel', function (e) { endDrag(e, true); });
 
-    host.addEventListener('change', function (e) {
-      var t = e.target;
-      if (t.classList && t.classList.contains('ld-sel')) { var g = t.dataset.g, i = Number(t.dataset.i), k = t.dataset.kind; if (!t.value) remove(k, g, i); else act(k, t.value, g, i, null); return; }
-      if (t.id === 'dp-years') { dp = L.setYears(dp, t.value); saved(); draw(); }
-      if (t.id === 'dp-pool') { ui.pool = t.value; draw(); }
+    host.addEventListener('keydown', function (e) {
+      var t = e.target.closest && e.target.closest('.ld-tag'); if (!t) return;
+      var pid = t.dataset.pid, k = t.dataset.key, k2 = e.key;
+      if (t.dataset.where === 'tray') { if (k2 === 'Enter' || k2 === ' ') { e.preventDefault(); var s = L.defaultSpot(byId()[pid], isLineup ? 'lineup' : 'depth', curLU()); drop(pid, s.x, s.y, null); } return; }
+      if (k2 === 'Delete' || k2 === 'Backspace' || k2 === 'Enter' || k2 === ' ') { e.preventDefault(); toTray(pid, k); return; }
+      var dir = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] }[k2]; if (!dir) return;
+      e.preventDefault(); var pos = posOf(pid, k); if (!pos) return;
+      var snapped = isLineup ? pos.lane >= 0 : !!pos.g;
+      if (snapped && dir[1]) {
+        if (isLineup) { var r = L.lineupReorder(curLU(), pid, dir[1]); if (!r.noop) { lu.lineups[lu.active] = r.lineup; ui.focus = pid; ui.status = nameOf(pid) + ' moved to batting order ' + (r.row + 1); saved(); draw(); } }
+        else { var q = L.depthReorder(dp.boards[curYear()], k, dir[1]); if (!q.noop) { dp.boards[curYear()] = q.board; ui.focus = k; ui.status = nameOf(pid) + ' moved to ' + L.depthLabel(q.index) + ' at ' + pos.g; saved(); draw(); } }
+        return;
+      }
+      var st = snapped ? 0.12 : (e.shiftKey ? 0.08 : 0.02);
+      drop(pid, pos.x + dir[0] * st, pos.y + dir[1] * st, isLineup ? null : k);
     });
+
     host.addEventListener('input', function (e) {
-      var t = e.target, c = lu.lineups[lu.active];
-      if (t.id === 'ld-q') { ui.q = t.value; var pos = t.selectionStart; draw(); var n = doc.getElementById('ld-q'); if (n) { n.focus(); try { n.setSelectionRange(pos, pos); } catch (x) { /* ignore */ } } return; }
-      if (t.id === 'lu-label') c.label = t.value.slice(0, 40) || 'Lineup'; if (t.id === 'lu-opp') c.opponent = t.value; if (t.id === 'lu-date') c.date = t.value; saved();
+      var t = e.target, c = curLU();
+      if (t.id === 'ld-q') { ui.q = t.value; var items = trayList().filter(function (x) { var q = ui.q.toLowerCase(); return !q || (x.p.name + ' ' + x.p.pos).toLowerCase().indexOf(q) >= 0; }); doc.getElementById('ld-tray-list').innerHTML = trayItems(items); doc.getElementById('ld-count').textContent = items.length; return; }
+      if (!isLineup) return;
+      if (t.id === 'lu-label') c.label = t.value.slice(0, 40) || 'Lineup'; else if (t.id === 'lu-opp') c.opponent = t.value; else if (t.id === 'lu-date') c.date = t.value; else return;
+      saved();
     });
     host.addEventListener('click', function (e) {
       var t = e.target.closest ? e.target.closest('button') : null; if (!t) return;
-      if (t.dataset.rm) { remove(t.dataset.kind, t.dataset.g, Number(t.dataset.i)); return; }
-      if (t.dataset.tab != null) { if (page === 'lineup') lu.active = Number(t.dataset.tab); else dp.active = Number(t.dataset.tab); saved(); draw(); return; }
+      if (t.dataset.tab != null) { if (isLineup) lu.active = Number(t.dataset.tab); else dp.active = Number(t.dataset.tab); saved(); draw(); return; }
+      if (t.dataset.yrs) { dp = L.setYears(dp, t.dataset.yrs); saved(); draw(); return; }
+      if (t.dataset.pool) { ui.pool = t.dataset.pool; draw(); return; }
       var r;
       if (t.id === 'lu-add') { r = L.addLineup(lu); ui.status = r.ok ? 'Lineup added.' : r.reason; lu = r.state; saved(); draw(); }
       else if (t.id === 'lu-dup') { r = L.duplicateLineup(lu, lu.active); ui.status = r.ok ? 'Lineup duplicated.' : r.reason; lu = r.state; saved(); draw(); }
       else if (t.id === 'lu-del') { if (root.confirm && !root.confirm('Delete this lineup page?')) return; r = L.removeLineup(lu, lu.active); ui.status = r.ok ? 'Lineup deleted.' : r.reason; lu = r.state; saved(); draw(); }
-      else if (t.id === 'lu-clr') { lu.lineups[lu.active] = L.clearLineup(lu.lineups[lu.active]); ui.status = 'Lineup cleared.'; saved(); draw(); }
+      else if (t.id === 'lu-clr') { lu.lineups[lu.active] = L.clearLineup(curLU()); ui.status = 'Lineup cleared.'; saved(); draw(); }
       else if (t.id === 'ld-reset') { if (root.confirm && !root.confirm('Reset all lineup and depth chart drafts and imported roster rows in this browser?')) return; [K_LU, K_DP, K_RO].forEach(function (k) { try { root.localStorage.removeItem(k); } catch (x) { /* ignore */ } }); imported = []; lu = L.newLineupState(); dp = L.newDepthState(); ui.status = 'Drafts reset.'; draw(); }
       else if (t.id === 'ld-prev') preview();
       else if (t.id === 'ld-commit') commit();
     });
 
-    // CSV import (preview -> review -> explicit add)
+    // CSV import (preview -> review -> explicit add). The position choices here are import review, not player placement.
     var pv = null;
     function readText(cb) {
       var f = doc.getElementById('ld-file'), txt = doc.getElementById('ld-text');
@@ -163,7 +219,7 @@
       });
     }
     function commit() {
-      var out = doc.getElementById('ld-prevout'), rev = doc.getElementById('ld-rev');
+      var rev = doc.getElementById('ld-rev');
       if (!pv || !rev || !rev.checked) { ui.status = 'Tick "I reviewed these rows" first.'; var n = doc.getElementById('ld-live'); if (n) n.textContent = ui.status; return; }
       var dec = {};
       pv.rows.forEach(function (r) { var d = doc.querySelector('[data-dec="' + r.line + '"]'); if (d) { var ps = doc.querySelector('[data-decpos="' + r.line + '"]'); dec[r.line] = { action: d.value, pos: ps && ps.value ? ps.value : null }; } });

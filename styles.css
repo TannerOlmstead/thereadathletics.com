@@ -2130,10 +2130,6 @@ kbd { border: 1px solid rgba(20,40,75,.4); border-bottom-width: 2px; padding: 0 
 .ld-lineup{aspect-ratio:16/10}
 .ld-outline{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
 .ld-plain-note{position:absolute;left:50%;bottom:8px;transform:translateX(-50%);font-size:.8rem;color:#8793a5}
-.ld-lane{position:absolute;background:#f4f6fa;border:1px dashed #b9c2d0;border-radius:8px;pointer-events:none}
-.ld-lane-row{position:absolute;border-top:1px solid #e1e6ee;pointer-events:none}
-.ld-lane-n{position:absolute;left:4px;top:2px;font-size:.7rem;font-weight:800;color:#8793a5}
-.ld-lane-title{position:absolute;left:1%;top:0;font-size:.7rem;font-weight:800;color:#4b5565;text-transform:uppercase}
 .ld-glabel{position:absolute;transform:translate(-50%,-50%);font-size:.75rem;font-weight:800;color:#4b5565;pointer-events:none}
 .ld-ghost-slot{position:absolute;transform:translate(-50%,-50%);border:1px dashed #E41E3F;color:#E41E3F;border-radius:8px;padding:6px 10px;font-size:.75rem;pointer-events:none;background:rgba(255,255,255,.8)}
 .ld-tag{display:inline-block;max-width:190px;padding:5px 9px;border:1px solid #14284B;border-radius:999px;background:#fff;cursor:grab;touch-action:none;font-size:.82rem;line-height:1.25;box-shadow:0 1px 3px rgba(20,40,75,.18)}
@@ -2148,12 +2144,17 @@ kbd { border: 1px solid rgba(20,40,75,.4); border-bottom-width: 2px; padding: 0 
 .ld-tray-list{max-height:560px;overflow:auto}
 .ld-layout.one{display:block}
 .ld-slide{aspect-ratio:16/10;min-height:640px}
-.ld-roster-panel{position:absolute;left:0;top:0;bottom:0;box-sizing:border-box;padding:8px;background:#f8f9fc;border-right:1px solid #c5cddb;display:flex;flex-direction:column;min-height:0}
+.ld-roster-panel{min-width:150px;overflow:hidden;position:absolute;left:0;top:0;bottom:0;box-sizing:border-box;padding:8px;background:#f8f9fc;border-right:1px solid #c5cddb;display:flex;flex-direction:column;min-height:0}
+.ld-roster-panel label{display:block;font-size:.8rem}
+.ld-roster-panel input{width:100%;box-sizing:border-box;max-width:100%}
 .ld-roster-panel h3{margin:0 0 4px;font-size:.9rem}
 .ld-roster-panel .coach-note{margin:0 0 4px;font-size:.72rem}
 .ld-roster-panel .ld-tray-list{flex:1;min-height:0;max-height:none;overflow-y:auto}
-.ld-fslot{position:absolute;transform:translate(-50%,-50%);min-width:44px;padding:6px 8px;border:2px dashed #b9c2d0;border-radius:50%;text-align:center;font-size:.72rem;font-weight:800;color:#8793a5;pointer-events:none;background:#fff}
-.ld-fslot.dh{border-radius:8px;border-color:#E41E3F;color:#E41E3F}
+.ld-bar{display:flex;flex-wrap:nowrap;align-items:center;gap:4px;margin:10px 0;overflow-x:auto;white-space:nowrap}
+.ld-mini{border:1px solid #d8dde6;background:#fff;color:inherit;font:inherit;font-weight:700;font-size:.78rem;line-height:1.1;padding:4px 9px;border-radius:6px;cursor:pointer;flex:0 0 auto}
+.ld-mini.on{background:#14284B;color:#fff;border-color:#14284B}
+.ld-mini:disabled{opacity:.45;cursor:not-allowed}
+.ld-mini:focus-visible{outline:2px solid #E41E3F;outline-offset:2px}
 @media (max-width:900px){.ld-slide{min-height:560px}}
 @media (max-width:900px){.ld-layout{grid-template-columns:1fr}.ld-canvas{min-height:460px}}.ld-jersey{display:inline-block;font-weight:800;color:#E41E3F;font-size:.95rem}
 .ld-tag .ld-name{font-weight:700}

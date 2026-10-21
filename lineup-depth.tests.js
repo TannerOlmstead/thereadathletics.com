@@ -14,32 +14,21 @@ ok('stored positions stay P,C,1B,2B,3B,SS,OF; LF/CF/RF are display slots only', 
   assert.ok(!L.slotFit('CF', P('a', 'SS')).ok);
   assert.ok(L.slotFit('P', P('a', '1B', { twoWay: true })).ok);
 });
-ok('lineup canvas: batting rows, swaps, field slots incl. DH, free notes, clamping, no duplicates', () => {
-  assert.strictEqual(L.CONFIG.battingSlots, 9);
-  let lu = L.newLineup('x'), r = L.lineupDrop(lu, 'a', L.laneX(), L.laneRowY(0)); assert.strictEqual(r.row, 0); lu = r.lineup;
-  r = L.lineupDrop(lu, 'b', L.laneX(), L.laneRowY(1)); lu = r.lineup; assert.deepStrictEqual(L.battingOrder(lu).slice(0, 2), ['a', 'b']);
-  r = L.lineupDrop(lu, 'a', L.laneX(), L.laneRowY(1), 'a|bat'); assert.ok(r.swapped); assert.deepStrictEqual(L.battingOrder(r.lineup).slice(0, 2), ['b', 'a']);
-  r = L.lineupDrop(lu, 'c', L.laneX(), L.laneRowY(0)); assert.ok(r.displaced && r.lineup.free.a, 'occupant parked as free note'); assert.strictEqual(r.lineup.order[0], 'c');
-  assert.strictEqual(lu.order[0], 'a', 'input not mutated');
-  r = L.lineupDrop(lu, 'a', L.laneX(), L.laneRowY(4)); assert.strictEqual(r.lineup.order.filter((x) => x === 'a').length, 1, 'a player holds one batting spot; no duplicate row');
-  r = L.lineupDrop(lu, 'a', 5, -3, 'a|bat'); assert.strictEqual(r.lineup.order[0], null); assert.ok(r.lineup.free.a.x <= L.LB.x1 && r.lineup.free.a.y >= L.BOUNDS.y0, 'clamped inside canvas');
-  r = L.lineupDrop(lu, 'z', L.laneX(), L.laneRowY(4), null, true); assert.ok(r.lineup.free.z && r.lineup.order[4] === null, 'noZones keeps tags free');
-  const m = L.lineupReorder(lu, 'a', 1); assert.deepStrictEqual(L.battingOrder(m.lineup).slice(0, 2), ['b', 'a']);
-  assert.ok(!L.lineupPids(L.lineupRemove(lu, 'a')).a, 'bare id removes every placement');
-  // field slots incl. DH; one batting spot + one field slot is allowed, never two of the same kind
-  const F = L.FIELD_ANCHORS; r = L.lineupDrop(lu, 'a', F.SS.x, F.SS.y, 'a|bat'); assert.strictEqual(r.lineup.field.SS, 'a'); assert.strictEqual(r.lineup.order.indexOf('a'), -1, 'moved out of order');
-  r = L.lineupDrop(lu, 'q', F.DH.x, F.DH.y); assert.strictEqual(r.lineup.field.DH, 'q', 'DH slot always available'); lu = r.lineup;
-  r = L.lineupDrop(lu, 'q', F.SS.x, F.SS.y); assert.ok(r.lineup.field.SS === 'q' && r.lineup.field.DH === undefined, 'one field slot per player'); 
-  r = L.lineupDrop(lu, 'z2', F.DH.x, F.DH.y); assert.strictEqual(r.lineup.field.DH, 'z2'); assert.ok(r.lineup.free.q, 'occupant of a field slot is parked, not duplicated');
-  r = L.lineupDrop(lu, 'a', F.SS.x, F.SS.y); assert.ok(r.lineup.field.SS === 'a' && r.lineup.order.indexOf('a') >= 0, 'player can bat AND hold a field slot (not a duplicate)');
-  const t = L.lineupTags(r.lineup).filter((x) => x.pid === 'a'); assert.deepStrictEqual(t.map((x) => x.kind).sort(), ['bat', 'fld']);
-  r = L.lineupDrop(r.lineup, 'a', 0.6, 0.55); assert.ok(r.noop, 'no free duplicate of a placed player');
+ok('lineup board: free placement stays where dropped, clamped, one tag per player, remove', () => {
+  let lu = L.newLineup(1); assert.deepStrictEqual(Object.keys(lu).sort(), ['free', 'id', 'label']); assert.strictEqual(lu.label, 'Lineup 1');
+  let r = L.lineupDrop(lu, 'a', 0.55, 0.5); assert.deepStrictEqual(r.lineup.free.a, { x: 0.55, y: 0.5 }, 'stays exactly where dropped'); lu = r.lineup;
+  r = L.lineupDrop(lu, 'a', 0.7, 0.3); assert.deepStrictEqual(r.lineup.free.a, { x: 0.7, y: 0.3 }); assert.strictEqual(Object.keys(r.lineup.free).length, 1, 'one tag per player');
+  assert.deepStrictEqual(lu.free.a, { x: 0.55, y: 0.5 }, 'input not mutated');
+  r = L.lineupDrop(lu, 'b', 5, -3); assert.ok(r.lineup.free.b.x === L.LB.x1 && r.lineup.free.b.y === L.BOUNDS.y0, 'clamped inside the board');
+  r = L.lineupDrop(lu, 'b', 0, 0.5); assert.ok(r.lineup.free.b.x >= L.LB.x0 && r.lineup.free.b.x > L.ROSTER_W, 'never lands under the roster rack');
+  r = L.lineupDrop(lu, 'a', 0.5, 0.5); r = L.lineupDrop(r.lineup, 'c', 0.5, 0.5); assert.ok(r.lineup.free.a.x === 0.5 && r.lineup.free.c.x === 0.5, 'no snapping or swapping');
+  assert.ok(!L.lineupPids(L.lineupRemove(lu, 'a')).a && !L.lineupPids(L.lineupRemove(lu, 'a|free')).a, 'return to roster');
+  const sp = L.defaultSpot(null, 'lineup', lu); assert.ok(sp.x >= L.LB.x0 && sp.x <= L.LB.x1);
 });
-ok('DH is a Lineup-page display slot only: not stored, not a depth group, not a CSV position', () => {
-  assert.strictEqual(L.FIELD_SLOTS.length, 10); assert.ok(L.FIELD_SLOTS.indexOf('DH') >= 0 && L.SLOTS.indexOf('DH') < 0 && L.STORED_POSITIONS.indexOf('DH') < 0);
-  assert.ok(!('DH' in L.CONFIG.depthSlots) && !('DH' in L.ANCHORS));
+ok('lineup board has no batting order, field slots, DH or lane in the logic; DH is not stored or an import position', () => {
+  ['LANE', 'FIELD_SLOTS', 'FIELD_ANCHORS', 'laneX', 'lineupReorder', 'battingOrder', 'fieldSlotAt'].forEach((k) => assert.ok(!(k in L), k + ' removed'));
+  assert.ok(L.SLOTS.indexOf('DH') < 0 && L.STORED_POSITIONS.indexOf('DH') < 0 && !('DH' in L.CONFIG.depthSlots) && !('DH' in L.ANCHORS));
   const pv = L.importPreview('Name,Position,Grad Year,Jersey #\nA B,DH,2028,5\nC D,UT,2028,6', []); pv.rows.forEach((x) => { assert.strictEqual(x.status, 'review'); assert.strictEqual(x.suggestion, ''); });
-  assert.ok(L.slotFit('DH', P('a', 'P')).ok, 'DH accepts any player');
 });
 ok('depth canvas: snap within radius, stack order, once per group, caps, free tags, noSnap, remove, reorder', () => {
   let b = { tags: [] }; const a = L.ANCHORS.SS;
@@ -71,14 +60,14 @@ ok('lineups: 4-page cap, duplicate, delete keeps one, clear', () => {
   assert.strictEqual(st.lineups.length, 4); assert.ok(!L.addLineup(st).ok); assert.ok(!L.duplicateLineup(st, 0).ok); assert.strictEqual(L.CONFIG.maxLineups, 4);
   assert.ok(!L.removeLineup(L.newLineupState(), 0).ok); assert.strictEqual(L.removeLineup(st, 1).state.lineups.length, 3);
   assert.strictEqual(L.duplicateLineup(L.newLineupState(), 0).state.lineups.length, 2);
-  const filled = L.lineupDrop(st.lineups[0], 'a', L.laneX(), L.laneRowY(0)).lineup; assert.strictEqual(L.lineupPids(L.clearLineup(filled)).a, undefined);
-  assert.strictEqual(L.newLineupState().lineups[0].order.length, 9);
+  const filled = L.lineupDrop(st.lineups[0], 'a', 0.5, 0.5).lineup; assert.strictEqual(L.lineupPids(L.clearLineup(filled)).a, undefined);
+  const d2 = L.duplicateLineup(L.addLineup(L.newLineupState()).state, 0).state; assert.deepStrictEqual(d2.lineups.map((l) => l.label), ['Lineup 1', 'Lineup 2', 'Lineup 3']);
 });
 ok('sanitize clamps coordinates, drops unknown ids, caps lineups and depth groups', () => {
   assert.strictEqual(L.sanitizeLineups('junk', []).lineups.length, 1);
-  const raw = { active: 0, lineups: [1, 2, 3, 4, 5, 6].map((i) => ({ id: 'l' + i, label: 'L', free: { keep: { x: 9, y: -9 }, gone: { x: 0.5, y: 0.5 } }, order: ['keep', 'gone'] })) };
+  const raw = { active: 0, lineups: [1, 2, 3, 4, 5, 6].map((i) => ({ id: 'l' + i, label: 'L', free: { keep: { x: 9, y: -9 }, gone: { x: 0.5, y: 0.5 } } })) };
   const s = L.sanitizeLineups(JSON.parse(JSON.stringify(raw)), ['keep']); assert.strictEqual(s.lineups.length, 4);
-  assert.ok(!s.lineups[0].free.gone && s.lineups[0].order.indexOf('gone') < 0); assert.ok(!(s.lineups[0].free.keep && s.lineups[0].order.indexOf('keep') >= 0), 'one place per player');
+  assert.ok(!s.lineups[0].free.gone && s.lineups[0].free.keep.x <= L.LB.x1 && s.lineups[0].free.keep.y >= L.BOUNDS.y0, 'unknown dropped, coordinates clamped');
   const dp = L.sanitizeDepth(null, []); assert.strictEqual(dp.count, 4);
   const y = L.depthYears(dp)[0], bad = JSON.parse(JSON.stringify(dp)); bad.boards[y].tags = [{ pid: 'a', g: 'C', x: 0, y: 0 }, { pid: 'a', g: 'C', x: 0, y: 0 }, { pid: 'z', g: 'C' }, { pid: 'a', g: null, x: 5, y: 5 }, { pid: 'a', g: 'QQ', x: 0.5, y: 0.5 }];
   const sd = L.sanitizeDepth(bad, ['a']); const tags = sd.boards[y].tags; assert.strictEqual(tags.filter((t) => t.g === 'C').length, 1); assert.ok(tags.every((t) => t.x <= 1 && t.y <= 1 && t.pid === 'a'));
@@ -121,7 +110,7 @@ ok('roster fixture: fictional, 28 players, unique jerseys, valid positions, no r
 ok('stale recruit ids from old drafts are sanitized away', () => {
   const roster = require('./roster-fixture.js').players().map((p) => p.id);
   const lu = { active: 0, lineups: [{ id: 'a', label: 'L', free: { 'REC-9': { x: 0.5, y: 0.5 }, 'R-01': { x: 0.5, y: 0.5 } }, order: ['REC-3', 'R-02'] }] };
-  const s = L.sanitizeLineups(JSON.parse(JSON.stringify(lu)), roster); assert.ok(!s.lineups[0].free['REC-9'] && s.lineups[0].order.indexOf('REC-3') < 0 && s.lineups[0].free['R-01'] && s.lineups[0].order.indexOf('R-02') >= 0);
+  const s = L.sanitizeLineups(JSON.parse(JSON.stringify(lu)), roster); assert.ok(!s.lineups[0].free['REC-9'] && !s.lineups[0].free['REC-3'] && s.lineups[0].free['R-01'] && s.lineups[0].free['R-02']);
   const dp = L.sanitizeDepth(null, roster), y = L.depthYears(dp)[0]; dp.boards[y].tags = [{ pid: 'REC-1', g: 'SS', x: 0, y: 0 }, { pid: 'R-14', g: 'SS', x: 0, y: 0 }];
   assert.deepStrictEqual(L.sanitizeDepth(JSON.parse(JSON.stringify(dp)), roster).boards[y].tags.map((t) => t.pid), ['R-14']);
 });ok('CSV: missing columns, empty file, header only, row limit, quotes and BOM', () => {
@@ -154,11 +143,13 @@ ok('depth chart: duplicates allowed across positions only; blocked inside a posi
   raw.boards[y].tags = [{ pid: 'a', g: 'SS', x: 0, y: 0 }, { pid: 'a', g: '2B', x: 0, y: 0 }, { pid: 'a', g: 'SS', x: 0, y: 0 }].concat([1, 2, 3, 4, 5, 6].map(() => ({ pid: 'b', g: 'C', x: 0, y: 0 })));
   const s = L.sanitizeDepth(JSON.parse(JSON.stringify(raw)), ['a', 'b']).boards[y].tags; assert.strictEqual(s.filter((t) => t.pid === 'a').length, 2, 'cross-position duplicates survive, in-position ones are dropped'); assert.strictEqual(s.filter((t) => t.pid === 'b').length, 1);
 });
-ok('old drafts migrate safely: old lineup shape (order and free only) and 3-slot depth data', () => {
-  const old = { active: 0, lineups: [{ id: 'a', label: 'Old', opponent: 'X', date: '', free: { a: { x: 0.5, y: 0.5 } }, order: ['b', null, null, null, null, null, null, null, null] }] };
-  const s = L.sanitizeLineups(JSON.parse(JSON.stringify(old)), ['a', 'b']).lineups[0]; assert.deepStrictEqual(s.field, {}); assert.strictEqual(s.order[0], 'b'); assert.ok(s.free.a && s.free.a.x >= L.LB.x0, 'free note moved clear of the roster panel');
-  const bad = { active: 0, lineups: [{ id: 'a', label: 'L', field: { SS: 'a', DH: 'a', P: 'zz', QQ: 'a' }, free: {}, order: [] }] };
-  const f = L.sanitizeLineups(bad, ['a']).lineups[0].field; assert.deepStrictEqual(f, { SS: 'a' }, 'one field slot per player; unknown ids and slots dropped');
+ok('old drafts migrate safely: order/field slots become board tags, matchup text dropped, 3-slot depth data loads', () => {
+  const old = { active: 1, lineups: [{ id: 'a', label: 'Vs State', opponent: 'X', date: 'May', free: { a: { x: 0.5, y: 0.5 } }, field: { SS: 'c', DH: 'c', P: 'zz', QQ: 'a' }, order: ['b', 'c', 'a', null, null, null, null, null, null] }, 'junk', null] };
+  const st = L.sanitizeLineups(JSON.parse(JSON.stringify(old)), ['a', 'b', 'c']), s = st.lineups[0];
+  assert.deepStrictEqual(Object.keys(s).sort(), ['free', 'id', 'label']); assert.strictEqual(s.label, 'Lineup 1'); assert.strictEqual(st.lineups.length, 1);
+  assert.deepStrictEqual(Object.keys(s.free).sort(), ['a', 'b', 'c'], 'every previously placed player is on the board once'); assert.deepStrictEqual(s.free.a, { x: 0.5, y: 0.5 }, 'free tag keeps its spot');
+  Object.keys(s.free).forEach((k) => assert.ok(s.free[k].x >= L.LB.x0 && s.free[k].x <= L.LB.x1 && s.free[k].y >= L.BOUNDS.y0 && s.free[k].y <= L.BOUNDS.y1));
+  [undefined, null, 5, 'x', [], { lineups: 'no' }, { lineups: [{ free: 7, order: 'q', field: 3 }] }].forEach((bad) => assert.ok(L.sanitizeLineups(bad, ['a']).lineups.length >= 1, 'never crashes'));
   const d = L.sanitizeDepth(null, ['a']), y = L.depthYears(d)[0]; d.boards[y].tags = [0, 1, 2].map((i) => ({ pid: 'a' + i, g: 'SS', x: 0, y: 0 })); assert.strictEqual(L.sanitizeDepth(d, ['a0', 'a1', 'a2']).boards[y].tags.length, 3);
 });
 ok('lineup-depth.js has no storage, network or global side effects', () => {
@@ -193,20 +184,23 @@ ok('exception and docs stay out of the handoff and bridge files; no pricing or A
   try {
     const d = await open('/coach-lineup.html?demo=1'), w = d.window, q = (s) => w.document.querySelectorAll(s);
     assert.ok(q('.coach-subnav a[href="coach-lineup.html"][aria-current="page"]').length && q('.coach-subnav a[href="coach-depth-chart.html"]').length, 'nav links');
-    assert.strictEqual(q('.ld-tab').length, 1); assert.ok(q('#ld-canvas').length === 1 && q('.ld-lane-row').length === 9, 'white canvas with 9-row lane');
+    assert.strictEqual(q('.ld-tab').length, 1); assert.ok(q('#ld-canvas').length === 1 && !q('.ld-lane, .ld-lane-row, .ld-lane-title, .ld-fslot, .ld-ghost-slot, .ld-glabel, svg.ld-outline').length, 'blank board: no lane, no slots, no field outline'); assert.ok(!q('#lu-label, #lu-opp, #lu-date').length && !/Matchup|Opponent/.test(w.document.body.textContent), 'matchup removed');
     assert.strictEqual(q('select.ld-sel, .ld-slot').length, 0, 'no select or slot placement controls');
     assert.strictEqual(q('#ld-canvas select').length, 0); assert.ok(q('#ld-tray-list .ld-tag').length === 28, 'tray holds exactly the 28 fictional roster players'); assert.ok(/^#\d+/.test(q('#ld-tray-list .ld-tag')[0].textContent.trim()), 'jersey number shown first'); assert.ok(!/ecruit|prospect|Target/.test(Array.from(q('.ld-tag')).map((e) => e.textContent).join(' ')) && !q('[data-pool]').length, 'no recruits in pool'); assert.ok(Array.from(q('#ld-tray-list .ld-tag')).every((e) => /^R-\d+$/.test(e.dataset.pid)), 'roster ids only');
     const tray = q('#ld-tray-list .ld-tag')[0]; assert.ok(tray.getAttribute('tabindex') === '0');
     const pid = tray.dataset.pid; tray.dispatchEvent(new w.KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
-    let tag = w.document.querySelector('#ld-canvas .ld-tag[data-where="canvas"][data-pid="' + pid + '"]'); assert.ok(tag, 'Enter sends tray tag to canvas'); assert.ok(/set as batting order 1/.test(w.document.getElementById('ld-live').textContent) || /placed on the canvas/.test(w.document.getElementById('ld-live').textContent), 'aria-live');
+    let tag = w.document.querySelector('#ld-canvas .ld-tag[data-where="canvas"][data-pid="' + pid + '"]'); assert.ok(tag, 'Enter sends tray tag to canvas'); assert.ok(/placed on the board/.test(w.document.getElementById('ld-live').textContent), 'aria-live');
     assert.ok(tag.querySelector('.pill'), 'stored position pill'); assert.ok(!/\b(LF|CF|RF)\b/.test(tag.querySelector('.pill').textContent));
     const before = tag.style.left + tag.style.top; tag.dispatchEvent(new w.KeyboardEvent('keydown', { key: 'ArrowRight', shiftKey: true, bubbles: true }));
     tag = w.document.querySelector('#ld-canvas .ld-tag[data-where="canvas"][data-pid="' + pid + '"]'); assert.ok(tag, 'tag still on canvas after arrow move');
     tag.dispatchEvent(new w.KeyboardEvent('keydown', { key: 'Delete', bubbles: true })); assert.ok(!w.document.querySelector('#ld-canvas .ld-tag[data-where="canvas"][data-pid="' + pid + '"]'), 'Delete returns tag to tray');
-    const cv = w.document.getElementById('ld-canvas'); assert.ok(cv.querySelector('#ld-tray') && cv.querySelectorAll('#ld-tray-list .ld-tag').length === 28 && cv.querySelectorAll('.ld-lane-row').length === 9 && cv.querySelectorAll('.ld-fslot').length === 10 && cv.querySelector('.ld-fslot.dh'), 'roster, 9 batting rows and 10 field slots incl. DH are one canvas');
+    const cv = w.document.getElementById('ld-canvas'); assert.ok(cv.querySelector('#ld-tray') && cv.querySelectorAll('#ld-tray-list .ld-tag').length === 28 && !cv.querySelectorAll('.ld-lane-row, .ld-fslot').length, 'roster rack and board are one canvas');
+    const bar = w.document.querySelector('.ld-bar'); assert.ok(bar && bar.parentElement.querySelectorAll('.ld-bar').length === 1, 'single tab bar row');
+    let kids = Array.from(bar.children).map((e) => e.id || 'tab'); assert.deepStrictEqual(kids, ['tab', 'lu-add', 'lu-dup', 'lu-clr', 'lu-del']); assert.ok(w.document.getElementById('lu-del').disabled, 'delete disabled with one lineup'); assert.ok(bar.querySelector('#lu-add').getAttribute('aria-label') === 'Add lineup');
     assert.ok(!/\b(OPG|DPG|PPG|SOPG|SDPG|Grade|Score|Tier)\b/.test(Array.from(w.document.querySelectorAll('.ld-tag')).map((e) => e.textContent + ' ' + e.getAttribute('aria-label')).join(' ')), 'no grades on tags'); assert.ok(!cv.querySelector('select') && !w.document.querySelector('select.ld-sel'), 'no select placement');
-    w.document.getElementById('lu-add').click(); assert.strictEqual(q('.ld-tab').length, 2);
-    w.document.getElementById('lu-add').click(); w.document.getElementById('lu-add').click(); assert.strictEqual(q('.ld-tab').length, 4); assert.ok(w.document.getElementById('lu-add').disabled, 'cap at 4');
+    w.document.getElementById('lu-add').click(); assert.strictEqual(q('.ld-tab').length, 2); kids = Array.from(w.document.querySelector('.ld-bar').children).map((e) => e.id || 'tab'); assert.deepStrictEqual(kids, ['tab', 'tab', 'lu-add', 'lu-dup', 'lu-clr', 'lu-del'], 'new tab sits where Add was; actions slide right'); assert.strictEqual(q('.ld-tab')[1].textContent, 'Lineup 2');
+    w.document.getElementById('lu-add').click(); w.document.getElementById('lu-add').click(); assert.strictEqual(q('.ld-tab').length, 4); assert.ok(!w.document.getElementById('lu-add') && w.document.getElementById('lu-dup').disabled, 'cap at 4: Add hidden');
+    assert.ok(/ld-mini/.test(read('styles.css')) && !/\.ld-(lane|fslot)/.test(read('styles.css')), 'compact tab-bar styles, no lane or slot styles');
     const d2 = await open('/coach-depth-chart.html?demo=1'), w2 = d2.window, q2 = (s) => w2.document.querySelectorAll(s);
     assert.strictEqual(q2('.ld-tab[data-tab]').length, 4); assert.ok(q2('svg.ld-outline').length === 1 && q2('svg.ld-outline path, svg.ld-outline rect').length > 3, 'baseball field outline');
     assert.strictEqual(q2('#ld-canvas select, select.ld-sel').length, 0);

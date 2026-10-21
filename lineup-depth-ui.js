@@ -81,8 +81,8 @@
       if (bb) out += pitchPanel(b);
       if (bb) L.SLOTS.forEach(function (g) {
         var a = L.ANCHORS[g]; if (!a) return;
-        var open = L.openSpots(b, g), n = L.groupTags(b, g).length;
-        out += '<div class="ld-glabel" aria-hidden="true" style="left:' + pct(a.x) + ';top:' + pct(a.y - L.STACK_STEP) + '">' + g + ' <small>' + open + ' open</small></div>';
+        var open = L.openSpots(b, g), n = L.groupTags(b, g).length, lp = L.labelPos(g);
+        out += '<div class="ld-glabel" aria-hidden="true" style="left:' + pct(lp.x) + ';top:' + pct(lp.y) + '">' + g + ' <small>' + open + ' open</small></div>';
         for (var i = n; i < L.CONFIG.depthSlots[g]; i++) { var s = L.groupSlotPos(g, i); out += '<div class="ld-pslot" aria-hidden="true" style="left:' + pct(s.x) + ';top:' + pct(s.y) + '">' + (i === 0 ? 'Starter' : 'B' + i) + '</div>'; }
       });
       b.tags.forEach(function (t) {

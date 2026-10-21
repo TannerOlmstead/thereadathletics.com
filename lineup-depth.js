@@ -84,17 +84,22 @@
   // ---------- Depth chart canvas: baseball field with position areas ----------
   // Snapped tags stack under the position anchor, top = Starter, then Backup 1... ; free tags keep their own coordinates.
   // The field fills the left FIELD_W of the canvas; the pitching panel (Starting Rotation SP1-SP5, Bullpen RP1-RP20 in 2 columns) sits to its right.
-  // Baseball outline is a thin-line black-and-white vector tracing of the fan-shaped reference field (no raster image). LF/CF/RF follow the outfield wall arc, SS/2B sit above the infield dirt arc, 3B/1B sit in foul ground beside it, so no cell covers a base, the mound or the dirt arc. The catcher group is a row of cells below home plate (C_STEP apart); every other position is a column of equally sized cells (CELL_W wide, STACK_STEP apart); ANCHORS = center of the first (Starter) cell.
-  var FIELD_W = 0.70, CELL_W = 0.11, C_STEP = 0.115;
-  var ANCHORS = { LF: { x: 0.1244, y: 0.203 }, CF: { x: 0.35, y: 0.062 }, RF: { x: 0.576, y: 0.203 }, '3B': { x: 0.074, y: 0.63 }, SS: { x: 0.2385, y: 0.248 }, '2B': { x: 0.4622, y: 0.248 }, '1B': { x: 0.626, y: 0.63 }, C: { x: 0.1207, y: 0.925 } };
-  var STACK_STEP = 0.045, SNAP_RADIUS = 0.1;
+  // Baseball background is assets/baseball-field.png, a user-created square image shown exactly as supplied (the field region is square, so it is not distorted). Starters sit at each position's real spot; SS and 2B stack upward, the others downward. The catcher group is a row of cells below home plate (C_STEP apart); every other position is a column of equally sized cells (CELL_W wide, STACK_STEP apart); ANCHORS = center of the first (Starter) cell.
+  var FIELD_W = 0.70, CELL_W = 0.10, C_STEP = 0.105;
+  var ANCHORS = { LF: { x: 0.125, y: 0.23 }, CF: { x: 0.35, y: 0.1 }, RF: { x: 0.575, y: 0.23 }, '3B': { x: 0.112, y: 0.66 }, SS: { x: 0.2345, y: 0.5 }, '2B': { x: 0.4655, y: 0.5 }, '1B': { x: 0.588, y: 0.66 }, C: { x: 0.14, y: 0.97 } };
+  var STACK_STEP = 0.042, SNAP_RADIUS = 0.1;
+  // SS and 2B stack upward (away from the diamond); every other group stacks downward. The Starter cell is always at the position's spot.
+  var STACK_DIR = { SS: -1, '2B': -1 };
   var PANEL = { x0: 0.72, x1: 0.99, spY: 0.09, rpY: 0.40, step: 0.045, cols: [0.785, 0.925], spX: 0.855, spBox: { y0: 0.01, y1: 0.31 }, rpBox: { y0: 0.32, y1: 0.86 } };
   // Center of slot i (0-based) in a group.
   function groupSlotPos(g, i) {
     if (g === 'SP') return { x: PANEL.spX, y: round(PANEL.spY + i * PANEL.step) };
     if (g === 'RP') return { x: PANEL.cols[Math.floor(i / 10) % 2], y: round(PANEL.rpY + (i % 10) * PANEL.step) };
     var a = ANCHORS[g]; if (g === 'C') return { x: round(a.x + i * C_STEP), y: a.y };
-    return { x: a.x, y: round(a.y + i * STACK_STEP) };
+    return { x: a.x, y: round(a.y + (STACK_DIR[g] || 1) * i * STACK_STEP) };
+  }
+  function labelPos(g) {
+    var a = ANCHORS[g], n = CONFIG.depthSlots[g]; return { x: a.x, y: round(STACK_DIR[g] === -1 ? a.y - n * STACK_STEP : a.y - STACK_STEP) };
   }
   function panelGroupAt(x, y) {
     if (x < PANEL.x0 || x > 1) return null;
@@ -124,7 +129,7 @@
     SLOTS.forEach(function (g) {
       var a = ANCHORS[g]; if (!a) return;
       if (g === 'C') { if (y >= a.y - 0.04 && y <= a.y + 0.018 + m && x >= a.x - CELL_W / 2 - m && x <= a.x + 4 * C_STEP + CELL_W / 2 + m) { var cd = 0; if (cd < bd) { bd = cd; best = g; } } return; }
-      var top = a.y - STACK_STEP * 1.2, bot = a.y + STACK_STEP * (CONFIG.depthSlots[g] - 0.5) + m, dx = Math.abs(x - a.x);
+      var far = a.y + (STACK_DIR[g] || 1) * STACK_STEP * (CONFIG.depthSlots[g] - 1), top = Math.min(a.y, far) - STACK_STEP * 1.2, bot = Math.max(a.y, far) + STACK_STEP * 0.5 + m, dx = Math.abs(x - a.x);
       if (dx <= CELL_W / 2 + m && y >= top && y <= bot && dx < bd) { bd = dx; best = g; }
     });
     return best;
@@ -339,7 +344,7 @@
       '<circle cx="473" cy="661" r="40" ' + T + '/><path d="M455 661 h36" ' + T + '/></svg>';
   }
   var OUTLINES = {
-    baseball: { label: 'Baseball field', svg: baseballField() },
+    baseball: { label: 'Baseball field', svg: '<image href="assets/baseball-field.png" x="0" y="0" width="1000" height="800" preserveAspectRatio="none"/>' },
     softball: { label: 'Softball field', svg: ballpark(95, false) },
     soccer: { label: 'Soccer pitch', svg: '<rect x="60" y="40" width="880" height="720" ' + S + '/><path d="M60 400 H940" ' + S + '/><circle cx="500" cy="400" r="90" ' + S + '/><rect x="290" y="40" width="420" height="150" ' + S + '/><rect x="290" y="610" width="420" height="150" ' + S + '/><rect x="400" y="40" width="200" height="60" ' + S + '/><rect x="400" y="700" width="200" height="60" ' + S + '/>' },
     basketball: { label: 'Basketball court', svg: '<rect x="60" y="40" width="880" height="720" ' + S + '/><path d="M60 400 H940" ' + S + '/><circle cx="500" cy="400" r="80" ' + S + '/><rect x="380" y="40" width="240" height="250" ' + S + '/><rect x="380" y="510" width="240" height="250" ' + S + '/><path d="M130 40 V150 A 370 370 0 0 0 870 150 V40" ' + S + '/><path d="M130 760 V650 A 370 370 0 0 1 870 650 V760" ' + S + '/>' },
@@ -354,7 +359,7 @@
     return o ? { id: id, label: o.label, svg: o.svg, plain: false } : { id: null, label: 'Plain canvas', svg: '', plain: true };
   }
   function registerOutline(id, label, svg, aliases) { OUTLINES[id] = { label: label, svg: svg }; SPORT_OUTLINE[id] = id; (aliases || []).forEach(function (a) { SPORT_OUTLINE[sportKey(a)] = id; }); }
-  var api = { LB: LB, ROSTER_W: ROSTER_W, lineupTags: lineupTags, lkey: lkey, alsoAt: alsoAt, ANCHORS: ANCHORS, STACK_STEP: STACK_STEP, CELL_W: CELL_W, PANEL: PANEL, FIELD_W: FIELD_W, PITCH_SLOTS: PITCH_SLOTS, groupSlotPos: groupSlotPos, panelGroupAt: panelGroupAt, BOUNDS: BOUNDS, OUTLINES: OUTLINES, resolveOutline: resolveOutline, registerOutline: registerOutline, sportKey: sportKey,
+  var api = { LB: LB, ROSTER_W: ROSTER_W, lineupTags: lineupTags, lkey: lkey, alsoAt: alsoAt, ANCHORS: ANCHORS, STACK_STEP: STACK_STEP, labelPos: labelPos, CELL_W: CELL_W, PANEL: PANEL, FIELD_W: FIELD_W, PITCH_SLOTS: PITCH_SLOTS, groupSlotPos: groupSlotPos, panelGroupAt: panelGroupAt, BOUNDS: BOUNDS, OUTLINES: OUTLINES, resolveOutline: resolveOutline, registerOutline: registerOutline, sportKey: sportKey,
     clamp: clamp, lineupDrop: lineupDrop, lineupRemove: lineupRemove, lineupPids: lineupPids,
     key: key, depthDrop: depthDrop, depthRemove: depthRemove, depthReorder: depthReorder, depthOrder: depthOrder, depthLabel: depthLabel, depthPos: depthPos, groupTags: groupTags, openSpots: openSpots, totalOpen: totalOpen, nearestGroup: nearestGroup, defaultSpot: defaultSpot, STORED_POSITIONS: STORED_POSITIONS, OF_SLOTS: OF_SLOTS, SLOTS: SLOTS, CONFIG: CONFIG, slotStored: slotStored, slotFit: slotFit,
         newLineup: newLineup, newLineupState: newLineupState, addLineup: addLineup, duplicateLineup: duplicateLineup, removeLineup: removeLineup, clearLineup: clearLineup,

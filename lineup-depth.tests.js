@@ -33,11 +33,11 @@ ok('lineup board has no batting order, field slots, DH or lane in the logic; DH 
 ok('depth canvas: snap within radius, stack order, once per group, caps, free tags, noSnap, remove, reorder', () => {
   let b = { tags: [] }; const a = L.ANCHORS.SS;
   let r = L.depthDrop(b, 'p1', a.x + 0.02, a.y); assert.ok(r.ok && r.group === 'SS' && r.index === 0); b = r.board;
-  r = L.depthDrop(b, 'p2', a.x, a.y + 0.03); assert.strictEqual(r.index, 1); b = r.board;
+  r = L.depthDrop(b, 'p2', a.x, a.y - 0.03); assert.strictEqual(r.index, 1); b = r.board;
   assert.deepStrictEqual(L.groupTags(b, 'SS').map((t) => t.pid), ['p1', 'p2']); assert.strictEqual(L.depthLabel(0), 'Starter'); assert.strictEqual(L.depthLabel(0, 'SP'), 'SP1'); assert.strictEqual(L.depthLabel(19, 'RP'), 'RP20');
   r = L.depthDrop(b, 'p1', a.x, a.y, L.key('p1', 'SS')); assert.strictEqual(L.groupTags(r.board, 'SS').length, 2, 'moving within a group never duplicates');
-  r = L.depthDrop(b, 'p3', 0.5, 0.97); assert.strictEqual(r.group, null); assert.ok(r.board.tags.some((t) => t.pid === 'p3' && !t.g && t.y <= L.BOUNDS.y1), 'free tag clamped');
-  r = L.depthDrop(b, 'p3', 0.5, 0.97, null, true); assert.strictEqual(r.group, null);
+  r = L.depthDrop(b, 'p3', 0.66, 0.9); assert.strictEqual(r.group, null); assert.ok(r.board.tags.some((t) => t.pid === 'p3' && !t.g && t.y <= L.BOUNDS.y1), 'free tag clamped');
+  r = L.depthDrop(b, 'p3', 0.66, 0.9, null, true); assert.strictEqual(r.group, null);
   const near = L.depthDrop({ tags: [] }, 'q', a.x + 0.02, a.y, null, true); assert.strictEqual(near.group, null, 'noSnap');
   assert.ok(Object.keys(L.CONFIG.depthSlots).length === 10 && Object.keys(L.CONFIG.depthSlots).every((g) => L.CONFIG.depthSlots[g] === (g === 'RP' ? 20 : 5)), 'five slots per field position, 5 rotation (SP) and 20 bullpen (RP) slots'); assert.ok(!('P' in L.CONFIG.depthSlots) && !('P' in L.ANCHORS), 'no single P group on the field');
   let full = { tags: [] }; for (let i = 0; i < L.CONFIG.depthSlots.C; i++) full = L.depthDrop(full, 'c' + i, L.ANCHORS.C.x, L.ANCHORS.C.y).board;
@@ -272,7 +272,7 @@ ok('exception and docs stay out of the handoff and bridge files; no pricing or A
     w.document.getElementById('lu-add').click(); w.document.getElementById('lu-add').click(); assert.strictEqual(q('.ld-tab').length, 4); assert.ok(!w.document.getElementById('lu-add') && w.document.getElementById('lu-dup').disabled, 'cap at 4: Add hidden');
     assert.ok(/ld-mini/.test(read('styles.css')) && !/\.ld-(lane|fslot)/.test(read('styles.css')), 'compact tab-bar styles, no lane or slot styles');
     const d2 = await open('/coach-depth-chart.html?demo=1'), w2 = d2.window, q2 = (s) => w2.document.querySelectorAll(s);
-    assert.strictEqual(q2('.ld-tab[data-tab]').length, 4); assert.ok(q2('svg.ld-outline').length === 1 && q2('svg.ld-outline image').length === 0 && q2('svg.ld-outline path').length >= 6 && !/#(?!111|fff)[0-9a-f]{3,6}/i.test(q2('svg.ld-outline')[0].innerHTML) && /stroke-width="1\.2"/.test(q2('svg.ld-outline')[0].innerHTML), 'baseball field outline is a thin-line black-and-white vector');
+    assert.strictEqual(q2('.ld-tab[data-tab]').length, 4); assert.ok(q2('svg.ld-outline').length === 1 && q2('svg.ld-outline image').length === 1 && /baseball-field\.png/.test(q2('svg.ld-outline image')[0].getAttribute('href')) && require('fs').existsSync(require('path').join(__dirname, 'assets', 'baseball-field.png')), 'baseball field outline is the user-created field image');
     assert.strictEqual(q2('#ld-canvas select, select.ld-sel').length, 0);
     const seeded = q2('#ld-canvas .ld-tag[data-where="canvas"]').length; assert.ok(seeded > 20 && seeded <= 45, 'depth chart loads pre-populated with the roster at primary positions: ' + seeded);
     const nP = require('./roster-fixture.js').players().filter((p) => p.pos === 'P').length, ks = Array.from(q2('#ld-canvas .ld-tag[data-where="canvas"]')).map((e) => e.dataset.key); assert.strictEqual(ks.filter((k) => /\|(SP|RP)$/.test(k)).length, nP, 'every pitcher seeded in the rotation or bullpen'); assert.ok(ks.filter((k) => /\|SP$/.test(k)).length <= 5 && !ks.some((k) => /\|P$/.test(k)), 'no old P group'); assert.strictEqual(q2('.ld-pslot').length, Object.keys(L.CONFIG.depthSlots).reduce((s, g) => s + L.CONFIG.depthSlots[g], 0) - ks.filter((k) => !/\|free$/.test(k)).length, 'every empty depth cell (field groups, rotation, bullpen) drawn as a same-size outlined cell'); assert.ok(/Starting Rotation \(5\)/.test(q2('.ld-panel-title')[0].textContent) && /Bullpen \(20\)/.test(q2('.ld-panel-title')[1].textContent), 'panel headings'); assert.ok(parseFloat(q2('#ld-canvas .ld-tag[data-key$="|SP"]')[0].style.left) > 66, 'pitchers sit to the right of the field');

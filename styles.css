@@ -2181,9 +2181,9 @@ kbd { border: 1px solid rgba(20,40,75,.4); border-bottom-width: 2px; padding: 0 
 .ld-depthc .ld-tag.on-canvas{display:flex;align-items:center;gap:3px}
 .ld-depthc .ld-tag.on-canvas .ld-name{display:block;vertical-align:baseline}
 
-/* Depth chart grid: tags and empty cells share one size (11% of the canvas wide, 22px tall) */
+/* Depth chart grid: tags and empty cells share one size (10% of the canvas wide, 22px tall) */
 .ld-depthc .ld-outline{width:70%}
-.ld-depthc .ld-tag.on-canvas,.ld-depthc .ld-pslot{box-sizing:border-box;width:11%;height:22px;margin:0;padding:0 4px;display:flex;align-items:center;gap:3px;border-radius:5px;font-size:.66rem;line-height:1;white-space:nowrap;overflow:hidden}
+.ld-depthc .ld-tag.on-canvas,.ld-depthc .ld-pslot{box-sizing:border-box;width:10%;height:22px;margin:0;padding:0 4px;display:flex;align-items:center;gap:3px;border-radius:5px;font-size:.66rem;line-height:1;white-space:nowrap;overflow:hidden}
 .ld-depthc .ld-tag.on-canvas{border:1px solid #14284B;background:#fff;box-shadow:none}
 .ld-depthc .ld-pslot{transform:translate(-50%,-50%);border:1px dashed #cfd6e2;background:transparent;color:#9aa5b8;justify-content:center;font-size:.6rem}
 .ld-depthc .ld-tag.on-canvas .pill{display:none}
@@ -2212,4 +2212,4 @@ kbd { border: 1px solid rgba(20,40,75,.4); border-bottom-width: 2px; padding: 0 
 .ld-tag.ld-floating .ld-name{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis}
 .ld-tag.in-tray .pill,.ld-lineup .ld-tag.on-canvas .pill{align-self:center;margin:0;vertical-align:baseline;position:static}
 
-.ld-depthc{aspect-ratio:27/20}
+.ld-depthc{aspect-ratio:10/7}

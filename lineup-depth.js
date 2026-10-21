@@ -84,9 +84,9 @@
   // ---------- Depth chart canvas: baseball field with position areas ----------
   // Snapped tags stack under the position anchor, top = Starter, then Backup 1... ; free tags keep their own coordinates.
   // The field fills the left FIELD_W of the canvas; the pitching panel (Starting Rotation SP1-SP5, Bullpen RP1-RP20 in 2 columns) sits to its right.
-  // Baseball background is assets/baseball-field-bw.png (grayscale of a user-supplied clip-art reference; licence unverified: Requires Founder Decision). The catcher group is a row of cells below home plate (C_STEP apart); every other position is a column of equally sized cells (CELL_W wide, STACK_STEP apart); ANCHORS = center of the first (Starter) cell.
+  // Baseball outline is a thin-line black-and-white vector tracing of the fan-shaped reference field (no raster image). LF/CF/RF follow the outfield wall arc, SS/2B sit above the infield dirt arc, 3B/1B sit in foul ground beside it, so no cell covers a base, the mound or the dirt arc. The catcher group is a row of cells below home plate (C_STEP apart); every other position is a column of equally sized cells (CELL_W wide, STACK_STEP apart); ANCHORS = center of the first (Starter) cell.
   var FIELD_W = 0.70, CELL_W = 0.11, C_STEP = 0.115;
-  var ANCHORS = { LF: { x: 0.222, y: 0.112 }, CF: { x: 0.35, y: 0.063 }, RF: { x: 0.478, y: 0.112 }, '3B': { x: 0.1715, y: 0.356 }, SS: { x: 0.287, y: 0.356 }, '2B': { x: 0.413, y: 0.356 }, '1B': { x: 0.5285, y: 0.356 }, C: { x: 0.12, y: 0.925 } };
+  var ANCHORS = { LF: { x: 0.1244, y: 0.203 }, CF: { x: 0.35, y: 0.062 }, RF: { x: 0.576, y: 0.203 }, '3B': { x: 0.074, y: 0.63 }, SS: { x: 0.2385, y: 0.248 }, '2B': { x: 0.4622, y: 0.248 }, '1B': { x: 0.626, y: 0.63 }, C: { x: 0.1207, y: 0.925 } };
   var STACK_STEP = 0.045, SNAP_RADIUS = 0.1;
   var PANEL = { x0: 0.72, x1: 0.99, spY: 0.09, rpY: 0.40, step: 0.045, cols: [0.785, 0.925], spX: 0.855, spBox: { y0: 0.01, y1: 0.31 }, rpBox: { y0: 0.32, y1: 0.86 } };
   // Center of slot i (0-based) in a group.
@@ -325,8 +325,21 @@
       '<path d="M486 562 h28 v8 l-14 10 l-14 -10 z" ' + B + '/>' +
       (mound ? '<ellipse cx="500" cy="' + cy + '" rx="28" ry="20" ' + B + '/><path d="M490 ' + cy + ' h20" ' + BN + '/>' : '');
   }
+  // Fan-shaped baseball field traced from the reference, drawn in a square 945x1000 unit space (stretched to the field region, which has the same aspect). Thin black strokes only.
+  function baseballField() {
+    var T = 'fill="none" stroke="#111" stroke-width="1.2" vector-effect="non-scaling-stroke"', K = 'fill="#111" stroke="#111" stroke-width="1" vector-effect="non-scaling-stroke"';
+    var bs = function (x, y) { return '<path d="M' + x + ' ' + (y - 14) + ' l14 14 l-14 14 l-14 -14 z" ' + K + '/>'; };
+    return '<svg x="0" y="0" width="1000" height="800" viewBox="0 0 945 1000" preserveAspectRatio="none">' +
+      '<path d="M0 431 A472.5 430 0 0 1 945 431" ' + T + '/>' +
+      '<path d="M0 431 L473 820 L945 431" ' + T + '/><path d="M0 443 L420 788 M945 443 L525 788" ' + T + '/>' +
+      '<path d="M258 641 A216 216 0 0 1 688 641" ' + T + '/>' +
+      '<path d="M473 820 L633 661 L473 504 L313 661 Z" ' + T + '/>' +
+      bs(633, 661) + bs(473, 504) + bs(313, 661) +
+      '<path d="M458 802 h30 v12 l-15 14 l-15 -14 z" ' + K + '/>' +
+      '<circle cx="473" cy="661" r="40" ' + T + '/><path d="M455 661 h36" ' + T + '/></svg>';
+  }
   var OUTLINES = {
-    baseball: { label: 'Baseball field', svg: '<image href="assets/baseball-field-bw.png" x="0" y="0" width="1000" height="800" preserveAspectRatio="none"/>' },
+    baseball: { label: 'Baseball field', svg: baseballField() },
     softball: { label: 'Softball field', svg: ballpark(95, false) },
     soccer: { label: 'Soccer pitch', svg: '<rect x="60" y="40" width="880" height="720" ' + S + '/><path d="M60 400 H940" ' + S + '/><circle cx="500" cy="400" r="90" ' + S + '/><rect x="290" y="40" width="420" height="150" ' + S + '/><rect x="290" y="610" width="420" height="150" ' + S + '/><rect x="400" y="40" width="200" height="60" ' + S + '/><rect x="400" y="700" width="200" height="60" ' + S + '/>' },
     basketball: { label: 'Basketball court', svg: '<rect x="60" y="40" width="880" height="720" ' + S + '/><path d="M60 400 H940" ' + S + '/><circle cx="500" cy="400" r="80" ' + S + '/><rect x="380" y="40" width="240" height="250" ' + S + '/><rect x="380" y="510" width="240" height="250" ' + S + '/><path d="M130 40 V150 A 370 370 0 0 0 870 150 V40" ' + S + '/><path d="M130 760 V650 A 370 370 0 0 1 870 650 V760" ' + S + '/>' },

@@ -193,6 +193,11 @@
   }
   var HDR = { name: ['name', 'player', 'player name'], pos: ['position', 'pos', 'primary position'], grad: ['grad year', 'grad', 'class', 'graduation year'], sec: ['secondary position', 'secondary', 'sec'], twoWay: ['two-way', 'two way', 'twoway'], jersey: ['jersey #', 'jersey', 'jersey number', 'number', '#', 'no', 'no.'] };
   var JERSEY_RE = /^\d{1,2}$/;
+  function sortRoster(list) {
+    var rank = function (p) { var i = STORED_POSITIONS.indexOf(p && p.pos); return i < 0 ? STORED_POSITIONS.length : i; };
+    var num = function (p) { var n = Number(jerseyNorm(p && p.jersey)); return isNaN(n) || jerseyNorm(p && p.jersey) === '' ? 1000 : n; };
+    return (list || []).slice().sort(function (a, b) { return rank(a) - rank(b) || num(a) - num(b) || String(a.name).localeCompare(String(b.name)); });
+  }
   function jerseyNorm(v) { var s = String(v == null ? '' : v).trim().replace(/^#/, ''); return JERSEY_RE.test(s) ? String(Number(s)) : ''; }
   function norm(s) { return String(s || '').trim().toLowerCase().replace(/\s+/g, ' '); }
   function posCheck(raw, label) {
@@ -284,7 +289,7 @@
     key: key, depthDrop: depthDrop, depthRemove: depthRemove, depthReorder: depthReorder, depthOrder: depthOrder, depthLabel: depthLabel, depthPos: depthPos, groupTags: groupTags, openSpots: openSpots, totalOpen: totalOpen, nearestGroup: nearestGroup, defaultSpot: defaultSpot, STORED_POSITIONS: STORED_POSITIONS, OF_SLOTS: OF_SLOTS, SLOTS: SLOTS, CONFIG: CONFIG, slotStored: slotStored, slotFit: slotFit,
         newLineup: newLineup, newLineupState: newLineupState, addLineup: addLineup, duplicateLineup: duplicateLineup, removeLineup: removeLineup, clearLineup: clearLineup,
     clampYears: clampYears, firstSeason: firstSeason, newDepthState: newDepthState, depthYears: depthYears, setYears: setYears, yearNote: yearNote,
-    sanitizeLineups: sanitizeLineups, sanitizeDepth: sanitizeDepth, parseCsv: parseCsv, importPreview: importPreview, jerseyNorm: jerseyNorm, commitImport: commitImport };
+    sanitizeLineups: sanitizeLineups, sanitizeDepth: sanitizeDepth, parseCsv: parseCsv, importPreview: importPreview, jerseyNorm: jerseyNorm, sortRoster: sortRoster, commitImport: commitImport };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   root.TheReadLineup = api;
 })(typeof window !== 'undefined' ? window : this);

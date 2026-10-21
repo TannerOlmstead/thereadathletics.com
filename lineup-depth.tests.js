@@ -152,6 +152,15 @@ ok('old drafts migrate safely: order/field slots become board tags, matchup text
   [undefined, null, 5, 'x', [], { lineups: 'no' }, { lineups: [{ free: 7, order: 'q', field: 3 }] }].forEach((bad) => assert.ok(L.sanitizeLineups(bad, ['a']).lineups.length >= 1, 'never crashes'));
   const d = L.sanitizeDepth(null, ['a']), y = L.depthYears(d)[0]; d.boards[y].tags = [0, 1, 2].map((i) => ({ pid: 'a' + i, g: 'SS', x: 0, y: 0 })); assert.strictEqual(L.sanitizeDepth(d, ['a0', 'a1', 'a2']).boards[y].tags.length, 3);
 });
+ok('roster order: position order P,C,1B,2B,3B,SS,OF, numeric jersey (0 first), name tie-break, imported rows slot in', () => {
+  const mk = (name, pos, jersey, extra) => Object.assign({ id: name, name, pos, jersey, grad: 2027 }, extra);
+  const list = [mk('Zed', 'OF', '2'), mk('Amy', 'SS', '10'), mk('Bo', 'SS', '2'), mk('Cy', 'P', '0'), mk('Di', 'P', '10'), mk('Ed', 'C', '7', { twoWay: true, sec: 'P' }), mk('Al', 'OF', '2'), mk('Imp', '1B', '3', { imported: true }), mk('Odd', 'XX', '1')];
+  const before = JSON.stringify(list), out = L.sortRoster(list).map((p) => p.name);
+  assert.deepStrictEqual(out, ['Cy', 'Di', 'Ed', 'Imp', 'Bo', 'Amy', 'Al', 'Zed', 'Odd']); assert.strictEqual(JSON.stringify(list), before, 'input not mutated');
+  assert.deepStrictEqual(L.sortRoster([mk('x', 'P', '10'), mk('y', 'P', '9'), mk('z', 'P', '2')]).map((p) => p.name), ['z', 'y', 'x'], 'numeric not text');
+  const fx = L.sortRoster(require('./roster-fixture.js').players()); const rank = (p) => L.STORED_POSITIONS.indexOf(p.pos);
+  for (let i = 1; i < fx.length; i++) assert.ok(rank(fx[i - 1]) < rank(fx[i]) || (rank(fx[i - 1]) === rank(fx[i]) && Number(fx[i - 1].jersey) <= Number(fx[i].jersey)));
+});
 ok('lineup-depth.js has no storage, network or global side effects', () => {
   const s = read('lineup-depth.js'); assert.ok(!/localStorage|sessionStorage|XMLHttpRequest|fetch\(|WebSocket|sendBeacon/.test(s));
 });
@@ -187,6 +196,7 @@ ok('exception and docs stay out of the handoff and bridge files; no pricing or A
     assert.strictEqual(q('.ld-tab').length, 1); assert.ok(q('#ld-canvas').length === 1 && !q('.ld-lane, .ld-lane-row, .ld-lane-title, .ld-fslot, .ld-ghost-slot, .ld-glabel, svg.ld-outline').length, 'blank board: no lane, no slots, no field outline'); assert.ok(!q('#lu-label, #lu-opp, #lu-date').length && !/Matchup|Opponent/.test(w.document.body.textContent), 'matchup removed');
     assert.strictEqual(q('select.ld-sel, .ld-slot').length, 0, 'no select or slot placement controls');
     assert.strictEqual(q('#ld-canvas select').length, 0); assert.ok(q('#ld-tray-list .ld-tag').length === 28, 'tray holds exactly the 28 fictional roster players'); assert.ok(/^#\d+/.test(q('#ld-tray-list .ld-tag')[0].textContent.trim()), 'jersey number shown first'); assert.ok(!/ecruit|prospect|Target/.test(Array.from(q('.ld-tag')).map((e) => e.textContent).join(' ')) && !q('[data-pool]').length, 'no recruits in pool'); assert.ok(Array.from(q('#ld-tray-list .ld-tag')).every((e) => /^R-\d+$/.test(e.dataset.pid)), 'roster ids only');
+    const order = Array.from(q('#ld-tray-list .ld-tag')).map((e) => e.dataset.pid), want = L.sortRoster(require('./roster-fixture.js').players()).map((p) => p.id); assert.deepStrictEqual(order, want, 'tray sorted by position then jersey');
     const tray = q('#ld-tray-list .ld-tag')[0]; assert.ok(tray.getAttribute('tabindex') === '0');
     const pid = tray.dataset.pid; tray.dispatchEvent(new w.KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
     let tag = w.document.querySelector('#ld-canvas .ld-tag[data-where="canvas"][data-pid="' + pid + '"]'); assert.ok(tag, 'Enter sends tray tag to canvas'); assert.ok(/placed on the board/.test(w.document.getElementById('ld-live').textContent), 'aria-live');

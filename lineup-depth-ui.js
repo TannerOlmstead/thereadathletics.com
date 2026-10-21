@@ -13,7 +13,7 @@
     var doc = root.document, esc = ctx.esc, sport = ctx.sport || 'Baseball', bb = sport === 'Baseball', sk = bb ? '' : '_' + L.sportKey(sport);
     var K_LU = 'theReadDemoLineups' + sk, K_DP = 'theReadDemoDepthChart' + sk, K_RO = 'theReadDemoLineupRoster';
     var imported = bb ? (rd(K_RO) || []).filter(function (p) { return p && /^IMP-\d+$/.test(p.id) && L.STORED_POSITIONS.indexOf(p.pos) >= 0 && L.jerseyNorm(p.jersey); }) : [];
-    var roster = function () { return ctx.players.concat(imported); };
+    var roster = function () { return L.sortRoster(ctx.players.concat(imported)); };
     var byId = function () { var m = {}; roster().forEach(function (p) { m[p.id] = p; }); return m; };
     var ids = function () { return roster().map(function (p) { return p.id; }); };
     var lu = L.sanitizeLineups(rd(K_LU), ids()), dp = L.sanitizeDepth(rd(K_DP), ids());

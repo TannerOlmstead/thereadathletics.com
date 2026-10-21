@@ -53,3 +53,6 @@ LF, CF and RF are selectable **display slots on the Depth Chart only** (the Line
 
 - Depth Chart baseball (and softball) outlines are black-and-white line art: a fan shape with home plate at the bottom, 45-degree foul lines, an outfield wall arc with a warning-track line, an infield dirt arc, a diamond with base squares, and (baseball only) a mound with rubber. The position cell grids sit on it: outfield stacks along the arc, infield stacks around the diamond, catcher stack below home, pitching panel to the right.
 
+
+- Depth Chart baseball background is assets/baseball-field-bw.png, a grayscale conversion of a user-supplied clip-art reference (colors removed, mowing stripes flattened). Requires Founder Decision: the image's license is unverified. Infield and outfield stacks sit over the image; the catcher group is a row of five cells below home plate. Softball keeps its line-art outline.
+

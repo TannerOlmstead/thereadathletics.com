@@ -84,16 +84,17 @@
   // ---------- Depth chart canvas: baseball field with position areas ----------
   // Snapped tags stack under the position anchor, top = Starter, then Backup 1... ; free tags keep their own coordinates.
   // The field fills the left FIELD_W of the canvas; the pitching panel (Starting Rotation SP1-SP5, Bullpen RP1-RP20 in 2 columns) sits to its right.
-  // Grid layout: every position is a column of equally sized cells (CELL_W wide, STACK_STEP apart); ANCHORS = center of the first (Starter) cell.
-  var FIELD_W = 0.70, CELL_W = 0.12;
-  var ANCHORS = { LF: { x: 0.20, y: 0.14 }, CF: { x: 0.35, y: 0.11 }, RF: { x: 0.50, y: 0.14 }, '3B': { x: 0.133, y: 0.385 }, SS: { x: 0.266, y: 0.385 }, '2B': { x: 0.434, y: 0.385 }, '1B': { x: 0.567, y: 0.385 }, C: { x: 0.35, y: 0.795 } };
+  // Baseball background is assets/baseball-field-bw.png (grayscale of a user-supplied clip-art reference; licence unverified: Requires Founder Decision). The catcher group is a row of cells below home plate (C_STEP apart); every other position is a column of equally sized cells (CELL_W wide, STACK_STEP apart); ANCHORS = center of the first (Starter) cell.
+  var FIELD_W = 0.70, CELL_W = 0.11, C_STEP = 0.115;
+  var ANCHORS = { LF: { x: 0.222, y: 0.112 }, CF: { x: 0.35, y: 0.063 }, RF: { x: 0.478, y: 0.112 }, '3B': { x: 0.1715, y: 0.356 }, SS: { x: 0.287, y: 0.356 }, '2B': { x: 0.413, y: 0.356 }, '1B': { x: 0.5285, y: 0.356 }, C: { x: 0.12, y: 0.925 } };
   var STACK_STEP = 0.045, SNAP_RADIUS = 0.1;
   var PANEL = { x0: 0.72, x1: 0.99, spY: 0.09, rpY: 0.40, step: 0.045, cols: [0.785, 0.925], spX: 0.855, spBox: { y0: 0.01, y1: 0.31 }, rpBox: { y0: 0.32, y1: 0.86 } };
   // Center of slot i (0-based) in a group.
   function groupSlotPos(g, i) {
     if (g === 'SP') return { x: PANEL.spX, y: round(PANEL.spY + i * PANEL.step) };
     if (g === 'RP') return { x: PANEL.cols[Math.floor(i / 10) % 2], y: round(PANEL.rpY + (i % 10) * PANEL.step) };
-    var a = ANCHORS[g]; return { x: a.x, y: round(a.y + i * STACK_STEP) };
+    var a = ANCHORS[g]; if (g === 'C') return { x: round(a.x + i * C_STEP), y: a.y };
+    return { x: a.x, y: round(a.y + i * STACK_STEP) };
   }
   function panelGroupAt(x, y) {
     if (x < PANEL.x0 || x > 1) return null;
@@ -122,6 +123,7 @@
     var best = null, bd = Infinity, m = 0.02;
     SLOTS.forEach(function (g) {
       var a = ANCHORS[g]; if (!a) return;
+      if (g === 'C') { if (y >= a.y - 0.04 && y <= a.y + 0.018 + m && x >= a.x - CELL_W / 2 - m && x <= a.x + 4 * C_STEP + CELL_W / 2 + m) { var cd = 0; if (cd < bd) { bd = cd; best = g; } } return; }
       var top = a.y - STACK_STEP * 1.2, bot = a.y + STACK_STEP * (CONFIG.depthSlots[g] - 0.5) + m, dx = Math.abs(x - a.x);
       if (dx <= CELL_W / 2 + m && y >= top && y <= bot && dx < bd) { bd = dx; best = g; }
     });
@@ -324,7 +326,7 @@
       (mound ? '<ellipse cx="500" cy="' + cy + '" rx="28" ry="20" ' + B + '/><path d="M490 ' + cy + ' h20" ' + BN + '/>' : '');
   }
   var OUTLINES = {
-    baseball: { label: 'Baseball field', svg: ballpark(120, true) },
+    baseball: { label: 'Baseball field', svg: '<image href="assets/baseball-field-bw.png" x="0" y="0" width="1000" height="800" preserveAspectRatio="none"/>' },
     softball: { label: 'Softball field', svg: ballpark(95, false) },
     soccer: { label: 'Soccer pitch', svg: '<rect x="60" y="40" width="880" height="720" ' + S + '/><path d="M60 400 H940" ' + S + '/><circle cx="500" cy="400" r="90" ' + S + '/><rect x="290" y="40" width="420" height="150" ' + S + '/><rect x="290" y="610" width="420" height="150" ' + S + '/><rect x="400" y="40" width="200" height="60" ' + S + '/><rect x="400" y="700" width="200" height="60" ' + S + '/>' },
     basketball: { label: 'Basketball court', svg: '<rect x="60" y="40" width="880" height="720" ' + S + '/><path d="M60 400 H940" ' + S + '/><circle cx="500" cy="400" r="80" ' + S + '/><rect x="380" y="40" width="240" height="250" ' + S + '/><rect x="380" y="510" width="240" height="250" ' + S + '/><path d="M130 40 V150 A 370 370 0 0 0 870 150 V40" ' + S + '/><path d="M130 760 V650 A 370 370 0 0 1 870 650 V760" ' + S + '/>' },

@@ -48,7 +48,7 @@ ok('depth canvas: snap within radius, stack order, once per group, caps, free ta
   ['LF', 'CF', 'RF'].forEach((g) => assert.strictEqual(L.slotStored(g), 'OF'));
 });
 ok('sport outlines: every registered sport resolves, unknown/null fall back to plain white, registry extensible', () => {
-  ['baseball', 'softball', 'soccer', 'basketball', 'football', 'volleyball'].forEach((s) => { const o = L.resolveOutline(s); assert.ok(!o.plain && /<(path|rect|circle|line|ellipse|polygon)/.test(o.svg) && o.id === s, s); });
+  ['baseball', 'softball', 'soccer', 'basketball', 'football', 'volleyball'].forEach((s) => { const o = L.resolveOutline(s); assert.ok(!o.plain && /<(path|rect|circle|line|ellipse|polygon|image)/.test(o.svg) && o.id === s, s); });
   ["Men's Soccer", "Women's Soccer", "Women's Basketball", "Women's Volleyball", 'Football', 'Softball', 'Baseball'].forEach((s) => assert.ok(!L.resolveOutline(s).plain, s));
   assert.strictEqual(L.resolveOutline('Softball').id, 'softball'); assert.ok(!/mound/i.test(L.resolveOutline('Softball').svg), 'softball has no mound');
   ['Curling', '', null, undefined].forEach((s) => { const o = L.resolveOutline(s); assert.ok(o.plain && o.svg === ''); });
@@ -272,7 +272,7 @@ ok('exception and docs stay out of the handoff and bridge files; no pricing or A
     w.document.getElementById('lu-add').click(); w.document.getElementById('lu-add').click(); assert.strictEqual(q('.ld-tab').length, 4); assert.ok(!w.document.getElementById('lu-add') && w.document.getElementById('lu-dup').disabled, 'cap at 4: Add hidden');
     assert.ok(/ld-mini/.test(read('styles.css')) && !/\.ld-(lane|fslot)/.test(read('styles.css')), 'compact tab-bar styles, no lane or slot styles');
     const d2 = await open('/coach-depth-chart.html?demo=1'), w2 = d2.window, q2 = (s) => w2.document.querySelectorAll(s);
-    assert.strictEqual(q2('.ld-tab[data-tab]').length, 4); assert.ok(q2('svg.ld-outline').length === 1 && q2('svg.ld-outline path, svg.ld-outline rect').length > 3, 'baseball field outline');
+    assert.strictEqual(q2('.ld-tab[data-tab]').length, 4); assert.ok(q2('svg.ld-outline').length === 1 && q2('svg.ld-outline image').length === 1 && /baseball-field-bw\.png/.test(q2('svg.ld-outline image')[0].getAttribute('href')), 'baseball field outline is the black-and-white reference image');
     assert.strictEqual(q2('#ld-canvas select, select.ld-sel').length, 0);
     const seeded = q2('#ld-canvas .ld-tag[data-where="canvas"]').length; assert.ok(seeded > 20 && seeded <= 45, 'depth chart loads pre-populated with the roster at primary positions: ' + seeded);
     const nP = require('./roster-fixture.js').players().filter((p) => p.pos === 'P').length, ks = Array.from(q2('#ld-canvas .ld-tag[data-where="canvas"]')).map((e) => e.dataset.key); assert.strictEqual(ks.filter((k) => /\|(SP|RP)$/.test(k)).length, nP, 'every pitcher seeded in the rotation or bullpen'); assert.ok(ks.filter((k) => /\|SP$/.test(k)).length <= 5 && !ks.some((k) => /\|P$/.test(k)), 'no old P group'); assert.strictEqual(q2('.ld-pslot').length, Object.keys(L.CONFIG.depthSlots).reduce((s, g) => s + L.CONFIG.depthSlots[g], 0) - ks.filter((k) => !/\|free$/.test(k)).length, 'every empty depth cell (field groups, rotation, bullpen) drawn as a same-size outlined cell'); assert.ok(/Starting Rotation \(5\)/.test(q2('.ld-panel-title')[0].textContent) && /Bullpen \(20\)/.test(q2('.ld-panel-title')[1].textContent), 'panel headings'); assert.ok(parseFloat(q2('#ld-canvas .ld-tag[data-key$="|SP"]')[0].style.left) > 66, 'pitchers sit to the right of the field');

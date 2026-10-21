@@ -2146,5 +2146,14 @@ kbd { border: 1px solid rgba(20,40,75,.4); border-bottom-width: 2px; padding: 0 
 .ld-num{display:inline-block;min-width:20px;text-align:center;margin-right:4px;border-radius:999px;background:#14284B;color:#fff;font-weight:800;font-size:.72rem;padding:1px 5px}
 .ld-meta{display:block;font-size:.72rem;color:#4b5565}
 .ld-tray-list{max-height:560px;overflow:auto}
+.ld-layout.one{display:block}
+.ld-slide{aspect-ratio:16/10;min-height:640px}
+.ld-roster-panel{position:absolute;left:0;top:0;bottom:0;box-sizing:border-box;padding:8px;background:#f8f9fc;border-right:1px solid #c5cddb;display:flex;flex-direction:column;min-height:0}
+.ld-roster-panel h3{margin:0 0 4px;font-size:.9rem}
+.ld-roster-panel .coach-note{margin:0 0 4px;font-size:.72rem}
+.ld-roster-panel .ld-tray-list{flex:1;min-height:0;max-height:none;overflow-y:auto}
+.ld-fslot{position:absolute;transform:translate(-50%,-50%);min-width:44px;padding:6px 8px;border:2px dashed #b9c2d0;border-radius:50%;text-align:center;font-size:.72rem;font-weight:800;color:#8793a5;pointer-events:none;background:#fff}
+.ld-fslot.dh{border-radius:8px;border-color:#E41E3F;color:#E41E3F}
+@media (max-width:900px){.ld-slide{min-height:560px}}
 @media (max-width:900px){.ld-layout{grid-template-columns:1fr}.ld-canvas{min-height:460px}}.ld-jersey{display:inline-block;font-weight:800;color:#E41E3F;font-size:.95rem}
 .ld-tag .ld-name{font-weight:700}

@@ -11,14 +11,16 @@
     maxLineups: 4,
     battingSlots: 9,
     minYears: 2, maxYears: 4, defaultYears: 4,
-    depthSlots: { P: 5, C: 3, '1B': 3, '2B': 3, '3B': 3, SS: 3, LF: 3, CF: 3, RF: 3 },
+    depthSlots: { P: 5, C: 5, '1B': 5, '2B': 5, '3B': 5, SS: 5, LF: 5, CF: 5, RF: 5 },
     depthLabels: ['Starter', 'Backup 1', 'Backup 2', 'Backup 3', 'Backup 4']
   };
 
+  // DH is a Lineup-page display slot only (user-approved scoped exception). It is never a stored position and never a depth group.
+  var FIELD_SLOTS = SLOTS.concat(['DH']);
   function slotStored(slot) { return OF_SLOTS.indexOf(slot) >= 0 ? 'OF' : slot; }
   // Non-blocking hint only: coaches may place anyone anywhere; the stored position never changes.
   function slotFit(slot, p) {
-    if (!p) return { ok: true };
+    if (!p || slot === 'DH') return { ok: true };
     var need = slotStored(slot), have = [p.pos, p.sec];
     if (need === 'P' && p.twoWay) return { ok: true };
     return have.indexOf(need) >= 0 ? { ok: true } : { ok: false, note: 'Stored position ' + (p.pos || 'not set') + ' (slot ' + slot + ')' };
@@ -31,37 +33,82 @@
   function cy(v) { return clamp(v, BOUNDS.y0, BOUNDS.y1); }
   function round(v) { return Math.round(v * 1000) / 1000; }
 
-  // ---------- Lineup canvas: numbered batting-order lane (9 rows, left) plus a free area ----------
-  // Rule: batting order = the tags in the lane, top row = 1. Tags anywhere else on the canvas are free notes (not in the order).
-  var LANE = { x0: 0.01, x1: 0.22, y0: 0.04, y1: 0.96 };
+  // ---------- Lineup canvas: ONE slide-like canvas = roster panel (left) + numbered batting-order lane + field slots + free area ----------
+  // Placement kinds per player: at most one batting-order spot ("bat"), one field slot incl. DH ("fld") and, only when not placed otherwise, one free note ("free").
+  // A player may hold a batting spot AND a field slot at once (that is one lineup, not a duplicate). Roster tags are never consumed: the roster stays full.
+  var ROSTER_W = 0.30;
+  var LANE = { x0: 0.32, x1: 0.48, y0: 0.04, y1: 0.96 };
+  var LB = { x0: 0.37, x1: 0.93, y0: 0.04, y1: 0.96 };
+  var FIELD_ANCHORS = { P: { x: 0.745, y: 0.58 }, C: { x: 0.745, y: 0.86 }, '1B': { x: 0.90, y: 0.66 }, '2B': { x: 0.82, y: 0.46 }, '3B': { x: 0.59, y: 0.66 }, SS: { x: 0.67, y: 0.46 }, LF: { x: 0.59, y: 0.22 }, CF: { x: 0.745, y: 0.12 }, RF: { x: 0.90, y: 0.22 }, DH: { x: 0.59, y: 0.88 } };
+  var FIELD_RADIUS = 0.10;
+  function lx(v) { return clamp(v, LB.x0, LB.x1); }
   function laneRowY(i) { var h = (LANE.y1 - LANE.y0) / CONFIG.battingSlots; return round(LANE.y0 + h * (i + 0.5)); }
   function laneX() { return round((LANE.x0 + LANE.x1) / 2); }
   function laneIndexAt(x, y) {
     if (x < LANE.x0 || x > LANE.x1 || y < LANE.y0 || y > LANE.y1) return -1;
     return Math.min(CONFIG.battingSlots - 1, Math.floor((y - LANE.y0) / ((LANE.y1 - LANE.y0) / CONFIG.battingSlots)));
   }
+  function fieldSlotAt(x, y) {
+    var best = null, bd = FIELD_RADIUS;
+    FIELD_SLOTS.forEach(function (s) { var a = FIELD_ANCHORS[s], d = Math.sqrt(Math.pow(x - a.x, 2) + Math.pow(y - a.y, 2)); if (d <= bd) { bd = d; best = s; } });
+    return best;
+  }
   function emptyOrder() { var a = []; for (var i = 0; i < CONFIG.battingSlots; i++) a.push(null); return a; }
-  function newLineup(n, label) { return { id: 'L' + n, label: label || 'Lineup ' + n, opponent: '', date: '', free: {}, order: emptyOrder() }; }
-  function cloneLineup(l) { var f = {}; Object.keys(l.free).forEach(function (k) { f[k] = { x: l.free[k].x, y: l.free[k].y }; }); return { id: l.id, label: l.label, opponent: l.opponent, date: l.date, free: f, order: l.order.slice() }; }
-  function lineupPids(l) { var s = {}; l.order.forEach(function (p) { if (p) s[p] = 1; }); Object.keys(l.free).forEach(function (p) { s[p] = 1; }); return s; }
-  function lineupPos(l, pid) { var i = l.order.indexOf(pid); if (i >= 0) return { x: laneX(), y: laneRowY(i), lane: i }; return l.free[pid] ? { x: l.free[pid].x, y: l.free[pid].y, lane: -1 } : null; }
-  // Drop (or move) a player at canvas fractions x,y. In the lane: takes that batting-order row (swap if the source was also in the lane,
-  // otherwise the displaced player moves to the free area beside the lane). Elsewhere: free placement, clamped inside the canvas.
-  function lineupDrop(lu, pid, x, y, noLane) {
-    var l = cloneLineup(lu), src = l.order.indexOf(pid), row = noLane ? -1 : laneIndexAt(x, y);
+  function newLineup(n, label) { return { id: 'L' + n, label: label || 'Lineup ' + n, opponent: '', date: '', free: {}, field: {}, order: emptyOrder() }; }
+  function cloneLineup(l) { var f = {}, fl = {}; Object.keys(l.free).forEach(function (k) { f[k] = { x: l.free[k].x, y: l.free[k].y }; }); Object.keys(l.field || {}).forEach(function (k) { fl[k] = l.field[k]; }); return { id: l.id, label: l.label, opponent: l.opponent, date: l.date, free: f, field: fl, order: l.order.slice() }; }
+  function lkey(pid, kind) { return pid + '|' + kind; }
+  function fieldSlotOf(l, pid) { for (var i = 0; i < FIELD_SLOTS.length; i++) if (l.field[FIELD_SLOTS[i]] === pid) return FIELD_SLOTS[i]; return null; }
+  // Every placed tag on a lineup canvas, with its coordinates.
+  function lineupTags(l) {
+    var t = [];
+    l.order.forEach(function (p, i) { if (p) t.push({ pid: p, kind: 'bat', key: lkey(p, 'bat'), x: laneX(), y: laneRowY(i), row: i }); });
+    FIELD_SLOTS.forEach(function (s) { var p = l.field[s]; if (p) t.push({ pid: p, kind: 'fld', key: lkey(p, 'fld'), x: FIELD_ANCHORS[s].x, y: FIELD_ANCHORS[s].y, slot: s }); });
+    Object.keys(l.free).forEach(function (p) { t.push({ pid: p, kind: 'free', key: lkey(p, 'free'), x: l.free[p].x, y: l.free[p].y }); });
+    return t;
+  }
+  function lineupPids(l) { var s = {}; lineupTags(l).forEach(function (t) { s[t.pid] = (s[t.pid] || 0) + 1; }); return s; }
+  // Drop (or move) a player at canvas fractions x,y. fromKey = key of the placed tag being moved (omit when it comes from the roster).
+  // Lane = batting-order row (swap if both were in the order, else the occupant is parked as a free note unless still placed elsewhere).
+  // Near a field slot (P..RF, DH) = that slot. Elsewhere = free note, only for a player with no other placement.
+  function lineupDrop(lu, pid, x, y, fromKey, noZones) {
+    var l = cloneLineup(lu), fk = fromKey && String(fromKey).indexOf('|') > 0 ? String(fromKey).split('|')[1] : null;
+    var row = noZones ? -1 : laneIndexAt(x, y), slot = noZones || row >= 0 ? null : fieldSlotAt(x, y);
+    var others = function (p) { return l.order.indexOf(p) >= 0 || fieldSlotOf(l, p) !== null; };
+    var park = function (occ, ax, ay) { if (occ && !others(occ) && !l.free[occ]) l.free[occ] = { x: round(lx(ax)), y: round(cy(ay)) }; };
     if (row >= 0) {
-      var occ = l.order[row];
+      var occ = l.order[row], src = l.order.indexOf(pid);
       if (src === row) return { lineup: lu, noop: true };
       delete l.free[pid];
-      if (src >= 0) { l.order[src] = occ || null; } else if (occ) { l.free[occ] = { x: round(cx(LANE.x1 + 0.1)), y: round(cy(laneRowY(row))) }; }
+      if (fk === 'fld') { var fs = fieldSlotOf(l, pid); if (fs) delete l.field[fs]; }
+      l.order[row] = null;
+      if (src >= 0) l.order[src] = occ || null; else park(occ, LANE.x1 + 0.1, laneRowY(row));
       l.order[row] = pid;
-      return { lineup: l, row: row, swapped: !!(occ && src >= 0), displaced: occ && src < 0 ? occ : null };
+      return { lineup: l, row: row, slot: null, swapped: !!(occ && src >= 0), displaced: occ && src < 0 && l.free[occ] ? occ : null };
     }
-    if (src >= 0) l.order[src] = null;
-    l.free[pid] = { x: round(cx(x)), y: round(cy(y)) };
-    return { lineup: l, row: -1 };
+    if (slot) {
+      var occ2 = l.field[slot], src2 = fieldSlotOf(l, pid);
+      if (src2 === slot) return { lineup: lu, noop: true };
+      delete l.free[pid];
+      if (fk === 'bat') { var bi = l.order.indexOf(pid); if (bi >= 0) l.order[bi] = null; }
+      delete l.field[slot];
+      if (src2) { if (occ2) l.field[src2] = occ2; else delete l.field[src2]; } else park(occ2, FIELD_ANCHORS[slot].x, FIELD_ANCHORS[slot].y + 0.1);
+      l.field[slot] = pid;
+      return { lineup: l, row: -1, slot: slot, swapped: !!(occ2 && src2), displaced: occ2 && !src2 && l.free[occ2] ? occ2 : null };
+    }
+    var rest = (fk !== 'bat' && l.order.indexOf(pid) >= 0) || (fk !== 'fld' && fieldSlotOf(l, pid) !== null);
+    if (rest) return { lineup: lu, noop: true, reason: 'Already placed on this lineup. Drop it on a batting row or field slot, or drag that tag back to the roster to remove it.' };
+    if (fk === 'bat') { var i2 = l.order.indexOf(pid); if (i2 >= 0) l.order[i2] = null; } else if (fk === 'fld') { var s2 = fieldSlotOf(l, pid); if (s2) delete l.field[s2]; }
+    l.free[pid] = { x: round(lx(x)), y: round(cy(y)) };
+    return { lineup: l, row: -1, slot: null };
   }
-  function lineupRemove(lu, pid) { var l = cloneLineup(lu); var i = l.order.indexOf(pid); if (i >= 0) l.order[i] = null; delete l.free[pid]; return l; }
+  // k = placed-tag key (pid|kind) removes that placement only; a bare pid removes every placement of the player.
+  function lineupRemove(lu, k) {
+    var l = cloneLineup(lu), parts = String(k).split('|'), pid = parts[0], kind = parts[1] || null;
+    if (!kind || kind === 'bat') { var i = l.order.indexOf(pid); if (i >= 0) l.order[i] = null; }
+    if (!kind || kind === 'fld') { var s = fieldSlotOf(l, pid); if (s) delete l.field[s]; }
+    if (!kind || kind === 'free') delete l.free[pid];
+    return l;
+  }
   function lineupReorder(lu, pid, delta) {
     var i = lu.order.indexOf(pid), j = i + delta; if (i < 0 || j < 0 || j >= lu.order.length) return { lineup: lu, noop: true };
     var l = cloneLineup(lu), t = l.order[j]; l.order[j] = pid; l.order[i] = t; return { lineup: l, row: j };
@@ -94,6 +141,8 @@
   function cloneDepth(b) { return { tags: b.tags.map(function (t) { return { pid: t.pid, g: t.g, x: t.x, y: t.y }; }) }; }
   function groupTags(b, g) { return b.tags.filter(function (t) { return t.g === g; }); }
   function depthOrder(b, g) { return groupTags(b, g).map(function (t) { return t.pid; }); }
+  // Other position groups where the same player is also listed (duplicates are allowed across positions on the depth chart only).
+  function alsoAt(b, t) { return b.tags.filter(function (x) { return x.pid === t.pid && x.g && x.g !== t.g; }).map(function (x) { return x.g; }); }
   function depthLabel(i) { return CONFIG.depthLabels[i] || 'Depth ' + (i + 1); }
   function depthPos(b, t) { if (!t.g) return { x: t.x, y: t.y }; var i = groupTags(b, t.g).indexOf(t), a = ANCHORS[t.g]; return { x: a.x, y: round(cy(a.y + i * STACK_STEP)) }; }
   function nearestGroup(x, y, b) {
@@ -104,14 +153,13 @@
   function openSpots(b, g) { return Math.max(0, CONFIG.depthSlots[g] - groupTags(b, g).length); }
   function totalOpen(b) { return SLOTS.reduce(function (s, g) { return s + openSpots(b, g); }, 0); }
   // Drop a player tag at x,y. fromKey = key of the tag being moved (omit when it comes from the tray).
-  // Near a position area it snaps to that position (a player is listed once per position); elsewhere it is a free tag (once per board).
+  // Near a position area it snaps to that position (the same player may be listed at several positions, but only once per position); elsewhere it is a free tag (once per board). A roster drop copies; moving a placed tag moves it.
   function depthDrop(board, pid, x, y, fromKey, noSnap) {
     var b = cloneDepth(board);
     if (fromKey) b.tags = b.tags.filter(function (t) { return key(t.pid, t.g) !== fromKey; });
     var g = noSnap ? null : nearestGroup(x, y, b);
-    b.tags = b.tags.filter(function (t) { return !(t.pid === pid && t.g === g && (fromKey ? true : g === null)) || false; });
     if (g) {
-      if (groupTags(b, g).some(function (t) { return t.pid === pid; })) return { ok: false, reason: 'Already listed at ' + g + '.', board: board };
+      if (groupTags(b, g).some(function (t) { return t.pid === pid; })) return { ok: false, reason: 'Already listed at ' + g + '. The same player can be listed at other positions.', board: board };
       if (openSpots(b, g) <= 0) return { ok: false, reason: g + ' depth is full (' + CONFIG.depthSlots[g] + ').', board: board };
       var list = groupTags(b, g), at = 0;
       for (var i = 0; i < list.length; i++) { if (ANCHORS[g].y + i * STACK_STEP < y) at = i + 1; }
@@ -144,8 +192,12 @@
   // Availability hint for a season: graduated players are flagged, never blocked (class-year labeling is a founder decision).
   function yearNote(p, year) { return p && p.grad && p.grad < year ? 'Class of ' + p.grad + ' (graduated before ' + year + ')' : ''; }
   // Default drop spot for keyboard "send to canvas": the player's own position area when it is unambiguous, else the free area.
-  function defaultSpot(p, kind, lu) {
-    if (kind === 'lineup') { var i = lu.order.indexOf(null); return i >= 0 ? { x: laneX(), y: laneRowY(i) } : { x: 0.5, y: 0.5 }; }
+  function defaultSpot(p, kind, lu, field) {
+    if (kind === 'lineup' && field) {
+      var want = p && p.pos === 'OF' ? ['CF', 'LF', 'RF'] : p && SLOTS.indexOf(p.pos) >= 0 ? [p.pos] : [], free = want.concat(['DH']).filter(function (s) { return !lu.field[s]; })[0] || 'DH';
+      return { x: FIELD_ANCHORS[free].x, y: FIELD_ANCHORS[free].y };
+    }
+    if (kind === 'lineup') { var i = lu.order.indexOf(null); return i >= 0 ? { x: laneX(), y: laneRowY(i) } : { x: 0.66, y: 0.97 }; }
     var g = p && p.pos === 'OF' ? 'CF' : p && SLOTS.indexOf(p.pos) >= 0 ? p.pos : null;
     return g ? { x: ANCHORS[g].x, y: ANCHORS[g].y } : { x: 0.5, y: 0.36 };
   }
@@ -160,9 +212,10 @@
       var l = newLineup(n + 1); l.id = 'L' + (n + 1);
       l.label = typeof r.label === 'string' && r.label.trim() ? r.label.slice(0, 40) : l.label;
       l.opponent = typeof r.opponent === 'string' ? r.opponent.slice(0, 60) : ''; l.date = typeof r.date === 'string' ? r.date.slice(0, 30) : '';
-      var seen = {};
+      var seen = {}, fseen = {};
+      if (r.field && typeof r.field === 'object') FIELD_SLOTS.forEach(function (s) { var p = r.field[s]; if (typeof p === 'string' && ok[p] && !fseen[p]) { fseen[p] = 1; l.field[s] = p; } });
       if (Array.isArray(r.order)) r.order.slice(0, CONFIG.battingSlots).forEach(function (p, i) { if (typeof p === 'string' && ok[p] && !seen[p]) { seen[p] = 1; l.order[i] = p; } });
-      if (r.free && typeof r.free === 'object') Object.keys(r.free).forEach(function (p) { var f = r.free[p]; if (ok[p] && !seen[p] && f && num(f.x) && num(f.y)) { seen[p] = 1; l.free[p] = { x: round(cx(f.x)), y: round(cy(f.y)) }; } });
+      if (r.free && typeof r.free === 'object') Object.keys(r.free).forEach(function (p) { var f = r.free[p]; if (ok[p] && !seen[p] && !fseen[p] && f && num(f.x) && num(f.y)) { seen[p] = 1; l.free[p] = { x: round(lx(f.x)), y: round(cy(f.y)) }; } });
       st.lineups.push(l);
     });
     if (!st.lineups.length) return newLineupState();
@@ -290,8 +343,8 @@
     return o ? { id: id, label: o.label, svg: o.svg, plain: false } : { id: null, label: 'Plain canvas', svg: '', plain: true };
   }
   function registerOutline(id, label, svg, aliases) { OUTLINES[id] = { label: label, svg: svg }; SPORT_OUTLINE[id] = id; (aliases || []).forEach(function (a) { SPORT_OUTLINE[sportKey(a)] = id; }); }
-  var api = { LANE: LANE, ANCHORS: ANCHORS, BOUNDS: BOUNDS, OUTLINES: OUTLINES, resolveOutline: resolveOutline, registerOutline: registerOutline, sportKey: sportKey,
-    clamp: clamp, laneIndexAt: laneIndexAt, laneRowY: laneRowY, laneX: laneX, lineupDrop: lineupDrop, lineupRemove: lineupRemove, lineupReorder: lineupReorder, lineupPos: lineupPos, lineupPids: lineupPids, battingOrder: battingOrder,
+  var api = { LANE: LANE, LB: LB, ROSTER_W: ROSTER_W, FIELD_SLOTS: FIELD_SLOTS, FIELD_ANCHORS: FIELD_ANCHORS, fieldSlotAt: fieldSlotAt, lineupTags: lineupTags, lkey: lkey, alsoAt: alsoAt, ANCHORS: ANCHORS, BOUNDS: BOUNDS, OUTLINES: OUTLINES, resolveOutline: resolveOutline, registerOutline: registerOutline, sportKey: sportKey,
+    clamp: clamp, laneIndexAt: laneIndexAt, laneRowY: laneRowY, laneX: laneX, lineupDrop: lineupDrop, lineupRemove: lineupRemove, lineupReorder: lineupReorder, lineupPids: lineupPids, battingOrder: battingOrder,
     key: key, depthDrop: depthDrop, depthRemove: depthRemove, depthReorder: depthReorder, depthOrder: depthOrder, depthLabel: depthLabel, depthPos: depthPos, groupTags: groupTags, openSpots: openSpots, totalOpen: totalOpen, nearestGroup: nearestGroup, defaultSpot: defaultSpot, STORED_POSITIONS: STORED_POSITIONS, OF_SLOTS: OF_SLOTS, SLOTS: SLOTS, CONFIG: CONFIG, slotStored: slotStored, slotFit: slotFit,
         newLineup: newLineup, newLineupState: newLineupState, addLineup: addLineup, duplicateLineup: duplicateLineup, removeLineup: removeLineup, clearLineup: clearLineup,
     clampYears: clampYears, firstSeason: firstSeason, newDepthState: newDepthState, depthYears: depthYears, setYears: setYears, yearNote: yearNote,

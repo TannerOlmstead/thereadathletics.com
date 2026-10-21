@@ -1167,6 +1167,16 @@
     draw();
   };
 
+  // Lineup and Depth Chart previews (baseball only). Grades come from the existing role-aware renderer; nothing is recomputed.
+  const ldMount = (kind) => (root) => {
+    const bbAll = players.filter((p) => p.sport === 'Baseball');
+    const targetIds = {}; Board.list().forEach((p) => { targetIds[p.id] = true; }); bbAll.forEach((p) => { if (!p.committed) targetIds[p.id] = true; });
+    const gradeSummary = (p) => (p.pos === 'P' && !p.twoWay ? 'PPG ' + glk(p, 'ppg') : 'OPG ' + glk(p, 'opg') + ' DPG ' + glk(p, 'dpg') + (p.twoWay ? ' PPG ' + glk(p, 'ppg') : ''));
+    window.TheReadLineupUI.mount(root, kind, { sport: ACTIVE_SPORT, players: bbAll, esc: esc, gradeSummary: gradeSummary, targets: () => targetIds });
+  };
+  pages.lineup = ldMount('lineup');
+  pages.depth = ldMount('depth');
+
   pages.needs = (root) => {
     const needs = POS_NEED;
     const skills = [['Pitching', 1], ['Defense', 2], ['Athleticism', 3], ['Speed', 4], ['Power', 5]];
@@ -2002,7 +2012,8 @@
     if (/ws-coach|ws-dept/.test(cls)) {
       const sub = document.querySelector('.coach-subnav');
       if (sub && !sub.querySelector('a[href="coach-interested.html"]')) { const a = document.createElement('a'); a.href = 'coach-interested.html'; a.textContent = 'Interested'; if (document.body.dataset.coachPage === 'interested') a.setAttribute('aria-current', 'page'); sub.appendChild(a); }
-      const acts = document.querySelector('.ws-actions');
+            if (sub && /ws-coach/.test(cls)) [['coach-lineup.html', 'Lineup', 'lineup'], ['coach-depth-chart.html', 'Depth Chart', 'depth']].forEach((l) => { if (sub.querySelector('a[href="' + l[0] + '"]')) return; const a = document.createElement('a'); a.href = l[0]; a.textContent = l[1]; if (document.body.dataset.coachPage === l[2]) a.setAttribute('aria-current', 'page'); sub.appendChild(a); });
+            const acts = document.querySelector('.ws-actions');
       if (acts && !document.getElementById('notif-bell')) { const b = document.createElement('a'); b.id = 'notif-bell'; b.className = 'notif-bell'; b.href = 'coach-interested.html'; const old = acts.querySelector('.ws-bell'); if (old) { old.parentNode.replaceChild(b, old); } else { acts.insertBefore(b, acts.firstChild); } refreshBell(); }
     }
     const root = document.getElementById('coach-app');

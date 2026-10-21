@@ -2119,3 +2119,22 @@ kbd { border: 1px solid rgba(20,40,75,.4); border-bottom-width: 2px; padding: 0 
 .signin-card a:focus-visible { outline: 3px solid var(--navy); outline-offset: 2px; }
 @media (max-width: 1000px) { .signin-grid { grid-template-columns: 1fr 1fr; } }
 @media (max-width: 600px) { .signin-grid { grid-template-columns: 1fr; } .signin-card .button, .signin-new { min-height: 44px; display: flex; align-items: center; justify-content: center; } }
+
+/* Lineup and Depth Chart previews (baseball, additive) */
+.ld-tabs{display:flex;flex-wrap:wrap;gap:6px;margin:12px 0}
+.ld-tab{border:1px solid var(--line,#d8dde6);background:#fff;padding:8px 14px;border-radius:8px;font-weight:700;cursor:pointer}
+.ld-tab.on{background:#14284B;color:#fff;border-color:#14284B}
+.ld-fields{display:flex;flex-wrap:wrap;gap:12px;align-items:end}
+.ld-cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px;align-items:start}
+.ld-depth{grid-template-columns:minmax(0,2fr) minmax(260px,1fr)}
+.ld-groups{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px}
+.ld-slot{display:grid;grid-template-columns:70px 1fr;gap:6px;align-items:center;padding:6px;border:1px dashed #b9c2d0;border-radius:8px;margin:6px 0}
+.ld-slot.open{background:#fafbfd}
+.ld-slot-label{font-weight:800;font-size:.85rem}
+.ld-slot .ld-sel,.ld-slot .ld-x{grid-column:2;max-width:100%}
+.ld-tag{display:inline-block;padding:6px 10px;border:1px solid #14284B;border-radius:8px;background:#fff;cursor:grab;margin:3px 0}
+.ld-tag:active{cursor:grabbing}
+.ld-meta{display:block;font-size:.78rem;color:#4b5565}
+.ld-pool-list{max-height:520px;overflow:auto}
+.ld-slot:focus-within,.ld-tab:focus-visible,.ld-tag:focus-visible{outline:3px solid #E41E3F;outline-offset:2px}
+@media (max-width:700px){.ld-depth{grid-template-columns:1fr}}

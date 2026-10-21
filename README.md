@@ -221,3 +221,10 @@ Department Finances (`department-finances.html`, built in `dept.js`) now labels 
 - **Handedness is per sport** and lives in `sports-config.js` (`handedness` on each sport; helpers `handednessOptions`, `validateHandedness`, `formatHandedness`). Only Baseball is approved (Bats R / L / S, Throws R / L, unchanged). Every other sport is a stub marked Requires Founder Decision and accepts no handedness value until its choices are approved. Missing values read Not Listed and are never defaulted.
 - **Claim and duplicate review** (`claim-merge.js`, preview page `claim-review.html`) is a front-end interface with fictional data. Nothing is saved or sent; the server-side requirements are in `docs/CLAIM_MERGE_BACKEND_REQUIREMENTS.md`. Statuses are Pending, Approved, Rejected and Review Required. A claim never changes athlete data, conflicting claims always need review, merges are never automatic, verified values are never overwritten, and every action is written to an append-only audit log.
 - Tests: `claim-merge.tests.js` (logic and the preview page) and the handedness section of `tests-sports.html`.
+
+## Baseball Lineup And Depth Chart Preview
+
+- **Pages:** `coach-lineup.html` (up to 4 lineups, batting order, defensive slots, bench) and `coach-depth-chart.html` (2 to 4 season tabs, Starter and Backup slots, recruiting-targets pool). Baseball only; they appear in the Coach Workspace nav.
+- **Use:** drag player tags, or use the select on each slot (keyboard). Drafts stay in this browser only (demo). CSV roster import is read locally, previewed, and needs review before anything is added; Excel files are not supported.
+- **User-approved scoped exception:** LF, CF and RF are display slots on these two pages only. Stored positions stay P, C, 1B, 2B, 3B, SS, OF everywhere else, and DH and UT are not accepted. Imported LF, CF or RF rows are flagged for review with an OF suggestion.
+- **Files:** `lineup-depth.js` (logic), `lineup-depth-ui.js` (interface), `lineup-depth.tests.js`; backend needs and founder decisions are in `docs/LINEUP_DEPTH_CHART_BACKEND_REQUIREMENTS.md`.

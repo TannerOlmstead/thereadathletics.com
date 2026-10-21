@@ -86,7 +86,7 @@
   // The field fills the left FIELD_W of the canvas; the pitching panel (Starting Rotation SP1-SP5, Bullpen RP1-RP20 in 2 columns) sits to its right.
   // Grid layout: every position is a column of equally sized cells (CELL_W wide, STACK_STEP apart); ANCHORS = center of the first (Starter) cell.
   var FIELD_W = 0.70, CELL_W = 0.12;
-  var ANCHORS = { LF: { x: 0.15, y: 0.09 }, CF: { x: 0.35, y: 0.09 }, RF: { x: 0.55, y: 0.09 }, '3B': { x: 0.09, y: 0.415 }, SS: { x: 0.265, y: 0.415 }, '2B': { x: 0.44, y: 0.415 }, '1B': { x: 0.615, y: 0.415 }, C: { x: 0.35, y: 0.73 } };
+  var ANCHORS = { LF: { x: 0.20, y: 0.14 }, CF: { x: 0.35, y: 0.11 }, RF: { x: 0.50, y: 0.14 }, '3B': { x: 0.133, y: 0.385 }, SS: { x: 0.266, y: 0.385 }, '2B': { x: 0.434, y: 0.385 }, '1B': { x: 0.567, y: 0.385 }, C: { x: 0.35, y: 0.795 } };
   var STACK_STEP = 0.045, SNAP_RADIUS = 0.1;
   var PANEL = { x0: 0.72, x1: 0.99, spY: 0.09, rpY: 0.40, step: 0.045, cols: [0.785, 0.925], spX: 0.855, spBox: { y0: 0.01, y1: 0.31 }, rpBox: { y0: 0.32, y1: 0.86 } };
   // Center of slot i (0-based) in a group.
@@ -310,10 +310,22 @@
   /* Court/field outlines for the Depth Chart canvas: lightweight inline SVG in a 1000x800 viewBox. Add a sport by adding an entry
      (or registerOutline); the renderer needs no changes. Unknown sports resolve to a plain white canvas. Outlines carry no positions or slots. */
   var S = 'fill="none" stroke="#9aa7b8" stroke-width="3"';
-  var B = 'fill="none" stroke="#d3d9e3" stroke-width="1.5" vector-effect="non-scaling-stroke"';
+  // Black-and-white ballpark: foul lines at 45 degrees from home, outfield wall arc, warning-track line, infield dirt arc, diamond with bases, mound.
+  var B = 'fill="#fff" stroke="#111" stroke-width="1.4" vector-effect="non-scaling-stroke"', BN = 'fill="none" stroke="#111" stroke-width="1.4" vector-effect="non-scaling-stroke"';
+  function ballpark(dy, mound) {
+    var hy = 580, dx = Math.round(dy * 1.43), cy = hy - dy, fx = 480, fy = 244;
+    var base = function (x, y) { return '<rect x="' + (x - 11) + '" y="' + (y - 8) + '" width="22" height="16" ' + B + '/>'; };
+    return '<path d="M500 ' + hy + ' L' + (500 - fx) + ' ' + fy + ' C20 50 230 28 500 28 C770 28 980 50 ' + (500 + fx) + ' ' + fy + ' Z" ' + B + '/>' +
+      '<path d="M45 262 C45 90 250 58 500 58 C750 58 955 90 955 262" ' + BN + '/>' +
+      '<path d="M130 500 A370 190 0 0 1 870 500" ' + BN + '/>' +
+      '<path d="M500 ' + hy + ' L' + (500 + dx) + ' ' + cy + ' L500 ' + (cy - dy) + ' L' + (500 - dx) + ' ' + cy + ' Z" ' + BN + '/>' +
+      base(500 + dx, cy) + base(500, cy - dy) + base(500 - dx, cy) +
+      '<path d="M486 562 h28 v8 l-14 10 l-14 -10 z" ' + B + '/>' +
+      (mound ? '<ellipse cx="500" cy="' + cy + '" rx="28" ry="20" ' + B + '/><path d="M490 ' + cy + ' h20" ' + BN + '/>' : '');
+  }
   var OUTLINES = {
-    baseball: { label: 'Baseball field', svg: '<path d="M500 730 L770 530 L500 330 L230 530 Z" ' + B + '/><path d="M770 530 L950 397 M230 530 L50 397" ' + B + '/><path d="M50 397 Q500 -200 950 397" ' + B + '/><rect x="760" y="523" width="20" height="14" ' + B + '/><rect x="490" y="323" width="20" height="14" ' + B + '/><rect x="220" y="523" width="20" height="14" ' + B + '/><rect x="490" y="527" width="20" height="6" ' + B + '/><path d="M486 730 h28 v-7 l-14 -9 l-14 9 z" ' + B + '/>' },
-    softball: { label: 'Softball field', svg: '<path d="M500 740 L800 440 A 420 420 0 0 0 200 440 Z" ' + S + '/><path d="M500 700 L660 540 L500 380 L340 540 Z" ' + S + '/><path d="M120 440 A 440 440 0 0 1 880 440" ' + S + '/><circle cx="500" cy="560" r="40" ' + S + '/><path d="M500 700 L120 320 M500 700 L880 320" ' + S + '/>' },
+    baseball: { label: 'Baseball field', svg: ballpark(120, true) },
+    softball: { label: 'Softball field', svg: ballpark(95, false) },
     soccer: { label: 'Soccer pitch', svg: '<rect x="60" y="40" width="880" height="720" ' + S + '/><path d="M60 400 H940" ' + S + '/><circle cx="500" cy="400" r="90" ' + S + '/><rect x="290" y="40" width="420" height="150" ' + S + '/><rect x="290" y="610" width="420" height="150" ' + S + '/><rect x="400" y="40" width="200" height="60" ' + S + '/><rect x="400" y="700" width="200" height="60" ' + S + '/>' },
     basketball: { label: 'Basketball court', svg: '<rect x="60" y="40" width="880" height="720" ' + S + '/><path d="M60 400 H940" ' + S + '/><circle cx="500" cy="400" r="80" ' + S + '/><rect x="380" y="40" width="240" height="250" ' + S + '/><rect x="380" y="510" width="240" height="250" ' + S + '/><path d="M130 40 V150 A 370 370 0 0 0 870 150 V40" ' + S + '/><path d="M130 760 V650 A 370 370 0 0 1 870 650 V760" ' + S + '/>' },
     football: { label: 'Football field', svg: '<rect x="60" y="40" width="880" height="720" ' + S + '/><path d="M60 130 H940 M60 670 H940 M60 400 H940 M60 220 H940 M60 310 H940 M60 490 H940 M60 580 H940" ' + S + '/>' },

@@ -235,3 +235,6 @@ Department Finances (`department-finances.html`, built in `dept.js`) now labels 
 
 - Depth slots are filled by specific slot: a tag can be dropped into any slot (for example B2) even when Starter or B1 is empty. Gaps are allowed, nothing shifts or compacts, and the slot index is stored per tag. A drop on an occupied cell goes to the nearest free cell of that group. Seeding still fills from Starter. Tags render compact from first paint.
 
+
+- Depth Chart baseball (and softball) outlines are black-and-white line art: a fan shape with home plate at the bottom, 45-degree foul lines, an outfield wall arc with a warning-track line, an infield dirt arc, a diamond with base squares, and (baseball only) a mound with rubber. The position cell grids sit on it: outfield stacks along the arc, infield stacks around the diamond, catcher stack below home, pitching panel to the right.
+
